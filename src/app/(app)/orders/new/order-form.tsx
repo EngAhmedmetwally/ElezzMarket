@@ -146,7 +146,7 @@ export function OrderForm({ onSuccess }: OrderFormProps) {
           </div>
 
           <Button type="button" variant="outline" size="sm" className="mt-4" onClick={() => append({ productName: "", quantity: 1, price: 0 })}>
-            <PlusCircle className="mr-2 h-4 w-4" />
+            <PlusCircle className="me-2 h-4 w-4" />
             {language === 'ar' ? 'إضافة عنصر' : 'Add Item'}
           </Button>
           

@@ -134,19 +134,19 @@ export default function CommissionsPage() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>{language === 'ar' ? 'النوع' : 'Type'}</TableHead>
-                <TableHead>{language === 'ar' ? 'المبلغ' : 'Amount'}</TableHead>
-                <TableHead>{language === 'ar' ? 'من تاريخ' : 'From Date'}</TableHead>
-                <TableHead>{language === 'ar' ? 'إلى تاريخ' : 'To Date'}</TableHead>
+                <TableHead className="text-center">{language === 'ar' ? 'النوع' : 'Type'}</TableHead>
+                <TableHead className="text-end">{language === 'ar' ? 'المبلغ' : 'Amount'}</TableHead>
+                <TableHead className="text-center">{language === 'ar' ? 'من تاريخ' : 'From Date'}</TableHead>
+                <TableHead className="text-center">{language === 'ar' ? 'إلى تاريخ' : 'To Date'}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {mockCommissionRules.map((rule) => (
                 <TableRow key={rule.id}>
-                  <TableCell>{rule.type}</TableCell>
-                  <TableCell>{rule.amount}</TableCell>
-                  <TableCell>{format(new Date(rule.fromDate), "PPP")}</TableCell>
-                  <TableCell>{format(new Date(rule.toDate), "PPP")}</TableCell>
+                  <TableCell className="text-center">{rule.type}</TableCell>
+                  <TableCell className="text-end">{rule.amount}</TableCell>
+                  <TableCell className="text-center">{format(new Date(rule.fromDate), "PPP")}</TableCell>
+                  <TableCell className="text-center">{format(new Date(rule.toDate), "PPP")}</TableCell>
                 </TableRow>
               ))}
             </TableBody>

@@ -47,25 +47,26 @@ export default function ReportsPage() {
               <TableHeader>
                 <TableRow>
                   <TableHead>{language === 'ar' ? 'الوسيط' : 'Moderator'}</TableHead>
-                  <TableHead>{language === 'ar' ? 'المبيعات' : 'Sales'}</TableHead>
-                  <TableHead>{language === 'ar' ? 'عمولة البيع' : 'Sales Commission'}</TableHead>
-                  <TableHead>{language === 'ar' ? 'التسليمات' : 'Deliveries'}</TableHead>
-                  <TableHead>{language === 'ar' ? 'عمولة التسليم' : 'Delivery Commission'}</TableHead>
-                  <TableHead>{language === 'ar' ? 'المرتجعات' : 'Returns'}</TableHead>
-                  <TableHead>{language === 'ar' ? 'عمولة الإرجاع' : 'Return Commission'}</TableHead>
-                  <TableHead className="text-right">{language === 'ar' ? 'إجمالي العمولة' : 'Total Commission'}</TableHead>
+                  <TableHead className="text-end">{language === 'ar' ? 'المبيعات' : 'Sales'}</TableHead>
+                  <TableHead className="text-end">{language === 'ar' ? 'عمولة البيع' : 'Sales Commission'}</TableHead>
+                  <TableHead className="text-end">{language === 'ar' ? 'التسليمات' : 'Deliveries'}</TableHead>
+                  <TableHead className="text-end">{language === 'ar' ? 'عمولة التسليم' : 'Delivery Commission'}</TableHead>
+                  <TableHead className="text-end">{language === 'ar' ? 'المرتجعات' : 'Returns'}</TableHead>
+                  <TableHead className="text-end">{language === 'ar' ? 'عمولة الإرجاع' : 'Return Commission'}</TableHead>
+                  <TableHead className="text-end">{language === 'ar' ? 'إجمالي العمولة' : 'Total Commission'}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {commissionReportData.map((row, index) => (
                   <TableRow key={index}>
                     <TableCell className="font-medium">{row.moderator}</TableCell>
-                    <TableCell>{row.sales}</TableCell>
-                    <TableCell>{row.salesCommission}</TableCell>
-                    <TableCell>{row.deliveries}</TableCell>
-                    <TableCell>{row.deliveryCommission}</TableCell>
-                    <TableCell className="text-destructive">{row.returnCommission}</TableCell>
-                    <TableCell className="text-right font-medium">{row.totalCommission}</TableCell>
+                    <TableCell className="text-end">{row.sales}</TableCell>
+                    <TableCell className="text-end">{row.salesCommission}</TableCell>
+                    <TableCell className="text-end">{row.deliveries}</TableCell>
+                    <TableCell className="text-end">{row.deliveryCommission}</TableCell>
+                    <TableCell className="text-end">{row.returns}</TableCell>
+                    <TableCell className="text-end text-destructive">{row.returnCommission}</TableCell>
+                    <TableCell className="text-end font-medium">{row.totalCommission}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>

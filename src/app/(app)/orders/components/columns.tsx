@@ -8,7 +8,7 @@ import { RowActions } from "./row-actions";
 import { ArrowUpDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
-export const columns: ColumnDef<Order>[] = [
+export const getOrderColumns = (language: 'ar' | 'en'): ColumnDef<Order>[] => [
   {
     id: "select",
     header: ({ table }) => (
@@ -33,45 +33,45 @@ export const columns: ColumnDef<Order>[] = [
   },
   {
     accessorKey: "id",
-    header: "Order ID",
+    header: language === 'ar' ? "رقم الاوردر" : "Order ID",
   },
   {
     accessorKey: "customerName",
-    header: "Customer",
+    header: language === 'ar' ? "العميل" : "Customer",
   },
   {
     accessorKey: "status",
-    header: "Status",
-    cell: ({ row }) => <StatusBadge status={row.getValue("status")} />,
+    header: () => <div className="text-center">{language === 'ar' ? "الحالة" : "Status"}</div>,
+    cell: ({ row }) => <div className="text-center"><StatusBadge status={row.getValue("status")} /></div>,
   },
   {
     accessorKey: "total",
     header: ({ column }) => {
       return (
-        <div className="text-right">
+        <div className="flex justify-end w-full">
           <Button
             variant="ghost"
             onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
           >
-            Total
-            <ArrowUpDown className="ml-2 h-4 w-4" />
+            {language === 'ar' ? "الاجمالي" : "Total"}
+            <ArrowUpDown className="ms-2 h-4 w-4" />
           </Button>
         </div>
       );
     },
     cell: ({ row }) => {
       const amount = parseFloat(row.getValue("total"));
-      const formatted = new Intl.NumberFormat("en-US", {
+      const formatted = new Intl.NumberFormat(language === 'ar' ? 'ar-EG' : 'en-US', {
         style: "currency",
         currency: "EGP",
       }).format(amount);
 
-      return <div className="text-right font-medium">{formatted}</div>;
+      return <div className="text-end font-medium">{formatted}</div>;
     },
   },
   {
     accessorKey: "moderatorName",
-    header: "Moderator",
+    header: language === 'ar' ? "المودريتور" : "Moderator",
   },
   {
     accessorKey: "createdAt",
@@ -80,16 +80,17 @@ export const columns: ColumnDef<Order>[] = [
             variant="ghost"
             onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
           >
-            Date
-            <ArrowUpDown className="ml-2 h-4 w-4" />
+            {language === 'ar' ? "التاريخ" : "Date"}
+            <ArrowUpDown className="ms-2 h-4 w-4" />
           </Button>
     ),
-    cell: ({ row }) => new Date(row.getValue("createdAt")).toLocaleDateString(),
+    cell: ({ row }) => new Date(row.getValue("createdAt")).toLocaleDateString(language === 'ar' ? 'ar-EG' : 'en-US'),
   },
   {
     id: "actions",
+    header: () => <div className="text-center">{language === 'ar' ? "الإجراءات" : "Actions"}</div>,
     cell: ({ row }) => {
-      return <RowActions orderId={row.original.id} />;
+      return <div className="flex justify-center"><RowActions orderId={row.original.id} /></div>;
     },
   },
 ];

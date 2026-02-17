@@ -6,7 +6,7 @@ import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import { PlusCircle } from "lucide-react";
 import { UsersClient } from "./components/client";
-import { columns } from "./components/columns";
+import { getUserColumns } from "./components/columns";
 import {
   Dialog,
   DialogContent,
@@ -20,6 +20,7 @@ import { useLanguage } from "@/components/language-provider";
 export default function UsersPage() {
   const [isAddUserOpen, setIsAddUserOpen] = React.useState(false);
   const { language } = useLanguage();
+  const columns = getUserColumns(language);
 
   return (
     <div>
@@ -27,7 +28,7 @@ export default function UsersPage() {
         <Dialog open={isAddUserOpen} onOpenChange={setIsAddUserOpen}>
           <DialogTrigger asChild>
             <Button>
-              <PlusCircle className="mr-2 h-4 w-4" />
+              <PlusCircle className="me-2 h-4 w-4" />
               {language === 'ar' ? 'إضافة مستخدم' : 'Add User'}
             </Button>
           </DialogTrigger>

@@ -22,7 +22,7 @@ export default function OrderDetailsPage({ params }: { params: { id: string } })
     <div>
       <PageHeader title={`Order ${order.id}`}>
         <Button onClick={() => typeof window !== 'undefined' && window.print()}>
-          <Printer className="mr-2 h-4 w-4" />
+          <Printer className="me-2 h-4 w-4" />
           Print Invoice
         </Button>
       </PageHeader>

@@ -6,7 +6,7 @@ import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import { PlusCircle, Upload, Download } from "lucide-react";
 import { OrdersClient } from "./components/client";
-import { columns } from "./components/columns";
+import { getOrderColumns } from "./components/columns";
 import {
   Dialog,
   DialogContent,
@@ -28,6 +28,8 @@ export default function OrdersPage() {
   const { toast } = useToast();
   const [fromDate, setFromDate] = React.useState<Date | undefined>(undefined);
   const [toDate, setToDate] = React.useState<Date | undefined>(undefined);
+
+  const columns = getOrderColumns(language);
 
   const filteredOrders = React.useMemo(() => {
     return mockOrders.filter(order => {
@@ -108,7 +110,7 @@ export default function OrdersPage() {
         <Dialog open={isNewOrderOpen} onOpenChange={setIsNewOrderOpen}>
           <DialogTrigger asChild>
             <Button>
-              <PlusCircle className="mr-2 h-4 w-4" />
+              <PlusCircle className="me-2 h-4 w-4" />
               {language === 'ar' ? 'طلب جديد' : 'New Order'}
             </Button>
           </DialogTrigger>
@@ -134,12 +136,12 @@ export default function OrdersPage() {
         />
         <Button asChild variant="outline">
             <label htmlFor="import-orders" className="cursor-pointer">
-                <Upload className="mr-2 h-4 w-4" />
+                <Upload className="me-2 h-4 w-4" />
                 {language === 'ar' ? 'استيراد' : 'Import'}
             </label>
         </Button>
         <Button variant="outline" onClick={handleFileDownload}>
-            <Download className="mr-2 h-4 w-4" />
+            <Download className="me-2 h-4 w-4" />
             {language === 'ar' ? 'تصدير' : 'Export'}
         </Button>
 

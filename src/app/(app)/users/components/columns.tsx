@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 
-export const columns: ColumnDef<User>[] = [
+export const getUserColumns = (language: 'ar' | 'en'): ColumnDef<User>[] => [
   {
     id: "select",
     header: ({ table }) => (
@@ -35,7 +35,7 @@ export const columns: ColumnDef<User>[] = [
   },
   {
     accessorKey: "name",
-    header: "Name",
+    header: language === 'ar' ? 'الاسم' : 'Name',
     cell: ({ row }) => {
         const user = row.original;
         return (
@@ -54,13 +54,13 @@ export const columns: ColumnDef<User>[] = [
   },
   {
     accessorKey: "role",
-    header: "Role",
-    cell: ({ row }) => <Badge variant="secondary">{row.getValue("role")}</Badge>,
+    header: () => <div className="text-center">{language === 'ar' ? 'الدور' : 'Role'}</div>,
+    cell: ({ row }) => <div className="text-center"><Badge variant="secondary">{row.getValue("role")}</Badge></div>,
   },
   {
     accessorKey: "status",
-    header: "Status",
-    cell: ({ row }) => <StatusBadge status={row.getValue("status")} />,
+    header: () => <div className="text-center">{language === 'ar' ? 'الحالة' : 'Status'}</div>,
+    cell: ({ row }) => <div className="text-center"><StatusBadge status={row.getValue("status")} /></div>,
   },
   {
     accessorKey: "createdAt",
@@ -69,16 +69,17 @@ export const columns: ColumnDef<User>[] = [
             variant="ghost"
             onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
           >
-            Date Created
-            <ArrowUpDown className="ml-2 h-4 w-4" />
+            {language === 'ar' ? 'تاريخ الإنشاء' : 'Date Created'}
+            <ArrowUpDown className="ms-2 h-4 w-4" />
           </Button>
     ),
-    cell: ({ row }) => new Date(row.getValue("createdAt")).toLocaleDateString(),
+    cell: ({ row }) => new Date(row.getValue("createdAt")).toLocaleDateString(language === 'ar' ? 'ar-EG' : 'en-US'),
   },
   {
     id: "actions",
+    header: () => <div className="text-center">{language === 'ar' ? "الإجراءات" : "Actions"}</div>,
     cell: ({ row }) => {
-      return <RowActions userId={row.original.id} />;
+      return <div className="flex justify-center"><RowActions userId={row.original.id} /></div>;
     },
   },
 ];
