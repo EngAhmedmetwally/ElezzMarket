@@ -1,3 +1,4 @@
+
 "use client"
 
 import * as React from "react"
@@ -13,11 +14,13 @@ type LanguageProviderProps = {
 type LanguageProviderState = {
   language: Language
   setLanguage: (language: Language) => void
+  isRTL: boolean
 }
 
 const initialState: LanguageProviderState = {
   language: "en",
   setLanguage: () => null,
+  isRTL: false,
 }
 
 const LanguageProviderContext =
@@ -29,7 +32,7 @@ export function LanguageProvider({
   storageKey = "app-language",
   ...props
 }: LanguageProviderProps) {
-  const [language, setLanguage] = React.useState<Language>(defaultLanguage)
+  const [language, setLanguage] = React.useState<Language | null>(null)
 
   React.useEffect(() => {
     let storedItem: string | null = null;
@@ -41,26 +44,33 @@ export function LanguageProvider({
 
     if (storedItem && (storedItem === 'en' || storedItem === 'ar')) {
       setLanguage(storedItem as Language)
+    } else {
+      setLanguage(defaultLanguage)
     }
-  }, [storageKey]);
+  }, [storageKey, defaultLanguage]);
 
   React.useEffect(() => {
-    const root = window.document.documentElement
-    root.classList.remove("en", "ar")
     if (language) {
+      const root = window.document.documentElement
+      root.classList.remove("en", "ar")
       root.classList.add(language)
-    }
-    root.setAttribute("dir", language === "ar" ? "rtl" : "ltr")
-    try {
-      localStorage.setItem(storageKey, language)
-    } catch (error) {
-       console.error("Error writing to localStorage", error);
+      root.setAttribute("dir", language === "ar" ? "rtl" : "ltr")
+      try {
+        localStorage.setItem(storageKey, language)
+      } catch (error) {
+        console.error("Error writing to localStorage", error);
+      }
     }
   }, [language, storageKey])
 
+  if (!language) {
+    return null; // or a loading component
+  }
+
   const value = {
     language,
-    setLanguage,
+    setLanguage: (lang: Language) => setLanguage(lang),
+    isRTL: language === "ar",
   }
 
   return (

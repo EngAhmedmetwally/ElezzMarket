@@ -1,3 +1,4 @@
+
 "use client";
 
 import * as React from "react";
@@ -36,7 +37,7 @@ const permissionsSchema = z.object({
 const userFormSchema = z.object({
   name: z.string().min(1, "Name is required"),
   email: z.string().email("Invalid email address"),
-  role: z.enum(["Admin", "Operations", "Moderator", "Courier"]),
+  role: z.enum(["Admin", "Moderator", "Courier"]),
   permissions: z.object({
     dashboard: permissionsSchema.pick({ view: true }),
     orders: permissionsSchema,
@@ -102,7 +103,6 @@ export function AddUserForm({ onSuccess }: AddUserFormProps) {
 
   const roles = {
     Admin: language === 'ar' ? 'مدير' : 'Admin',
-    Operations: language === 'ar' ? 'عمليات' : 'Operations',
     Moderator: language === 'ar' ? 'وسيط' : 'Moderator',
     Courier: language === 'ar' ? 'مندوب' : 'Courier',
   };
@@ -150,7 +150,6 @@ export function AddUserForm({ onSuccess }: AddUserFormProps) {
                 </FormControl>
                 <SelectContent>
                   <SelectItem value="Admin">{roles.Admin}</SelectItem>
-                  <SelectItem value="Operations">{roles.Operations}</SelectItem>
                   <SelectItem value="Moderator">{roles.Moderator}</SelectItem>
                   <SelectItem value="Courier">{roles.Courier}</SelectItem>
                 </SelectContent>

@@ -3,7 +3,6 @@ import type { User, Order, CommissionRule, Product, OrderStatus, StatusHistoryIt
 
 export const mockUsers: User[] = [
   { id: 'usr_1', name: 'مستخدم مسؤول', email: 'admin@elezz.com', role: 'Admin', avatarUrl: '/avatars/01.png', status: 'نشط', createdAt: '2023-10-01' },
-  { id: 'usr_2', name: 'مدير عمليات', email: 'ops@elezz.com', role: 'Operations', avatarUrl: '/avatars/02.png', status: 'نشط', createdAt: '2023-10-01' },
   { id: 'usr_3', name: 'علي حسن', email: 'ali.hassan@elezz.com', role: 'Moderator', avatarUrl: '/avatars/03.png', status: 'نشط', createdAt: '2023-10-02' },
   { id: 'usr_4', name: 'فاطمة أحمد', email: 'fatima.ahmed@elezz.com', role: 'Moderator', avatarUrl: '/avatars/04.png', status: 'نشط', createdAt: '2023-10-02' },
   { id: 'usr_5', name: 'عمر إبراهيم', email: 'omar.ibrahim@elezz.com', role: 'Courier', avatarUrl: '/avatars/05.png', status: 'نشط', createdAt: '2023-10-03' },
@@ -27,9 +26,9 @@ export const mockOrders: Order[] = [
     createdAt: '2023-10-25T10:00:00Z', 
     updatedAt: '2023-10-26T15:30:00Z',
     statusHistory: [
-        { status: 'تم الحجز', createdAt: '2023-10-25T10:00:00Z', notes: 'تم استلام الطلب من العميل.' },
-        { status: 'تم الارسال', createdAt: '2023-10-26T12:00:00Z', notes: 'تم التسليم للمندوب عمر.' },
-        { status: 'تم التسليم', createdAt: '2023-10-26T15:30:00Z', notes: 'تم التسليم بنجاح.' },
+        { status: 'تم التسليم', createdAt: '2023-10-26T15:30:00Z', notes: 'تم التسليم بنجاح.', userName: 'عمر إبراهيم' },
+        { status: 'تم الارسال', createdAt: '2023-10-26T12:00:00Z', notes: 'تم التسليم للمندوب عمر.', userName: 'علي حسن' },
+        { status: 'تم الحجز', createdAt: '2023-10-25T10:00:00Z', notes: 'تم استلام الطلب من العميل.', userName: 'علي حسن' },
     ]
   },
   { 
@@ -48,8 +47,8 @@ export const mockOrders: Order[] = [
     createdAt: '2023-10-25T11:30:00Z', 
     updatedAt: '2023-10-25T18:00:00Z',
     statusHistory: [
-        { status: 'تم الحجز', createdAt: '2023-10-25T11:30:00Z', notes: 'العميل طلب توصيل سريع.' },
-        { status: 'تم الارسال', createdAt: '2023-10-25T18:00:00Z' },
+        { status: 'تم الارسال', createdAt: '2023-10-25T18:00:00Z', userName: 'فاطمة أحمد' },
+        { status: 'تم الحجز', createdAt: '2023-10-25T11:30:00Z', notes: 'العميل طلب توصيل سريع.', userName: 'فاطمة أحمد' },
     ]
   },
   { 
@@ -66,7 +65,7 @@ export const mockOrders: Order[] = [
     createdAt: '2023-10-26T09:00:00Z', 
     updatedAt: '2023-10-26T11:00:00Z',
     statusHistory: [
-        { status: 'تم الحجز', createdAt: '2023-10-26T09:00:00Z' },
+        { status: 'تم الحجز', createdAt: '2023-10-26T09:00:00Z', userName: 'علي حسن' },
     ]
   },
   { 
@@ -83,7 +82,7 @@ export const mockOrders: Order[] = [
     createdAt: '2023-10-27T14:00:00Z', 
     updatedAt: '2023-10-27T14:00:00Z',
     statusHistory: [
-        { status: 'تم الحجز', createdAt: '2023-10-27T14:00:00Z', notes: 'في انتظار تأكيد المخزون.' },
+        { status: 'تم الحجز', createdAt: '2023-10-27T14:00:00Z', notes: 'في انتظار تأكيد المخزون.', userName: 'فاطمة أحمد' },
     ]
   },
   { 
@@ -100,8 +99,8 @@ export const mockOrders: Order[] = [
     createdAt: '2023-10-24T16:00:00Z', 
     updatedAt: '2023-10-25T09:00:00Z',
     statusHistory: [
-        { status: 'تم الحجز', createdAt: '2023-10-24T16:00:00Z' },
-        { status: 'ملغي', createdAt: '2023-10-25T09:00:00Z', notes: 'العميل ألغى الطلب.' },
+        { status: 'ملغي', createdAt: '2023-10-25T09:00:00Z', notes: 'العميل ألغى الطلب.', userName: 'علي حسن' },
+        { status: 'تم الحجز', createdAt: '2023-10-24T16:00:00Z', userName: 'علي حسن' },
     ]
   },
   { 
@@ -120,9 +119,9 @@ export const mockOrders: Order[] = [
     createdAt: '2023-10-22T12:00:00Z', 
     updatedAt: '2023-10-24T13:00:00Z',
     statusHistory: [
-        { status: 'تم الحجز', createdAt: '2023-10-22T12:00:00Z' },
-        { status: 'تم الارسال', createdAt: '2023-10-23T10:00:00Z' },
-        { status: 'مرتجع', createdAt: '2023-10-24T13:00:00Z', notes: 'المنتج لم يعجب العميل.' },
+        { status: 'مرتجع', createdAt: '2023-10-24T13:00:00Z', notes: 'المنتج لم يعجب العميل.', userName: 'ليلى مصطفى' },
+        { status: 'تم الارسال', createdAt: '2023-10-23T10:00:00Z', userName: 'فاطمة أحمد' },
+        { status: 'تم الحجز', createdAt: '2023-10-22T12:00:00Z', userName: 'فاطمة أحمد' },
     ]
   },
   { 
@@ -141,9 +140,9 @@ export const mockOrders: Order[] = [
     createdAt: '2023-10-23T10:00:00Z', 
     updatedAt: '2023-10-24T11:00:00Z',
     statusHistory: [
-        { status: 'تم الحجز', createdAt: '2023-10-23T10:00:00Z' },
-        { status: 'تم الارسال', createdAt: '2023-10-24T10:00:00Z' },
-        { status: 'لم يرد', createdAt: '2023-10-24T11:00:00Z', notes: 'العميل لم يرد على الهاتف.' },
+        { status: 'لم يرد', createdAt: '2023-10-24T11:00:00Z', notes: 'العميل لم يرد على الهاتف.', userName: 'عمر إبراهيم' },
+        { status: 'تم الارسال', createdAt: '2023-10-24T10:00:00Z', userName: 'علي حسن' },
+        { status: 'تم الحجز', createdAt: '2023-10-23T10:00:00Z', userName: 'علي حسن' },
     ]
   },
   { 
@@ -162,9 +161,9 @@ export const mockOrders: Order[] = [
     createdAt: '2023-10-21T15:00:00Z', 
     updatedAt: '2023-10-22T18:00:00Z',
     statusHistory: [
-        { status: 'تم الحجز', createdAt: '2023-10-21T15:00:00Z' },
-        { status: 'تم الارسال', createdAt: '2023-10-22T10:00:00Z' },
-        { status: 'تم التسليم', createdAt: '2023-10-22T18:00:00Z' },
+        { status: 'تم التسليم', createdAt: '2023-10-22T18:00:00Z', userName: 'ليلى مصطفى' },
+        { status: 'تم الارسال', createdAt: '2023-10-22T10:00:00Z', userName: 'فاطمة أحمد' },
+        { status: 'تم الحجز', createdAt: '2023-10-21T15:00:00Z', userName: 'فاطمة أحمد' },
     ]
   }
 ];
@@ -187,3 +186,4 @@ export const mockProducts: Product[] = [
   { id: 'prod_8', name: 'سماعة ألعاب لاسلكية', price: 1800, sku: 'HP-GM-WL-03', isActive: true, createdAt: '2023-05-30' },
   { id: 'prod_9', name: 'كرسي مكتب مريح', price: 6000, sku: 'CH-ERG-01', isActive: true, createdAt: '2023-06-15' },
 ];
+

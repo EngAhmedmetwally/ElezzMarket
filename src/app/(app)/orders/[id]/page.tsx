@@ -2,21 +2,24 @@
 "use client";
 
 import * as React from "react";
-import { mockOrders } from "@/lib/data";
+import { mockOrders, mockUsers } from "@/lib/data";
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { StatusBadge } from "@/components/status-badge";
-import { Printer } from "lucide-react";
+import { Printer, Search } from "lucide-react";
 import { useLanguage } from "@/components/language-provider";
-import type { Order, OrderStatus, StatusHistoryItem } from "@/lib/types";
+import type { Order, OrderStatus, StatusHistoryItem, User } from "@/lib/types";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose, DialogDescription } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { format } from "date-fns";
+import { Input } from "@/components/ui/input";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 const orderStatuses: OrderStatus[] = ["تم الحجز", "تم الارسال", "تم التسليم", "ملغي", "مرتجع", "لم يرد"];
 
@@ -36,8 +39,9 @@ function StatusHistoryTimeline({ history }: { history: StatusHistoryItem[] }) {
                                 {index < history.length - 1 && <div className="flex-1 w-0.5 bg-border"></div>}
                             </div>
                             <div>
-                                <div className="flex items-center gap-2">
+                                <div className="flex items-center gap-2 flex-wrap">
                                     <StatusBadge status={item.status} />
+                                    <span className="font-medium">{item.userName}</span>
                                     <span className="text-xs text-muted-foreground">
                                         {format(new Date(item.createdAt), "PPP p")}
                                     </span>
@@ -59,13 +63,26 @@ export default function OrderDetailsPage({ params }: { params: { id: string } })
   
   const [order, setOrder] = React.useState<Order | undefined>(orderData);
   const [isNoteModalOpen, setIsNoteModalOpen] = React.useState(false);
+  const [isCourierModalOpen, setIsCourierModalOpen] = React.useState(false);
+
   const [note, setNote] = React.useState("");
   const [selectedStatus, setSelectedStatus] = React.useState<OrderStatus | null>(null);
+  
+  const [couriers] = React.useState<User[]>(() => mockUsers.filter(u => u.role === 'Courier'));
+  const [courierSearch, setCourierSearch] = React.useState("");
+  const [selectedCourierId, setSelectedCourierId] = React.useState<string | null>(null);
+
+
+  const filteredCouriers = couriers.filter(c => c.name.toLowerCase().includes(courierSearch.toLowerCase()));
 
   const handleStatusChangeRequest = (newStatus: OrderStatus) => {
     if (order && newStatus !== order.status) {
       setSelectedStatus(newStatus);
-      setIsNoteModalOpen(true);
+      if (newStatus === "تم الارسال") {
+        setIsCourierModalOpen(true);
+      } else {
+        setIsNoteModalOpen(true);
+      }
     }
   };
 
@@ -75,12 +92,13 @@ export default function OrderDetailsPage({ params }: { params: { id: string } })
         status: selectedStatus,
         notes: note,
         createdAt: new Date().toISOString(),
+        userName: "مستخدم مسؤول", // Hardcoded current user
       };
       
       const updatedOrder: Order = {
         ...order,
         status: selectedStatus,
-        statusHistory: [newHistoryItem, ...order.statusHistory], // Add to beginning
+        statusHistory: [newHistoryItem, ...order.statusHistory],
         updatedAt: new Date().toISOString(),
       };
 
@@ -97,6 +115,47 @@ export default function OrderDetailsPage({ params }: { params: { id: string } })
       setSelectedStatus(null);
     }
   };
+
+  const handleAssignCourierAndSave = () => {
+    const selectedCourier = couriers.find(c => c.id === selectedCourierId);
+    if (order && selectedStatus && selectedCourier) {
+      const newHistoryItem: StatusHistoryItem = {
+        status: selectedStatus,
+        notes: note,
+        createdAt: new Date().toISOString(),
+        userName: "مستخدم مسؤول", // Hardcoded current user
+      };
+      
+      const updatedOrder: Order = {
+        ...order,
+        status: selectedStatus,
+        courierId: selectedCourier.id,
+        courierName: selectedCourier.name,
+        statusHistory: [newHistoryItem, ...order.statusHistory],
+        updatedAt: new Date().toISOString(),
+      };
+
+      setOrder(updatedOrder);
+
+      toast({
+        title: language === 'ar' ? 'تم تحديث الحالة' : 'Status Updated',
+        description: `${language === 'ar' ? `تم إسناد الطلب إلى المندوب ${selectedCourier.name}` : `Order assigned to courier ${selectedCourier.name}`}.`,
+      });
+      
+      // Reset
+      setIsCourierModalOpen(false);
+      setNote("");
+      setSelectedStatus(null);
+      setSelectedCourierId(null);
+      setCourierSearch("");
+    } else {
+       toast({
+        variant: "destructive",
+        title: language === 'ar' ? 'خطأ' : 'Error',
+        description: language === 'ar' ? `يرجى اختيار مندوب.` : `Please select a courier.`,
+      });
+    }
+  }
 
   if (!order) {
     return (
@@ -215,6 +274,60 @@ export default function OrderDetailsPage({ params }: { params: { id: string } })
                     <Button variant="outline">{language === 'ar' ? 'إلغاء' : 'Cancel'}</Button>
                 </DialogClose>
                 <Button onClick={handleSaveStatusChange}>{language === 'ar' ? 'حفظ التغيير' : 'Save Change'}</Button>
+            </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+       <Dialog open={isCourierModalOpen} onOpenChange={setIsCourierModalOpen}>
+        <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+                <DialogTitle>{language === 'ar' ? 'إسناد مندوب' : 'Assign Courier'}</DialogTitle>
+                <DialogDescription>{language === 'ar' ? 'اختر مندوبًا لإرسال هذا الطلب.' : 'Select a courier to ship this order.'}</DialogDescription>
+            </DialogHeader>
+            <div className="py-4 space-y-4">
+                <div className="relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input 
+                        placeholder={language === 'ar' ? 'ابحث عن مندوب...' : 'Search for courier...'} 
+                        className="pl-9"
+                        value={courierSearch}
+                        onChange={(e) => setCourierSearch(e.target.value)}
+                    />
+                </div>
+                <ScrollArea className="h-48">
+                    <div className="space-y-2">
+                        {filteredCouriers.map(courier => (
+                            <div 
+                                key={courier.id}
+                                onClick={() => setSelectedCourierId(courier.id)}
+                                className={React.useMemo(() => cn(
+                                    "flex items-center gap-3 rounded-md p-2 cursor-pointer transition-colors",
+                                    selectedCourierId === courier.id ? "bg-primary text-primary-foreground" : "hover:bg-muted"
+                                ), [selectedCourierId])}
+                            >
+                                <Avatar className="h-8 w-8">
+                                    <AvatarImage src={courier.avatarUrl} alt={courier.name} />
+                                    <AvatarFallback>{courier.name.charAt(0)}</AvatarFallback>
+                                </Avatar>
+                                <div>
+                                    <p className="text-sm font-medium">{courier.name}</p>
+                                    <p className="text-xs text-muted-foreground">{courier.email}</p>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </ScrollArea>
+                <Textarea
+                    placeholder={language === 'ar' ? 'أضف ملاحظة (اختياري)...' : 'Add a note (optional)...'}
+                    value={note}
+                    onChange={(e) => setNote(e.target.value)}
+                />
+            </div>
+            <DialogFooter>
+                <DialogClose asChild>
+                    <Button variant="outline">{language === 'ar' ? 'إلغاء' : 'Cancel'}</Button>
+                </DialogClose>
+                <Button onClick={handleAssignCourierAndSave}>{language === 'ar' ? 'تأكيد وحفظ' : 'Confirm & Save'}</Button>
             </DialogFooter>
         </DialogContent>
       </Dialog>

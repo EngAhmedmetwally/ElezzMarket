@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import {
@@ -25,6 +26,7 @@ import {
   RotateCcw,
   BadgePercent,
   Rocket,
+  Users2,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -45,14 +47,15 @@ const navItems = [
     children: [
       { href: "/reports", label: "Commissions", arLabel: "العمولات" },
       { href: "/reports/products", label: "Products", arLabel: "المنتجات" },
+      { href: "/reports/staff", label: "Staff", arLabel: "الموظفون" },
     ],
   },
 ];
 
 export default function AppLayout({ children }: { children: ReactNode }) {
   const pathname = usePathname();
-  const { language } = useLanguage();
-  const side = language === 'ar' ? 'right' : 'left';
+  const { language, isRTL } = useLanguage();
+  const side = isRTL ? 'right' : 'left';
 
   return (
     <SidebarProvider side={side}>
@@ -74,7 +77,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
                   <>
                      <SidebarMenuButton
                       asChild
-                      isActive={pathname === item.href || item.children.some(child => pathname.startsWith(child.href) && child.href !== item.href)}
+                      isActive={pathname.startsWith(item.href) && !item.children.some(child => pathname === child.href && child.href !== item.href)}
                       tooltip={language === 'ar' ? item.arLabel : item.label}
                     >
                        <Link href={item.href!}>

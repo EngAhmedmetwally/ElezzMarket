@@ -1,5 +1,5 @@
 
-export type UserRole = "Admin" | "Operations" | "Moderator" | "Courier";
+export type UserRole = "Admin" | "Moderator" | "Courier";
 
 export type User = {
   id: string;
@@ -29,6 +29,7 @@ export type StatusHistoryItem = {
   status: OrderStatus;
   notes?: string;
   createdAt: string;
+  userName: string;
 };
 
 export type Order = {
@@ -65,3 +66,4 @@ export type Product = {
   isActive: boolean;
   createdAt: string;
 };
+
