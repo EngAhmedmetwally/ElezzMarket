@@ -22,6 +22,20 @@ export default function DashboardPage() {
   const [fromDate, setFromDate] = React.useState<Date | undefined>(undefined);
   const [toDate, setToDate] = React.useState<Date | undefined>(undefined);
 
+  // State for top moderators to avoid hydration issues
+  const [topModeratorsWithSales, setTopModeratorsWithSales] = React.useState<any[]>([]);
+
+  React.useEffect(() => {
+    const topModerators = mockUsers
+      .filter((u) => u.role === "Moderator")
+      .slice(0, 5)
+      .map(user => ({
+          ...user,
+          sales: Math.floor(Math.random() * 5000 + 1000)
+      }));
+    setTopModeratorsWithSales(topModerators);
+  }, []); // Run only on client-side after mount
+
   const filteredOrders = React.useMemo(() => {
     return mockOrders.filter(order => {
         const orderDate = new Date(order.createdAt);
@@ -61,10 +75,6 @@ export default function DashboardPage() {
 
       return Array.from(salesMap, ([month, sales]) => ({ month, sales }));
   }, [filteredOrders, language]);
-
-  const topModerators = mockUsers
-    .filter((u) => u.role === "Moderator")
-    .slice(0, 5);
 
   return (
     <div>
@@ -118,7 +128,7 @@ export default function DashboardPage() {
             </CardHeader>
             <CardContent>
               <div className="space-y-8">
-                {topModerators.map((user) => (
+                {topModeratorsWithSales.length > 0 ? topModeratorsWithSales.map((user) => (
                   <div key={user.id} className="flex items-center">
                     <Avatar className="h-9 w-9">
                       <AvatarImage src={user.avatarUrl} alt="Avatar" data-ai-hint="avatar" />
@@ -135,10 +145,12 @@ export default function DashboardPage() {
                       </p>
                     </div>
                     <div className="ms-auto font-medium">
-                      +EGP {Math.floor(Math.random() * 5000 + 1000).toLocaleString()}
+                      +EGP {user.sales.toLocaleString()}
                     </div>
                   </div>
-                ))}
+                )) : (
+                  <p className="text-sm text-muted-foreground">{language === 'ar' ? 'جاري تحميل بيانات الوسطاء...' : 'Loading moderators data...'}</p>
+                )}
               </div>
             </CardContent>
           </Card>
