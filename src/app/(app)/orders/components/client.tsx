@@ -181,7 +181,7 @@ export function OrdersClient<TData extends Order, TValue>({
                             </div>
                         )}
                       </div>
-                      <RowActions orderId={row.original.id} />
+                      <RowActions order={row.original} />
                     </div>
                   </CardContent>
                 </Card>
