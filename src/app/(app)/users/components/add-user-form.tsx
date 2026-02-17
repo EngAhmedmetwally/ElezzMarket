@@ -37,6 +37,7 @@ const permissionsSchema = z.object({
 });
 
 const userFormSchema = z.object({
+  fullName: z.string().min(1, "الاسم الكامل مطلوب"),
   username: z.string().min(1, "اسم المستخدم مطلوب"),
   password: z.string().min(6, "كلمة المرور يجب أن لا تقل عن 6 أحرف"),
   role: z.enum(["Admin", "Moderator", "Courier"]),
@@ -87,7 +88,8 @@ export function AddUserForm({ onSuccess, userToEdit }: AddUserFormProps) {
   const form = useForm<UserFormValues>({
     resolver: zodResolver(isEditMode ? editUserFormSchema : userFormSchema),
     defaultValues: {
-      username: userToEdit?.name || "",
+      fullName: userToEdit?.name || "",
+      username: (isEditMode && userToEdit) ? userToEdit.email.split('@')[0] : "",
       password: "",
       role: userToEdit?.role || "Moderator",
       orderVisibility: userToEdit?.orderVisibility || "own",
@@ -114,11 +116,11 @@ export function AddUserForm({ onSuccess, userToEdit }: AddUserFormProps) {
         console.log("User to update:", { id: userToEdit.id, ...updatedData });
         toast({
             title: language === 'ar' ? 'تم تحديث المستخدم' : "User Updated",
-            description: `${language === 'ar' ? 'تم تحديث المستخدم' : 'User'} ${data.username} ${language === 'ar' ? 'بنجاح.' : 'has been successfully updated.'}`,
+            description: `${language === 'ar' ? 'تم تحديث المستخدم' : 'User'} ${data.fullName} ${language === 'ar' ? 'بنجاح.' : 'has been successfully updated.'}`,
         });
     } else {
         const userToCreate = {
-          name: data.username,
+          name: data.fullName,
           email: `${data.username}@example.com`,
           role: data.role,
           permissions: data.permissions,
@@ -127,7 +129,7 @@ export function AddUserForm({ onSuccess, userToEdit }: AddUserFormProps) {
 
         toast({
           title: language === 'ar' ? 'تم إنشاء المستخدم' : "User Created",
-          description: `${language === 'ar' ? 'تم إنشاء المستخدم' : 'User'} ${data.username} ${language === 'ar' ? 'بنجاح.' : 'has been successfully created.'}`,
+          description: `${language === 'ar' ? 'تم إنشاء المستخدم' : 'User'} ${data.fullName} ${language === 'ar' ? 'بنجاح.' : 'has been successfully created.'}`,
         });
     }
     
@@ -144,6 +146,19 @@ export function AddUserForm({ onSuccess, userToEdit }: AddUserFormProps) {
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+        <FormField
+          control={form.control}
+          name="fullName"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>{language === 'ar' ? 'الاسم الكامل' : 'Full Name'}</FormLabel>
+              <FormControl>
+                <Input placeholder={language === 'ar' ? 'مثال: علي حسن محمد' : 'e.g. Ali Hassan Mohamed'} {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
         <FormField
           control={form.control}
           name="username"
