@@ -45,7 +45,7 @@ export function StaffPerformanceChart({ data, title, barDataKey, barLabel, forma
           <BarChart 
             accessibilityLayer 
             data={data} 
-            margin={{ top: 20, right: isMobile ? 10 : 20, left: isMobile ? -20 : -10, bottom: isMobile ? 10 : 0 }}
+            margin={{ top: 20, right: isMobile ? 10 : 20, left: isMobile ? -12 : -10, bottom: isMobile ? 10 : 0 }}
           >
             <CartesianGrid vertical={false} />
             <XAxis

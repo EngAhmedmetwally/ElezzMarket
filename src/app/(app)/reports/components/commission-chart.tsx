@@ -1,3 +1,4 @@
+
 "use client"
 
 import { Bar, BarChart, XAxis, YAxis, CartesianGrid, Tooltip } from "recharts";
@@ -39,7 +40,7 @@ export function CommissionChart({ data: chartData }: CommissionChartProps) {
           <BarChart 
             accessibilityLayer 
             data={chartData} 
-            margin={{ left: isMobile ? -20 : -5, right: isMobile ? 5: 15, top: 5, bottom: 5 }}
+            margin={{ left: isMobile ? -12 : -5, right: isMobile ? 12 : 15, top: 5, bottom: 5 }}
           >
             <CartesianGrid vertical={false} />
             <XAxis
