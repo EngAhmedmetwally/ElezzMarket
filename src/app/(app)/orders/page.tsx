@@ -13,6 +13,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogDescription,
+  DialogTrigger,
 } from "@/components/ui/dialog";
 import { OrderForm } from "./new/order-form";
 import { useLanguage } from "@/components/language-provider";
