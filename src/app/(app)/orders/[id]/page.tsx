@@ -2,6 +2,7 @@
 "use client";
 
 import * as React from "react";
+import { useParams } from "next/navigation";
 import { mockOrders, mockUsers } from "@/lib/data";
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
@@ -20,6 +21,7 @@ import { format } from "date-fns";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { cn } from "@/lib/utils";
 
 const orderStatuses: OrderStatus[] = ["تم الحجز", "تم الارسال", "تم التسليم", "ملغي", "مرتجع", "لم يرد"];
 
@@ -56,10 +58,16 @@ function StatusHistoryTimeline({ history }: { history: StatusHistoryItem[] }) {
     )
 }
 
-export default function OrderDetailsPage({ params }: { params: { id: string } }) {
+export default function OrderDetailsPage() {
+  const params = useParams();
+  const id = typeof params.id === 'string' ? params.id : '';
   const { language } = useLanguage();
   const { toast } = useToast();
-  const orderData = mockOrders.find(o => o.id.toLowerCase() === params.id.toLowerCase());
+  
+  const orderData = React.useMemo(() => {
+    if (!id) return undefined;
+    return mockOrders.find(o => o.id.toLowerCase() === id.toLowerCase());
+  }, [id]);
   
   const [order, setOrder] = React.useState<Order | undefined>(orderData);
   const [isNoteModalOpen, setIsNoteModalOpen] = React.useState(false);
@@ -72,6 +80,9 @@ export default function OrderDetailsPage({ params }: { params: { id: string } })
   const [courierSearch, setCourierSearch] = React.useState("");
   const [selectedCourierId, setSelectedCourierId] = React.useState<string | null>(null);
 
+  React.useEffect(() => {
+    setOrder(orderData);
+  }, [orderData]);
 
   const filteredCouriers = couriers.filter(c => c.name.toLowerCase().includes(courierSearch.toLowerCase()));
 
@@ -300,10 +311,10 @@ export default function OrderDetailsPage({ params }: { params: { id: string } })
                             <div 
                                 key={courier.id}
                                 onClick={() => setSelectedCourierId(courier.id)}
-                                className={React.useMemo(() => cn(
+                                className={cn(
                                     "flex items-center gap-3 rounded-md p-2 cursor-pointer transition-colors",
                                     selectedCourierId === courier.id ? "bg-primary text-primary-foreground" : "hover:bg-muted"
-                                ), [selectedCourierId])}
+                                )}
                             >
                                 <Avatar className="h-8 w-8">
                                     <AvatarImage src={courier.avatarUrl} alt={courier.name} />
