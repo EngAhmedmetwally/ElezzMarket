@@ -90,4 +90,19 @@
   [dir="rtl"] body {
     @apply font-arabic;
   }
+
+  @media print {
+    .peer, header {
+      display: none !important;
+    }
+
+    main {
+      display: block !important;
+      overflow: visible !important;
+      height: auto !important;
+      min-height: initial !important;
+      padding: 0 !important;
+      margin: 0 !important;
+    }
+  }
 }
