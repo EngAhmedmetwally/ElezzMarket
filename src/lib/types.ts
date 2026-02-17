@@ -41,7 +41,8 @@ export type Order = {
   status: OrderStatus;
   items: OrderItem[];
   total: number;
-  commission?: number;
+  salesCommission?: number;
+  deliveryCommission?: number;
   moderatorId: string;
   moderatorName: string;
   courierId?: string;

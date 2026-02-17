@@ -144,6 +144,7 @@ export function OrdersClient<TData extends Order, TValue>({
           {table.getRowModel().rows?.length ? (
             table.getRowModel().rows.map((row) => {
               const selectCell = row.getVisibleCells().find(cell => cell.column.id === 'select');
+              const totalCommission = (row.original.salesCommission || 0) + (row.original.deliveryCommission || 0);
               return (
                 <Card key={row.id} data-state={row.getIsSelected() && "selected"} className="data-[state=selected]:bg-muted/50">
                   <CardHeader className="p-4">
@@ -172,11 +173,11 @@ export function OrdersClient<TData extends Order, TValue>({
                             {new Intl.NumberFormat(language === 'ar' ? 'ar-EG' : 'en-US', { style: 'currency', currency: 'EGP' }).format(row.original.total)}
                           </div>
                         </div>
-                        {typeof row.original.commission === 'number' && (
+                        {row.original.status !== 'ملغي' && (
                             <div>
-                                <div className="text-xs text-muted-foreground">{language === 'ar' ? 'العمولة' : 'Commission'}</div>
+                                <div className="text-xs text-muted-foreground">{language === 'ar' ? 'إجمالي العمولة' : 'Total Commission'}</div>
                                 <div className="font-bold">
-                                  {new Intl.NumberFormat(language === 'ar' ? 'ar-EG' : 'en-US', { style: 'currency', currency: 'EGP' }).format(row.original.commission)}
+                                  {new Intl.NumberFormat(language === 'ar' ? 'ar-EG' : 'en-US', { style: 'currency', currency: 'EGP' }).format(totalCommission)}
                                 </div>
                             </div>
                         )}

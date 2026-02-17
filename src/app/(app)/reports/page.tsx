@@ -12,12 +12,7 @@ import Link from "next/link";
 import { ArrowLeft, ArrowRight } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { CommissionChart } from "./components/commission-chart";
-
-const commissionReportData = [
-    { moderator: 'علي حسن', sales: 50000, salesCommission: 2500, deliveries: 100, deliveryCommission: 1000, totalCommission: 3500 },
-    { moderator: 'فاطمة أحمد', sales: 45000, salesCommission: 2250, deliveries: 90, deliveryCommission: 900, totalCommission: 3150 },
-    { moderator: 'مشرف آخر', sales: 60000, salesCommission: 3000, deliveries: 120, deliveryCommission: 1200, totalCommission: 4200 },
-];
+import { mockOrders, mockUsers } from "@/lib/data";
 
 
 export default function ReportsPage() {
@@ -30,6 +25,49 @@ export default function ReportsPage() {
         new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0)
     );
     const Arrow = isRTL ? ArrowLeft : ArrowRight;
+
+    const commissionReportData = React.useMemo(() => {
+    const filteredOrders = mockOrders.filter(order => {
+        const orderDate = new Date(order.createdAt);
+        if (fromDate) {
+            const fromDateStart = new Date(fromDate);
+            fromDateStart.setHours(0, 0, 0, 0);
+            if (orderDate < fromDateStart) return false;
+        }
+        if (toDate) {
+            const toDateEnd = new Date(toDate);
+            toDateEnd.setHours(23, 59, 59, 999);
+            if (orderDate > toDateEnd) return false;
+        }
+        return true;
+    });
+
+    const moderators = mockUsers.filter(u => u.role === 'Moderator');
+    
+    return moderators.map(moderator => {
+      const moderatorOrders = filteredOrders.filter(o => o.moderatorId === moderator.id);
+      
+      const sales = moderatorOrders.reduce((acc, order) => acc + order.total, 0);
+      const salesCommission = moderatorOrders.reduce((acc, order) => acc + (order.salesCommission || 0), 0);
+      
+      const deliveredOrders = moderatorOrders.filter(o => o.status === 'تم التسليم');
+      const deliveries = deliveredOrders.length;
+      const deliveryCommission = deliveredOrders.reduce((acc, order) => acc + (order.deliveryCommission || 0), 0);
+
+      const totalCommission = salesCommission + deliveryCommission;
+      
+      return {
+        moderator: moderator.name,
+        sales,
+        salesCommission,
+        deliveries,
+        deliveryCommission,
+        totalCommission,
+      };
+    }).filter(d => d.totalCommission > 0 || d.sales > 0);
+  }, [fromDate, toDate]);
+
+
     const chartData = commissionReportData.map(d => ({ moderator: d.moderator, totalCommission: d.totalCommission }));
     const formatCurrency = (value: number) => new Intl.NumberFormat(language === 'ar' ? 'ar-EG' : 'en-US', { style: 'currency', currency: 'EGP' }).format(value);
 

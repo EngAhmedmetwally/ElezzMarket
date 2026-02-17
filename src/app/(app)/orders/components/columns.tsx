@@ -78,7 +78,8 @@ export const getOrderColumns = (language: 'ar' | 'en'): ColumnDef<Order>[] => [
     },
   },
    {
-    accessorKey: "commission",
+    id: "totalCommission",
+    accessorFn: (row) => (row.salesCommission || 0) + (row.deliveryCommission || 0),
     header: ({ column }) => {
        return (
         <div className="hidden lg:table-cell text-end">
@@ -86,20 +87,23 @@ export const getOrderColumns = (language: 'ar' | 'en'): ColumnDef<Order>[] => [
             variant="ghost"
             onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
           >
-            {language === 'ar' ? "العمولة" : "Commission"}
+            {language === 'ar' ? "إجمالي العمولة" : "Total Commission"}
             <ArrowUpDown className={language === 'ar' ? 'ms-2 h-4 w-4' : 'ml-2 h-4 w-4'} />
           </Button>
         </div>
        )
     },
     cell: ({ row }) => {
-      const commission = row.original.commission;
-      if (typeof commission !== 'number') return <div className="hidden lg:table-cell"></div>;
+      const totalCommission = (row.original.salesCommission || 0) + (row.original.deliveryCommission || 0);
+
+      if (row.original.status === 'ملغي') {
+        return <div className="hidden lg:table-cell text-end font-medium">-</div>;
+      }
 
       const formatted = new Intl.NumberFormat(language === 'ar' ? 'ar-EG' : 'en-US', {
         style: "currency",
         currency: "EGP",
-      }).format(commission);
+      }).format(totalCommission);
 
       return <div className="hidden lg:table-cell text-end font-medium">{formatted}</div>;
     },
