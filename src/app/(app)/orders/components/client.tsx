@@ -23,6 +23,15 @@ import {
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { useLanguage } from "@/components/language-provider";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import type { OrderStatus } from "@/lib/types";
 
 interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[];
@@ -37,7 +46,9 @@ export function OrdersClient<TData, TValue>({
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>(
     []
   );
+  const [globalFilter, setGlobalFilter] = React.useState("");
   const [rowSelection, setRowSelection] = React.useState({});
+  const { language } = useLanguage();
 
   const table = useReactTable({
     data,
@@ -47,28 +58,46 @@ export function OrdersClient<TData, TValue>({
     onSortingChange: setSorting,
     getSortedRowModel: getSortedRowModel(),
     onColumnFiltersChange: setColumnFilters,
+    onGlobalFilterChange: setGlobalFilter,
     getFilteredRowModel: getFilteredRowModel(),
     onRowSelectionChange: setRowSelection,
     state: {
       sorting,
       columnFilters,
+      globalFilter,
       rowSelection,
     },
   });
 
+  const orderStatuses: OrderStatus[] = ["قيد الانتظار", "مؤكد", "قيد المعالجة", "تم الشحن", "تم التوصيل", "ملغي", "مرتجع", "لم يرد"];
+
   return (
     <div>
-      <div className="flex items-center py-4">
+      <div className="flex flex-wrap items-center gap-4 py-4">
         <Input
-          placeholder="Filter by customer..."
-          value={
-            (table.getColumn("customerName")?.getFilterValue() as string) ?? ""
-          }
-          onChange={(event) =>
-            table.getColumn("customerName")?.setFilterValue(event.target.value)
-          }
+          placeholder={language === 'ar' ? 'بحث (رقم طلب, عميل, هاتف)...' : 'Search (ID, customer, phone)...'}
+          value={globalFilter ?? ""}
+          onChange={(event) => setGlobalFilter(event.target.value)}
           className="max-w-sm"
         />
+        <Select
+          value={(table.getColumn("status")?.getFilterValue() as string) ?? ""}
+          onValueChange={(value) =>
+            table.getColumn("status")?.setFilterValue(value === "all" ? "" : value)
+          }
+        >
+          <SelectTrigger className="w-full max-w-xs">
+            <SelectValue placeholder={language === 'ar' ? "فلترة حسب الحالة" : "Filter by status"} />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">{language === 'ar' ? "كل الحالات" : "All Statuses"}</SelectItem>
+            {orderStatuses.map((status) => (
+              <SelectItem key={status} value={status}>
+                {status}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
       <div className="rounded-md border">
         <Table>
@@ -77,7 +106,7 @@ export function OrdersClient<TData, TValue>({
               <TableRow key={headerGroup.id}>
                 {headerGroup.headers.map((header) => {
                   return (
-                    <TableHead key={header.id}>
+                    <TableHead key={header.id} className={header.column.id === 'actions' || header.column.id === 'status' ? 'text-center' : (header.column.id === 'total' ? 'text-end' : 'text-start')}>
                       {header.isPlaceholder
                         ? null
                         : flexRender(
@@ -98,7 +127,7 @@ export function OrdersClient<TData, TValue>({
                   data-state={row.getIsSelected() && "selected"}
                 >
                   {row.getVisibleCells().map((cell) => (
-                    <TableCell key={cell.id}>
+                    <TableCell key={cell.id} className={cell.column.id === 'actions' || cell.column.id === 'status' ? 'text-center' : (cell.column.id === 'total' ? 'text-end' : 'text-start')}>
                       {flexRender(
                         cell.column.columnDef.cell,
                         cell.getContext()
@@ -113,7 +142,7 @@ export function OrdersClient<TData, TValue>({
                   colSpan={columns.length}
                   className="h-24 text-center"
                 >
-                  No results.
+                  {language === 'ar' ? 'لا توجد نتائج.' : 'No results.'}
                 </TableCell>
               </TableRow>
             )}
@@ -131,7 +160,7 @@ export function OrdersClient<TData, TValue>({
           onClick={() => table.previousPage()}
           disabled={!table.getCanPreviousPage()}
         >
-          Previous
+          {language === 'ar' ? 'السابق' : 'Previous'}
         </Button>
         <Button
           variant="outline"
@@ -139,7 +168,7 @@ export function OrdersClient<TData, TValue>({
           onClick={() => table.nextPage()}
           disabled={!table.getCanNextPage()}
         >
-          Next
+          {language === 'ar' ? 'التالي' : 'Next'}
         </Button>
       </div>
     </div>

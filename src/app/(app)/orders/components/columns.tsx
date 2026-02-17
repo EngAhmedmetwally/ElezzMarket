@@ -36,27 +36,32 @@ export const getOrderColumns = (language: 'ar' | 'en'): ColumnDef<Order>[] => [
     header: language === 'ar' ? "رقم الاوردر" : "Order ID",
   },
   {
-    accessorKey: "customerName",
+    id: "customer",
+    accessorFn: (row) => `${row.customerName} ${row.customerPhone}`,
     header: language === 'ar' ? "العميل" : "Customer",
+    cell: ({ row }) => (
+      <div>
+        <div className="font-medium">{row.original.customerName}</div>
+        <div className="text-sm text-muted-foreground">{row.original.customerPhone}</div>
+      </div>
+    )
   },
   {
     accessorKey: "status",
-    header: () => <div className="text-center">{language === 'ar' ? "الحالة" : "Status"}</div>,
-    cell: ({ row }) => <div className="text-center"><StatusBadge status={row.getValue("status")} /></div>,
+    header: language === 'ar' ? "الحالة" : "Status",
+    cell: ({ row }) => <StatusBadge status={row.getValue("status")} />,
   },
   {
     accessorKey: "total",
     header: ({ column }) => {
       return (
-        <div className="flex justify-end w-full">
-          <Button
-            variant="ghost"
-            onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-          >
-            {language === 'ar' ? "الاجمالي" : "Total"}
-            <ArrowUpDown className="ms-2 h-4 w-4" />
-          </Button>
-        </div>
+        <Button
+          variant="ghost"
+          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+        >
+          {language === 'ar' ? "الاجمالي" : "Total"}
+          <ArrowUpDown className={language === 'ar' ? 'mr-2 h-4 w-4' : 'ml-2 h-4 w-4'} />
+        </Button>
       );
     },
     cell: ({ row }) => {
@@ -66,7 +71,7 @@ export const getOrderColumns = (language: 'ar' | 'en'): ColumnDef<Order>[] => [
         currency: "EGP",
       }).format(amount);
 
-      return <div className="text-end font-medium">{formatted}</div>;
+      return <div className="font-medium">{formatted}</div>;
     },
   },
   {
@@ -81,16 +86,16 @@ export const getOrderColumns = (language: 'ar' | 'en'): ColumnDef<Order>[] => [
             onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
           >
             {language === 'ar' ? "التاريخ" : "Date"}
-            <ArrowUpDown className="ms-2 h-4 w-4" />
+            <ArrowUpDown className={language === 'ar' ? 'mr-2 h-4 w-4' : 'ml-2 h-4 w-4'} />
           </Button>
     ),
     cell: ({ row }) => new Date(row.getValue("createdAt")).toLocaleDateString(language === 'ar' ? 'ar-EG' : 'en-US'),
   },
   {
     id: "actions",
-    header: () => <div className="text-center">{language === 'ar' ? "الإجراءات" : "Actions"}</div>,
+    header: language === 'ar' ? "الإجراءات" : "Actions",
     cell: ({ row }) => {
-      return <div className="flex justify-center"><RowActions orderId={row.original.id} /></div>;
+      return <RowActions orderId={row.original.id} />;
     },
   },
 ];
