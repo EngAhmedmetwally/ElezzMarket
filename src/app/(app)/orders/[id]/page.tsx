@@ -10,12 +10,47 @@ import { Separator } from "@/components/ui/separator";
 import { StatusBadge } from "@/components/status-badge";
 import { Printer } from "lucide-react";
 import { useLanguage } from "@/components/language-provider";
-import type { Order, OrderStatus } from "@/lib/types";
+import type { Order, OrderStatus, StatusHistoryItem } from "@/lib/types";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose } from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
+import { format } from "date-fns";
 
-const orderStatuses: OrderStatus[] = ["قيد الانتظار", "مؤكد", "قيد المعالجة", "تم الشحن", "تم التوصيل", "ملغي", "مرتجع", "لم يرد"];
+const orderStatuses: OrderStatus[] = ["تم الحجز", "تم الارسال", "تم التسليم", "ملغي", "مرتجع", "لم يرد"];
+
+function StatusHistoryTimeline({ history }: { history: StatusHistoryItem[] }) {
+    const { language } = useLanguage();
+    return (
+        <Card>
+            <CardHeader>
+                <CardTitle>{language === 'ar' ? 'سجل حالات الطلب' : 'Order Status History'}</CardTitle>
+            </CardHeader>
+            <CardContent>
+                <div className="space-y-4">
+                    {history.map((item, index) => (
+                        <div key={index} className="flex gap-4">
+                            <div className="flex flex-col items-center">
+                                <div className="w-4 h-4 rounded-full bg-primary mt-1"></div>
+                                {index < history.length - 1 && <div className="flex-1 w-0.5 bg-border"></div>}
+                            </div>
+                            <div>
+                                <div className="flex items-center gap-2">
+                                    <StatusBadge status={item.status} />
+                                    <span className="text-xs text-muted-foreground">
+                                        {format(new Date(item.createdAt), "PPP p")}
+                                    </span>
+                                </div>
+                                {item.notes && <p className="text-sm text-muted-foreground mt-1">{item.notes}</p>}
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            </CardContent>
+        </Card>
+    )
+}
 
 export default function OrderDetailsPage({ params }: { params: { id: string } }) {
   const { language } = useLanguage();
@@ -23,14 +58,43 @@ export default function OrderDetailsPage({ params }: { params: { id: string } })
   const orderData = mockOrders.find(o => o.id.toLowerCase() === params.id.toLowerCase());
   
   const [order, setOrder] = React.useState<Order | undefined>(orderData);
+  const [isNoteModalOpen, setIsNoteModalOpen] = React.useState(false);
+  const [note, setNote] = React.useState("");
+  const [selectedStatus, setSelectedStatus] = React.useState<OrderStatus | null>(null);
 
-  const handleStatusChange = (newStatus: OrderStatus) => {
-    if (order) {
-      setOrder({ ...order, status: newStatus });
+  const handleStatusChangeRequest = (newStatus: OrderStatus) => {
+    if (order && newStatus !== order.status) {
+      setSelectedStatus(newStatus);
+      setIsNoteModalOpen(true);
+    }
+  };
+
+  const handleSaveStatusChange = () => {
+    if (order && selectedStatus) {
+      const newHistoryItem: StatusHistoryItem = {
+        status: selectedStatus,
+        notes: note,
+        createdAt: new Date().toISOString(),
+      };
+      
+      const updatedOrder: Order = {
+        ...order,
+        status: selectedStatus,
+        statusHistory: [newHistoryItem, ...order.statusHistory], // Add to beginning
+        updatedAt: new Date().toISOString(),
+      };
+
+      setOrder(updatedOrder);
+
       toast({
         title: language === 'ar' ? 'تم تحديث الحالة' : 'Status Updated',
-        description: `${language === 'ar' ? 'تم تحديث حالة الطلب إلى' : 'Order status updated to'} ${newStatus}.`,
+        description: `${language === 'ar' ? 'تم تحديث حالة الطلب إلى' : 'Order status updated to'} ${selectedStatus}.`,
       });
+      
+      // Reset
+      setIsNoteModalOpen(false);
+      setNote("");
+      setSelectedStatus(null);
     }
   };
 
@@ -44,92 +108,116 @@ export default function OrderDetailsPage({ params }: { params: { id: string } })
   }
 
   return (
-    <div className="print:p-8">
-      <PageHeader title={`${language === 'ar' ? 'طلب' : 'Order'} ${order.id}`} className="print:hidden">
-        <Button onClick={() => typeof window !== 'undefined' && window.print()}>
-          <Printer className="me-2 h-4 w-4" />
-          {language === 'ar' ? 'طباعة الفاتورة' : 'Print Invoice'}
-        </Button>
-      </PageHeader>
+    <>
+      <div className="print:p-8">
+        <PageHeader title={`${language === 'ar' ? 'طلب' : 'Order'} ${order.id}`} className="print:hidden">
+          <Button onClick={() => typeof window !== 'undefined' && window.print()}>
+            <Printer className="me-2 h-4 w-4" />
+            {language === 'ar' ? 'طباعة الفاتورة' : 'Print Invoice'}
+          </Button>
+        </PageHeader>
 
-      <div className="grid md:grid-cols-3 gap-8">
-        <div className="md:col-span-2 space-y-8">
-           <Card>
-                <CardHeader>
-                    <CardTitle>{language === 'ar' ? 'منتجات الطلب' : 'Order Items'}</CardTitle>
-                </CardHeader>
-                <CardContent>
-                    <Table>
-                        <TableHeader>
-                            <TableRow>
-                                <TableHead>{language === 'ar' ? 'المنتج' : 'Product'}</TableHead>
-                                <TableHead className="text-center">{language === 'ar' ? 'الكمية' : 'Quantity'}</TableHead>
-                                <TableHead className="text-end">{language === 'ar' ? 'سعر الوحدة' : 'Unit Price'}</TableHead>
-                                <TableHead className="text-end">{language === 'ar' ? 'المجموع الفرعي' : 'Subtotal'}</TableHead>
-                            </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                            {order.items.map((item, index) => (
-                                <TableRow key={index}>
-                                    <TableCell className="font-medium">{item.productName}</TableCell>
-                                    <TableCell className="text-center">{item.quantity}</TableCell>
-                                    <TableCell className="text-end">EGP {item.price.toLocaleString()}</TableCell>
-                                    <TableCell className="text-end">EGP {(item.price * item.quantity).toLocaleString()}</TableCell>
-                                </TableRow>
-                            ))}
-                        </TableBody>
-                    </Table>
-                    <Separator className="my-4" />
-                    <div className="flex justify-end font-bold text-lg">
-                        <p>{language === 'ar' ? 'الإجمالي الكلي' : 'Grand Total'}</p>
-                        <p className={language === 'ar' ? 'mr-8' : 'ml-8'}>EGP {order.total.toLocaleString()}</p>
-                    </div>
-                </CardContent>
-           </Card>
-        </div>
-        <div className="space-y-8">
-            <Card>
-                <CardHeader>
-                    <CardTitle>{language === 'ar' ? 'حالة الطلب' : 'Order Status'}</CardTitle>
-                </CardHeader>
-                <CardContent className="flex flex-col gap-4">
-                    <StatusBadge status={order.status} className="text-base w-fit" />
-                     <Select value={order.status} onValueChange={handleStatusChange}>
-                        <SelectTrigger>
-                            <SelectValue placeholder={language === 'ar' ? "تغيير الحالة" : "Change status"} />
-                        </SelectTrigger>
-                        <SelectContent>
-                            {orderStatuses.map((status) => (
-                            <SelectItem key={status} value={status}>
-                                {status}
-                            </SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
-                </CardContent>
-            </Card>
-            <Card>
-                <CardHeader>
-                    <CardTitle>{language === 'ar' ? 'تفاصيل العميل' : 'Customer Details'}</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-2">
-                    <p className="font-medium">{order.customerName}</p>
-                    <p className="text-sm text-muted-foreground">{order.customerPhone}</p>
-                    <p className="text-sm text-muted-foreground">{order.customerAddress}</p>
-                     <p className="text-sm text-muted-foreground">{language === 'ar' ? 'المنطقة:' : 'Zoning:'} {order.zoning}</p>
-                </CardContent>
-            </Card>
+        <div className="grid md:grid-cols-3 gap-8">
+          <div className="md:col-span-2 space-y-8">
              <Card>
-                <CardHeader>
-                    <CardTitle>{language === 'ar' ? 'الموظفون' : 'Staff'}</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-2">
-                    <p className="text-sm"><span className="font-medium">{language === 'ar' ? 'الوسيط:' : 'Moderator:'}</span> {order.moderatorName}</p>
-                    {order.courierName && <p className="text-sm"><span className="font-medium">{language === 'ar' ? 'المندوب:' : 'Courier:'}</span> {order.courierName}</p>}
-                </CardContent>
-            </Card>
+                  <CardHeader>
+                      <CardTitle>{language === 'ar' ? 'منتجات الطلب' : 'Order Items'}</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                      <Table>
+                          <TableHeader>
+                              <TableRow>
+                                  <TableHead className="text-start">{language === 'ar' ? 'المنتج' : 'Product'}</TableHead>
+                                  <TableHead className="text-center">{language === 'ar' ? 'الكمية' : 'Quantity'}</TableHead>
+                                  <TableHead className="text-end">{language === 'ar' ? 'سعر الوحدة' : 'Unit Price'}</TableHead>
+                                  <TableHead className="text-end">{language === 'ar' ? 'المجموع الفرعي' : 'Subtotal'}</TableHead>
+                              </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                              {order.items.map((item, index) => (
+                                  <TableRow key={index}>
+                                      <TableCell className="font-medium text-start">{item.productName}</TableCell>
+                                      <TableCell className="text-center">{item.quantity}</TableCell>
+                                      <TableCell className="text-end">EGP {item.price.toLocaleString()}</TableCell>
+                                      <TableCell className="text-end">EGP {(item.price * item.quantity).toLocaleString()}</TableCell>
+                                  </TableRow>
+                              ))}
+                          </TableBody>
+                      </Table>
+                      <Separator className="my-4" />
+                      <div className="flex justify-end font-bold text-lg">
+                          <p>{language === 'ar' ? 'الإجمالي الكلي' : 'Grand Total'}</p>
+                          <p className={language === 'ar' ? 'mr-8' : 'ml-8'}>EGP {order.total.toLocaleString()}</p>
+                      </div>
+                  </CardContent>
+             </Card>
+             <StatusHistoryTimeline history={order.statusHistory} />
+          </div>
+          <div className="space-y-8">
+              <Card>
+                  <CardHeader>
+                      <CardTitle>{language === 'ar' ? 'حالة الطلب' : 'Order Status'}</CardTitle>
+                  </CardHeader>
+                  <CardContent className="flex flex-col gap-4">
+                      <StatusBadge status={order.status} className="text-base w-fit" />
+                       <Select value={order.status} onValueChange={handleStatusChangeRequest}>
+                          <SelectTrigger>
+                              <SelectValue placeholder={language === 'ar' ? "تغيير الحالة" : "Change status"} />
+                          </SelectTrigger>
+                          <SelectContent>
+                              {orderStatuses.map((status) => (
+                              <SelectItem key={status} value={status}>
+                                  {status}
+                              </SelectItem>
+                              ))}
+                          </SelectContent>
+                      </Select>
+                  </CardContent>
+              </Card>
+              <Card>
+                  <CardHeader>
+                      <CardTitle>{language === 'ar' ? 'تفاصيل العميل' : 'Customer Details'}</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-2">
+                      <p className="font-medium">{order.customerName}</p>
+                      <p className="text-sm text-muted-foreground">{order.customerPhone}</p>
+                      <p className="text-sm text-muted-foreground">{order.customerAddress}</p>
+                       <p className="text-sm text-muted-foreground">{language === 'ar' ? 'المنطقة:' : 'Zoning:'} {order.zoning}</p>
+                  </CardContent>
+              </Card>
+               <Card>
+                  <CardHeader>
+                      <CardTitle>{language === 'ar' ? 'الموظفون' : 'Staff'}</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-2">
+                      <p className="text-sm"><span className="font-medium">{language === 'ar' ? 'الوسيط:' : 'Moderator:'}</span> {order.moderatorName}</p>
+                      {order.courierName && <p className="text-sm"><span className="font-medium">{language === 'ar' ? 'المندوب:' : 'Courier:'}</span> {order.courierName}</p>}
+                  </CardContent>
+              </Card>
+          </div>
         </div>
       </div>
-    </div>
+
+      <Dialog open={isNoteModalOpen} onOpenChange={setIsNoteModalOpen}>
+        <DialogContent>
+            <DialogHeader>
+                <DialogTitle>{language === 'ar' ? `إضافة ملاحظة لـ "${selectedStatus}"` : `Add note for "${selectedStatus}"`}</DialogTitle>
+            </DialogHeader>
+            <div className="py-4">
+                <Textarea
+                    placeholder={language === 'ar' ? 'أضف ملاحظتك هنا...' : 'Add your note here...'}
+                    value={note}
+                    onChange={(e) => setNote(e.target.value)}
+                />
+            </div>
+            <DialogFooter>
+                <DialogClose asChild>
+                    <Button variant="outline">{language === 'ar' ? 'إلغاء' : 'Cancel'}</Button>
+                </DialogClose>
+                <Button onClick={handleSaveStatusChange}>{language === 'ar' ? 'حفظ التغيير' : 'Save Change'}</Button>
+            </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }

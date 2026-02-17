@@ -12,11 +12,9 @@ export type User = {
 };
 
 export type OrderStatus =
-  | "قيد الانتظار"
-  | "مؤكد"
-  | "قيد المعالجة"
-  | "تم الشحن"
-  | "تم التوصيل"
+  | "تم الحجز"
+  | "تم الارسال"
+  | "تم التسليم"
   | "ملغي"
   | "مرتجع"
   | "لم يرد";
@@ -25,6 +23,12 @@ export type OrderItem = {
   productName: string;
   quantity: number;
   price: number;
+};
+
+export type StatusHistoryItem = {
+  status: OrderStatus;
+  notes?: string;
+  createdAt: string;
 };
 
 export type Order = {
@@ -42,7 +46,7 @@ export type Order = {
   courierName?: string;
   createdAt: string;
   updatedAt: string;
-  notes?: string;
+  statusHistory: StatusHistoryItem[];
 };
 
 export type CommissionRule = {

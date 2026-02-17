@@ -1,3 +1,4 @@
+
 "use client";
 
 import { PieChart, Pie, Cell, Tooltip } from "recharts";
@@ -15,10 +16,9 @@ import {
 import { useLanguage } from "@/components/language-provider";
 
 const statusColors: Record<string, string> = {
-    "تم التوصيل": "hsl(var(--chart-2))",
-    "تم الشحن": "hsl(var(--chart-3))",
-    "قيد المعالجة": "hsl(var(--chart-4))",
-    "قيد الانتظار": "hsl(var(--chart-1))",
+    "تم الحجز": "hsl(var(--chart-1))",
+    "تم الارسال": "hsl(var(--chart-3))",
+    "تم التسليم": "hsl(var(--chart-2))",
     "مرتجع": "hsl(var(--chart-5))",
     "لم يرد": "hsl(var(--chart-5))",
     "ملغي": "hsl(var(--chart-5))",
@@ -29,10 +29,9 @@ const chartConfig = {
     orders: {
         label: "Orders"
     },
-    "تم التوصيل": { label: "تم التوصيل", color: "hsl(var(--chart-2))" },
-    "تم الشحن": { label: "تم الشحن", color: "hsl(var(--chart-3))" },
-    "قيد المعالجة": { label: "قيد المعالجة", color: "hsl(var(--chart-4))" },
-    "قيد الانتظار": { label: "قيد الانتظار", color: "hsl(var(--chart-1))" },
+    "تم الحجز": { label: "تم الحجز", color: "hsl(var(--chart-1))" },
+    "تم الارسال": { label: "تم الارسال", color: "hsl(var(--chart-3))" },
+    "تم التسليم": { label: "تم التسليم", color: "hsl(var(--chart-2))" },
     "مرتجع": { label: "مرتجع", color: "hsl(var(--chart-5))" },
     "لم يرد": { label: "لم يرد", color: "hsl(var(--chart-5))" },
     "ملغي": { label: "ملغي", color: "hsl(var(--chart-5))" },

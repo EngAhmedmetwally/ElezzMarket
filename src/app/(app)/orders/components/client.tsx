@@ -76,7 +76,7 @@ export function OrdersClient<TData extends Order, TValue>({
     },
   });
 
-  const orderStatuses: OrderStatus[] = ["قيد الانتظار", "مؤكد", "قيد المعالجة", "تم الشحن", "تم التوصيل", "ملغي", "مرتجع", "لم يرد"];
+  const orderStatuses: OrderStatus[] = ["تم الحجز", "تم الارسال", "تم التسليم", "ملغي", "مرتجع", "لم يرد"];
 
   const filters = (
     <div className="flex flex-wrap items-center gap-4 py-4">
