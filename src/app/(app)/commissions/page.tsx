@@ -1,3 +1,4 @@
+
 "use client"
 
 import * as React from "react"
@@ -46,7 +47,7 @@ function CommissionSection({ form, type, title, titleAr }: { form: any, type: "s
             <FormItem>
               <FormLabel>{language === 'ar' ? 'المبلغ' : 'Amount'}</FormLabel>
               <FormControl>
-                <Input type="number" placeholder="50" {...field} />
+                <Input type="number" placeholder="50" {...field} value={field.value ?? ''} />
               </FormControl>
               <FormMessage />
             </FormItem>
