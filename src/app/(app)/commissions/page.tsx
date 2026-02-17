@@ -5,7 +5,6 @@ import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
 import * as z from "zod"
 import { format } from "date-fns"
-import type { DateRange } from "react-day-picker"
 
 import { Button } from "@/components/ui/button"
 import { PageHeader } from "@/components/page-header";
@@ -16,29 +15,23 @@ import { useToast } from "@/hooks/use-toast"
 import { useLanguage } from "@/components/language-provider"
 import { mockCommissionRules } from "@/lib/data"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { DatePickerWithRange } from "@/components/date-range-picker"
+import { DatePicker } from "@/components/ui/datepicker"
 
 const commissionFormSchema = z.object({
   sale: z.object({
     amount: z.coerce.number({invalid_type_error: "Please enter a number."}).min(0),
-    dateRange: z.object({
-      from: z.date({ required_error: "A from date is required." }),
-      to: z.date({ required_error: "A to date is required." }),
-    }),
+    fromDate: z.date({ required_error: "A from date is required." }),
+    toDate: z.date({ required_error: "A to date is required." }),
   }),
   delivery: z.object({
     amount: z.coerce.number({invalid_type_error: "Please enter a number."}).min(0),
-    dateRange: z.object({
-      from: z.date({ required_error: "A from date is required." }),
-      to: z.date({ required_error: "A to date is required." }),
-    }),
+    fromDate: z.date({ required_error: "A from date is required." }),
+    toDate: z.date({ required_error: "A to date is required." }),
   }),
   return: z.object({
     amount: z.coerce.number({invalid_type_error: "Please enter a number."}).min(0),
-    dateRange: z.object({
-      from: z.date({ required_error: "A from date is required." }),
-      to: z.date({ required_error: "A to date is required." }),
-    }),
+    fromDate: z.date({ required_error: "A from date is required." }),
+    toDate: z.date({ required_error: "A to date is required." }),
   }),
 });
 
@@ -50,7 +43,7 @@ function CommissionSection({ form, type, title, titleAr }: { form: any, type: "s
   return (
     <div className="space-y-4 rounded-lg border p-4">
       <h4 className="font-semibold">{language === 'ar' ? titleAr : title}</h4>
-       <div className="grid md:grid-cols-2 gap-4 items-start">
+       <div className="grid md:grid-cols-3 gap-4 items-start">
         <FormField
           control={form.control}
           name={`${type}.amount`}
@@ -58,7 +51,7 @@ function CommissionSection({ form, type, title, titleAr }: { form: any, type: "s
             <FormItem>
               <FormLabel>{language === 'ar' ? 'المبلغ' : 'Amount'}</FormLabel>
               <FormControl>
-                <Input type="number" placeholder="e.g. 50" {...field} />
+                <Input type="number" placeholder="50" {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -66,11 +59,22 @@ function CommissionSection({ form, type, title, titleAr }: { form: any, type: "s
         />
         <FormField
           control={form.control}
-          name={`${type}.dateRange`}
+          name={`${type}.fromDate`}
           render={({ field }) => (
             <FormItem className="flex flex-col">
-              <FormLabel>{language === 'ar' ? 'من تاريخ إلى تاريخ' : 'From Date to Date'}</FormLabel>
-               <DatePickerWithRange date={field.value} onDateChange={field.onChange} />
+              <FormLabel>{language === 'ar' ? 'من تاريخ' : 'From Date'}</FormLabel>
+               <DatePicker date={field.value} onDateChange={field.onChange} placeholder={language === 'ar' ? "اختر تاريخ البدء" : "Pick a start date"} />
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <FormField
+          control={form.control}
+          name={`${type}.toDate`}
+          render={({ field }) => (
+            <FormItem className="flex flex-col">
+              <FormLabel>{language === 'ar' ? 'إلى تاريخ' : 'To Date'}</FormLabel>
+               <DatePicker date={field.value} onDateChange={field.onChange} placeholder={language === 'ar' ? "اختر تاريخ الانتهاء" : "Pick an end date"} />
               <FormMessage />
             </FormItem>
           )}

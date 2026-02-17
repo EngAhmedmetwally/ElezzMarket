@@ -19,30 +19,31 @@ import { useLanguage } from "@/components/language-provider";
 import { useToast } from "@/hooks/use-toast";
 import * as XLSX from "xlsx";
 import { saveAs } from "file-saver";
-import { DatePickerWithRange } from "@/components/date-range-picker";
-import type { DateRange } from "react-day-picker";
+import { DatePicker } from "@/components/ui/datepicker";
 
 export default function OrdersPage() {
   const [isNewOrderOpen, setIsNewOrderOpen] = React.useState(false);
   const { language } = useLanguage();
   const { toast } = useToast();
-  const [dateRange, setDateRange] = React.useState<DateRange | undefined>(undefined);
+  const [fromDate, setFromDate] = React.useState<Date | undefined>(undefined);
+  const [toDate, setToDate] = React.useState<Date | undefined>(undefined);
 
   const filteredOrders = React.useMemo(() => {
-    if (!dateRange?.from) return mockOrders;
-    
-    const toDate = dateRange.to ? new Date(dateRange.to) : undefined;
-    if (toDate) {
-      toDate.setHours(23, 59, 59, 999);
-    }
-
     return mockOrders.filter(order => {
         const orderDate = new Date(order.createdAt);
-        if (dateRange.from && orderDate < dateRange.from) return false;
-        if (toDate && orderDate > toDate) return false;
+        if (fromDate) {
+            const fromDateStart = new Date(fromDate);
+            fromDateStart.setHours(0, 0, 0, 0);
+            if (orderDate < fromDateStart) return false;
+        }
+        if (toDate) {
+            const toDateEnd = new Date(toDate);
+            toDateEnd.setHours(23, 59, 59, 999);
+            if (orderDate > toDateEnd) return false;
+        }
         return true;
     });
-  }, [dateRange]);
+  }, [fromDate, toDate]);
 
 
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -142,8 +143,9 @@ export default function OrdersPage() {
         </Button>
 
       </PageHeader>
-      <div className="mb-4">
-        <DatePickerWithRange date={dateRange} onDateChange={setDateRange} />
+      <div className="flex items-center gap-4 mb-4">
+        <DatePicker date={fromDate} onDateChange={setFromDate} placeholder={language === 'ar' ? 'من تاريخ' : 'From date'} />
+        <DatePicker date={toDate} onDateChange={setToDate} placeholder={language === 'ar' ? 'إلى تاريخ' : 'To date'} />
       </div>
       <OrdersClient data={filteredOrders} columns={columns} />
     </div>

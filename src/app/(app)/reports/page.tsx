@@ -5,32 +5,24 @@ import { PageHeader } from "@/components/page-header";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useLanguage } from "@/components/language-provider";
-import { format } from "date-fns"
-import { Calendar as CalendarIcon } from "lucide-react"
-import type { DateRange } from "react-day-picker"
-
-import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
-import { Calendar } from "@/components/ui/calendar"
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover"
+import { DatePicker } from "@/components/ui/datepicker"
 
 const commissionReportData = [
-  { moderator: 'Ali Hassan', sales: 'EGP 50,000', salesCommission: 'EGP 2,500', deliveries: 100, deliveryCommission: 'EGP 1,000', returns: 5, returnCommission: '- EGP 250', totalCommission: 'EGP 3,250' },
-  { moderator: 'Fatima Ahmed', sales: 'EGP 45,000', salesCommission: 'EGP 2,250', deliveries: 90, deliveryCommission: 'EGP 900', returns: 2, returnCommission: '- EGP 100', totalCommission: 'EGP 3,050' },
-  { moderator: 'Another Moderator', sales: 'EGP 60,000', salesCommission: 'EGP 3,000', deliveries: 120, deliveryCommission: 'EGP 1,200', returns: 8, returnCommission: '- EGP 400', totalCommission: 'EGP 3,800' },
+    { moderator: 'علي حسن', sales: '50,000 ج.م', salesCommission: '2,500 ج.م', deliveries: 100, deliveryCommission: '1,000 ج.م', returns: 5, returnCommission: '- 250 ج.م', totalCommission: '3,250 ج.م' },
+    { moderator: 'فاطمة أحمد', sales: '45,000 ج.م', salesCommission: '2,250 ج.م', deliveries: 90, deliveryCommission: '900 ج.م', returns: 2, returnCommission: '- 100 ج.م', totalCommission: '3,050 ج.م' },
+    { moderator: 'مشرف آخر', sales: '60,000 ج.م', salesCommission: '3,000 ج.م', deliveries: 120, deliveryCommission: '1,200 ج.م', returns: 8, returnCommission: '- 400 ج.م', totalCommission: '3,800 ج.م' },
 ];
 
 
 export default function ReportsPage() {
   const { language } = useLanguage();
-    const [date, setDate] = React.useState<DateRange | undefined>({
-    from: new Date(new Date().getFullYear(), new Date().getMonth(), 1),
-    to: new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0),
-  })
+    const [fromDate, setFromDate] = React.useState<Date | undefined>(
+        new Date(new Date().getFullYear(), new Date().getMonth(), 1)
+    );
+    const [toDate, setToDate] = React.useState<Date | undefined>(
+        new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0)
+    );
 
   return (
     <div>
@@ -44,42 +36,8 @@ export default function ReportsPage() {
                     <CardDescription>{language === 'ar' ? 'ملخص عمولات الوسطاء حسب النطاق الزمني' : 'Moderator commissions summary by date range'}</CardDescription>
                 </div>
                 <div className="flex items-center gap-2">
-                    <Popover>
-                        <PopoverTrigger asChild>
-                        <Button
-                            id="date"
-                            variant={"outline"}
-                            className={cn(
-                            "w-[260px] justify-start text-left font-normal",
-                            !date && "text-muted-foreground"
-                            )}
-                        >
-                            <CalendarIcon className="mr-2 h-4 w-4" />
-                            {date?.from ? (
-                            date.to ? (
-                                <>
-                                {format(date.from, "LLL dd, y")} -{" "}
-                                {format(date.to, "LLL dd, y")}
-                                </>
-                            ) : (
-                                format(date.from, "LLL dd, y")
-                            )
-                            ) : (
-                            <span>{language === 'ar' ? 'اختر تاريخ' : 'Pick a date'}</span>
-                            )}
-                        </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0" align="end">
-                        <Calendar
-                            initialFocus
-                            mode="range"
-                            defaultMonth={date?.from}
-                            selected={date}
-                            onSelect={setDate}
-                            numberOfMonths={2}
-                        />
-                        </PopoverContent>
-                    </Popover>
+                    <DatePicker date={fromDate} onDateChange={setFromDate} placeholder={language === 'ar' ? 'من تاريخ' : 'From Date'} />
+                    <DatePicker date={toDate} onDateChange={setToDate} placeholder={language === 'ar' ? 'إلى تاريخ' : 'To Date'} />
                     <Button>{language === 'ar' ? 'إنشاء تقرير' : 'Generate Report'}</Button>
                 </div>
             </div>
@@ -106,7 +64,6 @@ export default function ReportsPage() {
                     <TableCell>{row.salesCommission}</TableCell>
                     <TableCell>{row.deliveries}</TableCell>
                     <TableCell>{row.deliveryCommission}</TableCell>
-                    <TableCell>{row.returns}</TableCell>
                     <TableCell className="text-destructive">{row.returnCommission}</TableCell>
                     <TableCell className="text-right font-medium">{row.totalCommission}</TableCell>
                   </TableRow>
