@@ -38,10 +38,11 @@ const navItems = [
 export default function AppLayout({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const { language } = useLanguage();
+  const side = language === 'ar' ? 'right' : 'left';
 
   return (
-    <SidebarProvider>
-      <Sidebar>
+    <SidebarProvider side={side}>
+      <Sidebar side={side}>
         <SidebarHeader className="p-4">
           <div className="flex items-center gap-2">
             <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary text-primary-foreground">
