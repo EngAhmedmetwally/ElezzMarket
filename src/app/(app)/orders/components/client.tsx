@@ -2,6 +2,7 @@
 "use client";
 
 import * as React from "react";
+import { useRouter } from "next/navigation";
 import {
   flexRender,
   getCoreRowModel,
@@ -50,6 +51,7 @@ export function OrdersClient<TData extends Order, TValue>({
   data,
   onUpdate
 }: DataTableProps<TData, TValue>) {
+  const router = useRouter();
   const [sorting, setSorting] = React.useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>(
     []
@@ -148,13 +150,20 @@ export function OrdersClient<TData extends Order, TValue>({
               const selectCell = row.getVisibleCells().find(cell => cell.column.id === 'select');
               const totalCommission = (row.original.salesCommission || 0) + (row.original.deliveryCommission || 0);
               return (
-                <Card key={row.id} data-state={row.getIsSelected() && "selected"} className="data-[state=selected]:bg-muted/50">
+                <Card 
+                  key={row.id} 
+                  data-state={row.getIsSelected() && "selected"} 
+                  className="data-[state=selected]:bg-muted/50 cursor-pointer"
+                  onClick={() => router.push(`/orders/${row.original.id}`)}
+                >
                   <CardHeader className="p-4">
                     <div className="flex items-center gap-4">
-                      {selectCell && flexRender(
-                          selectCell.column.columnDef.cell,
-                          selectCell.getContext()
-                      )}
+                       <div onClick={(e) => e.stopPropagation()}>
+                        {selectCell && flexRender(
+                            selectCell.column.columnDef.cell,
+                            selectCell.getContext()
+                        )}
+                      </div>
                       <div className="flex-1">
                         <div className="font-bold">{row.original.id}</div>
                         <div className="text-sm text-muted-foreground">{new Date(row.original.createdAt).toLocaleDateString(language === 'ar' ? 'ar-EG' : 'en-US')}</div>
@@ -184,7 +193,9 @@ export function OrdersClient<TData extends Order, TValue>({
                             </div>
                         )}
                       </div>
-                      <RowActions order={row.original} onUpdate={onUpdate} />
+                      <div onClick={(e) => e.stopPropagation()}>
+                        <RowActions order={row.original} onUpdate={onUpdate} />
+                      </div>
                     </div>
                   </CardContent>
                 </Card>
@@ -230,9 +241,18 @@ export function OrdersClient<TData extends Order, TValue>({
                 <TableRow
                   key={row.id}
                   data-state={row.getIsSelected() && "selected"}
+                  className="cursor-pointer"
+                  onClick={() => router.push(`/orders/${row.original.id}`)}
                 >
                   {row.getVisibleCells().map((cell) => (
-                    <TableCell key={cell.id}>
+                    <TableCell 
+                      key={cell.id}
+                      onClick={
+                        cell.column.id === 'select' || cell.column.id === 'actions' 
+                          ? (e) => e.stopPropagation() 
+                          : undefined
+                      }
+                    >
                       {flexRender(
                         cell.column.columnDef.cell,
                         cell.getContext()
