@@ -27,6 +27,7 @@ import { useLanguage } from "@/components/language-provider";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Checkbox } from "@/components/ui/checkbox";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import type { User } from "@/lib/types";
 
 const permissionsSchema = z.object({
   view: z.boolean().default(false),
@@ -50,6 +51,10 @@ const userFormSchema = z.object({
   }).optional(),
 });
 
+const editUserFormSchema = userFormSchema.extend({
+  password: z.string().min(6, "كلمة المرور يجب أن لا تقل عن 6 أحرف").optional().or(z.literal('')),
+});
+
 type UserFormValues = z.infer<typeof userFormSchema>;
 
 const screensConfig = [
@@ -71,18 +76,22 @@ const allPerms: (keyof typeof permLabels)[] = ['view', 'add', 'edit', 'delete'];
 
 interface AddUserFormProps {
   onSuccess?: () => void;
+  userToEdit?: User;
 }
 
-export function AddUserForm({ onSuccess }: AddUserFormProps) {
+export function AddUserForm({ onSuccess, userToEdit }: AddUserFormProps) {
   const { toast } = useToast();
   const { language } = useLanguage();
+  const isEditMode = !!userToEdit;
+
   const form = useForm<UserFormValues>({
-    resolver: zodResolver(userFormSchema),
+    resolver: zodResolver(isEditMode ? editUserFormSchema : userFormSchema),
     defaultValues: {
-      username: "",
+      username: userToEdit?.name || "",
       password: "",
-      role: "Moderator",
-      orderVisibility: "own",
+      role: userToEdit?.role || "Moderator",
+      orderVisibility: userToEdit?.orderVisibility || "own",
+      // TODO: Map permissions if they are part of the user model. For now, using defaults.
       permissions: {
         dashboard: { view: true },
         orders: { view: true, add: true, edit: false, delete: false },
@@ -95,20 +104,33 @@ export function AddUserForm({ onSuccess }: AddUserFormProps) {
   });
 
   function onSubmit(data: UserFormValues) {
-    // In a real app, you would use 'data.username' and 'data.password' to create a user.
-    // The auth system requires an email, so we can create a dummy one.
-    const userToCreate = {
-      name: data.username,
-      email: `${data.username}@example.com`,
-      role: data.role,
-      permissions: data.permissions,
-    }
-    console.log("User to create:", userToCreate);
+    if (isEditMode) {
+        // In a real app, you would handle the update logic.
+        // The password should only be updated if a new one is provided.
+        const updatedData = { ...data };
+        if (!updatedData.password) {
+            delete (updatedData as Partial<UserFormValues>).password;
+        }
+        console.log("User to update:", { id: userToEdit.id, ...updatedData });
+        toast({
+            title: language === 'ar' ? 'تم تحديث المستخدم' : "User Updated",
+            description: `${language === 'ar' ? 'تم تحديث المستخدم' : 'User'} ${data.username} ${language === 'ar' ? 'بنجاح.' : 'has been successfully updated.'}`,
+        });
+    } else {
+        const userToCreate = {
+          name: data.username,
+          email: `${data.username}@example.com`,
+          role: data.role,
+          permissions: data.permissions,
+        }
+        console.log("User to create:", userToCreate);
 
-    toast({
-      title: language === 'ar' ? 'تم إنشاء المستخدم' : "User Created",
-      description: `${language === 'ar' ? 'تم إنشاء المستخدم' : 'User'} ${data.username} ${language === 'ar' ? 'بنجاح.' : 'has been successfully created.'}`,
-    });
+        toast({
+          title: language === 'ar' ? 'تم إنشاء المستخدم' : "User Created",
+          description: `${language === 'ar' ? 'تم إنشاء المستخدم' : 'User'} ${data.username} ${language === 'ar' ? 'بنجاح.' : 'has been successfully created.'}`,
+        });
+    }
+    
     onSuccess?.();
     form.reset();
   }
@@ -142,7 +164,7 @@ export function AddUserForm({ onSuccess }: AddUserFormProps) {
             <FormItem>
               <FormLabel>{language === 'ar' ? 'كلمة المرور' : 'Password'}</FormLabel>
               <FormControl>
-                <Input type="password" placeholder="********" {...field} />
+                <Input type="password" placeholder={isEditMode ? (language === 'ar' ? 'اتركه فارغًا لعدم التغيير' : 'Leave blank to not change') : "********"} {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -154,7 +176,7 @@ export function AddUserForm({ onSuccess }: AddUserFormProps) {
           render={({ field }) => (
             <FormItem>
               <FormLabel>{language === 'ar' ? 'الدور' : 'Role'}</FormLabel>
-              <Select onValueChange={field.onChange} defaultValue={field.value}>
+              <Select onValueChange={field.onChange} value={field.value}>
                 <FormControl>
                   <SelectTrigger>
                     <SelectValue placeholder={language === 'ar' ? 'اختر دورًا' : 'Select a role'} />
@@ -180,7 +202,7 @@ export function AddUserForm({ onSuccess }: AddUserFormProps) {
               <FormControl>
                 <RadioGroup
                   onValueChange={field.onChange}
-                  defaultValue={field.value}
+                  value={field.value}
                   className="flex gap-4"
                 >
                   <FormItem className="flex items-center space-x-2 space-y-0">
@@ -247,7 +269,7 @@ export function AddUserForm({ onSuccess }: AddUserFormProps) {
         </Accordion>
 
         <div className="flex justify-end">
-          <Button type="submit">{language === 'ar' ? 'إضافة مستخدم' : 'Add User'}</Button>
+          <Button type="submit">{isEditMode ? (language === 'ar' ? 'حفظ التعديلات' : 'Save Changes') : (language === 'ar' ? 'إضافة مستخدم' : 'Add User')}</Button>
         </div>
       </form>
     </Form>
