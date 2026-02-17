@@ -4,6 +4,8 @@ import "./globals.css";
 import { Toaster } from "@/components/ui/toaster";
 import { ThemeProvider } from "@/components/theme-provider";
 import { LanguageProvider } from "@/components/language-provider";
+import { FirebaseClientProvider } from "@/firebase";
+import { FirebaseErrorListener } from "@/components/FirebaseErrorListener";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-sans" });
 
@@ -33,8 +35,11 @@ export default function RootLayout({
           disableTransitionOnChange
         >
           <LanguageProvider>
-            {children}
-            <Toaster />
+            <FirebaseClientProvider>
+              <FirebaseErrorListener />
+              {children}
+              <Toaster />
+            </FirebaseClientProvider>
           </LanguageProvider>
         </ThemeProvider>
       </body>
