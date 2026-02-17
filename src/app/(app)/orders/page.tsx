@@ -4,7 +4,7 @@ import * as React from "react";
 import { mockOrders } from "@/lib/data";
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
-import { PlusCircle, Upload, Download } from "lucide-react";
+import { PlusCircle, Upload, Download, MoreHorizontal } from "lucide-react";
 import { OrdersClient } from "./components/client";
 import { getOrderColumns } from "./components/columns";
 import {
@@ -21,6 +21,15 @@ import { useToast } from "@/hooks/use-toast";
 import * as XLSX from "xlsx";
 import { saveAs } from "file-saver";
 import { DatePicker } from "@/components/ui/datepicker";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { OrdersStatusPieChart } from "./components/orders-status-pie-chart";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+
 
 export default function OrdersPage() {
   const [isNewOrderOpen, setIsNewOrderOpen] = React.useState(false);
@@ -47,6 +56,15 @@ export default function OrdersPage() {
         return true;
     });
   }, [fromDate, toDate]);
+  
+  const ordersByStatus = React.useMemo(() => {
+    const statusCounts = filteredOrders.reduce((acc, order) => {
+        acc[order.status] = (acc[order.status] || 0) + 1;
+        return acc;
+    }, {} as Record<string, number>);
+
+    return Object.entries(statusCounts).map(([name, value]) => ({ name, value }));
+  }, [filteredOrders]);
 
 
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -126,6 +144,25 @@ export default function OrdersPage() {
             </div>
           </DialogContent>
         </Dialog>
+        
+        <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+                <Button variant="outline">
+                    <MoreHorizontal className="me-2 h-4 w-4" />
+                    {language === 'ar' ? 'إجراءات' : 'Actions'}
+                </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent>
+                <DropdownMenuItem onSelect={() => document.getElementById('import-orders')?.click()}>
+                    <Upload className="me-2 h-4 w-4" />
+                    {language === 'ar' ? 'استيراد' : 'Import'}
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={handleFileDownload}>
+                    <Download className="me-2 h-4 w-4" />
+                    {language === 'ar' ? 'تصدير' : 'Export'}
+                </DropdownMenuItem>
+            </DropdownMenuContent>
+        </DropdownMenu>
 
         <input
           type="file"
@@ -134,22 +171,23 @@ export default function OrdersPage() {
           accept=".xlsx, .xls, .csv"
           onChange={handleFileUpload}
         />
-        <Button asChild variant="outline">
-            <label htmlFor="import-orders" className="cursor-pointer">
-                <Upload className="me-2 h-4 w-4" />
-                {language === 'ar' ? 'استيراد' : 'Import'}
-            </label>
-        </Button>
-        <Button variant="outline" onClick={handleFileDownload}>
-            <Download className="me-2 h-4 w-4" />
-            {language === 'ar' ? 'تصدير' : 'Export'}
-        </Button>
-
       </PageHeader>
-      <div className="flex items-center gap-4 mb-4">
-        <DatePicker date={fromDate} onDateChange={setFromDate} placeholder={language === 'ar' ? 'من تاريخ' : 'From date'} />
-        <DatePicker date={toDate} onDateChange={setToDate} placeholder={language === 'ar' ? 'إلى تاريخ' : 'To date'} />
+      
+      <div className="grid md:grid-cols-4 gap-4 mb-4">
+        <div className="md:col-span-3 grid sm:grid-cols-2 gap-4">
+          <DatePicker date={fromDate} onDateChange={setFromDate} placeholder={language === 'ar' ? 'من تاريخ' : 'From date'} />
+          <DatePicker date={toDate} onDateChange={setToDate} placeholder={language === 'ar' ? 'إلى تاريخ' : 'To date'} />
+        </div>
+        <Card className="md:col-span-1">
+            <CardHeader className="p-4">
+                <CardTitle className="text-sm font-medium">{language === 'ar' ? 'ملخص الحالات' : 'Status Summary'}</CardTitle>
+            </CardHeader>
+            <CardContent className="p-0 flex justify-center items-center">
+                 <OrdersStatusPieChart data={ordersByStatus} />
+            </CardContent>
+        </Card>
       </div>
+
       <OrdersClient data={filteredOrders} columns={columns} />
     </div>
   );
