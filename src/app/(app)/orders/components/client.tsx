@@ -74,6 +74,11 @@ export function OrdersClient<TData extends Order, TValue>({
       globalFilter,
       rowSelection,
     },
+    initialState: {
+        pagination: {
+            pageSize: 20,
+        }
+    }
   });
 
   const orderStatuses: OrderStatus[] = ["تم الحجز", "تم الارسال", "تم التسليم", "ملغي", "مرتجع", "لم يرد"];
@@ -160,11 +165,21 @@ export function OrdersClient<TData extends Order, TValue>({
                       <div className="text-sm text-muted-foreground">{row.original.customerPhone}</div>
                     </div>
                     <div className="flex justify-between items-end">
-                      <div>
-                        <div className="text-xs text-muted-foreground">{language === 'ar' ? 'الإجمالي' : 'Total'}</div>
-                        <div className="font-bold">
-                          {new Intl.NumberFormat(language === 'ar' ? 'ar-EG' : 'en-US', { style: 'currency', currency: 'EGP' }).format(row.original.total)}
+                      <div className="flex gap-4 items-end">
+                        <div>
+                          <div className="text-xs text-muted-foreground">{language === 'ar' ? 'الإجمالي' : 'Total'}</div>
+                          <div className="font-bold">
+                            {new Intl.NumberFormat(language === 'ar' ? 'ar-EG' : 'en-US', { style: 'currency', currency: 'EGP' }).format(row.original.total)}
+                          </div>
                         </div>
+                        {typeof row.original.commission === 'number' && (
+                            <div>
+                                <div className="text-xs text-muted-foreground">{language === 'ar' ? 'العمولة' : 'Commission'}</div>
+                                <div className="font-bold">
+                                  {new Intl.NumberFormat(language === 'ar' ? 'ar-EG' : 'en-US', { style: 'currency', currency: 'EGP' }).format(row.original.commission)}
+                                </div>
+                            </div>
+                        )}
                       </div>
                       <RowActions orderId={row.original.id} />
                     </div>

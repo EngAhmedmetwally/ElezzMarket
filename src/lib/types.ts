@@ -41,6 +41,7 @@ export type Order = {
   status: OrderStatus;
   items: OrderItem[];
   total: number;
+  commission?: number;
   moderatorId: string;
   moderatorName: string;
   courierId?: string;
@@ -66,4 +67,3 @@ export type Product = {
   isActive: boolean;
   createdAt: string;
 };
-

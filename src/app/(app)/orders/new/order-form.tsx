@@ -1,3 +1,4 @@
+
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -17,6 +18,7 @@ import { Separator } from "@/components/ui/separator";
 import { PlusCircle, Trash2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useLanguage } from "@/components/language-provider";
+import { mockProducts } from "@/lib/data";
 
 const orderFormSchema = z.object({
   id: z.string().min(1, "رقم الطلب مطلوب"),
@@ -129,7 +131,20 @@ export function OrderForm({ onSuccess }: OrderFormProps) {
                 <FormField control={form.control} name={`items.${index}.productName`} render={({ field }) => (
                     <FormItem className="flex-1 min-w-[200px]">
                       <FormLabel className={index > 0 ? 'sr-only' : ''}>{language === 'ar' ? 'المنتج' : 'Product'}</FormLabel>
-                      <FormControl><Input placeholder={language === 'ar' ? 'اسم المنتج' : 'Product name'} {...field} /></FormControl>
+                      <FormControl>
+                        <Input 
+                          placeholder={language === 'ar' ? 'اسم المنتج' : 'Product name'} 
+                          {...field}
+                          list="product-list"
+                          onChange={(e) => {
+                            field.onChange(e);
+                            const product = mockProducts.find(p => p.name === e.target.value);
+                            if (product) {
+                                form.setValue(`items.${index}.price`, product.price);
+                            }
+                          }}
+                        />
+                      </FormControl>
                       <FormMessage />
                     </FormItem>
                 )}/>
@@ -174,6 +189,11 @@ export function OrderForm({ onSuccess }: OrderFormProps) {
           <Button type="submit">{language === 'ar' ? 'إنشاء الطلب' : 'Create Order'}</Button>
         </div>
       </form>
+      <datalist id="product-list">
+        {mockProducts.map((product) => (
+            <option key={product.id} value={product.name} />
+        ))}
+      </datalist>
     </Form>
   );
 }

@@ -35,8 +35,8 @@ const permissionsSchema = z.object({
 });
 
 const userFormSchema = z.object({
-  name: z.string().min(1, "Name is required"),
-  email: z.string().email("Invalid email address"),
+  username: z.string().min(1, "اسم المستخدم مطلوب"),
+  password: z.string().min(6, "كلمة المرور يجب أن لا تقل عن 6 أحرف"),
   role: z.enum(["Admin", "Moderator", "Courier"]),
   permissions: z.object({
     dashboard: permissionsSchema.pick({ view: true }),
@@ -77,8 +77,8 @@ export function AddUserForm({ onSuccess }: AddUserFormProps) {
   const form = useForm<UserFormValues>({
     resolver: zodResolver(userFormSchema),
     defaultValues: {
-      name: "",
-      email: "",
+      username: "",
+      password: "",
       role: "Moderator",
       permissions: {
         dashboard: { view: true },
@@ -92,10 +92,19 @@ export function AddUserForm({ onSuccess }: AddUserFormProps) {
   });
 
   function onSubmit(data: UserFormValues) {
-    console.log(data);
+    // In a real app, you would use 'data.username' and 'data.password' to create a user.
+    // The auth system requires an email, so we can create a dummy one.
+    const userToCreate = {
+      name: data.username,
+      email: `${data.username}@example.com`,
+      role: data.role,
+      permissions: data.permissions,
+    }
+    console.log("User to create:", userToCreate);
+
     toast({
       title: language === 'ar' ? 'تم إنشاء المستخدم' : "User Created",
-      description: `${language === 'ar' ? 'تم إنشاء المستخدم' : 'User'} ${data.name} ${language === 'ar' ? 'بنجاح.' : 'has been successfully created.'}`,
+      description: `${language === 'ar' ? 'تم إنشاء المستخدم' : 'User'} ${data.username} ${language === 'ar' ? 'بنجاح.' : 'has been successfully created.'}`,
     });
     onSuccess?.();
     form.reset();
@@ -112,12 +121,12 @@ export function AddUserForm({ onSuccess }: AddUserFormProps) {
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
         <FormField
           control={form.control}
-          name="name"
+          name="username"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>{language === 'ar' ? 'الاسم الكامل' : 'Full Name'}</FormLabel>
+              <FormLabel>{language === 'ar' ? 'اسم المستخدم' : 'Username'}</FormLabel>
               <FormControl>
-                <Input placeholder={language === 'ar' ? 'مثال: علي حسن' : 'e.g. Ali Hassan'} {...field} />
+                <Input placeholder={language === 'ar' ? 'مثال: ali.hassan' : 'e.g. ali.hassan'} {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -125,12 +134,12 @@ export function AddUserForm({ onSuccess }: AddUserFormProps) {
         />
         <FormField
           control={form.control}
-          name="email"
+          name="password"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>{language === 'ar' ? 'البريد الإلكتروني' : 'Email'}</FormLabel>
+              <FormLabel>{language === 'ar' ? 'كلمة المرور' : 'Password'}</FormLabel>
               <FormControl>
-                <Input type="email" placeholder={language === 'ar' ? 'مثال: ali@example.com' : 'e.g. ali@example.com'} {...field} />
+                <Input type="password" placeholder="********" {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>

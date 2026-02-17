@@ -77,6 +77,33 @@ export const getOrderColumns = (language: 'ar' | 'en'): ColumnDef<Order>[] => [
       return <div className="text-end font-medium">{formatted}</div>;
     },
   },
+   {
+    accessorKey: "commission",
+    header: ({ column }) => {
+       return (
+        <div className="hidden lg:table-cell text-end">
+           <Button
+            variant="ghost"
+            onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+          >
+            {language === 'ar' ? "العمولة" : "Commission"}
+            <ArrowUpDown className={language === 'ar' ? 'ms-2 h-4 w-4' : 'ml-2 h-4 w-4'} />
+          </Button>
+        </div>
+       )
+    },
+    cell: ({ row }) => {
+      const commission = row.original.commission;
+      if (typeof commission !== 'number') return <div className="hidden lg:table-cell"></div>;
+
+      const formatted = new Intl.NumberFormat(language === 'ar' ? 'ar-EG' : 'en-US', {
+        style: "currency",
+        currency: "EGP",
+      }).format(commission);
+
+      return <div className="hidden lg:table-cell text-end font-medium">{formatted}</div>;
+    },
+  },
   {
     accessorKey: "moderatorName",
     header: () => <div className="hidden lg:table-cell text-start">{language === 'ar' ? "المودريتور" : "Moderator"}</div>,

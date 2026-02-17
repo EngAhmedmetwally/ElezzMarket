@@ -11,26 +11,46 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Progress } from "@/components/ui/progress";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { StaffPerformanceChart } from "../components/staff-performance-chart";
+import { DatePicker } from "@/components/ui/datepicker";
 
 export default function StaffReportPage() {
   const { language } = useLanguage();
   const isMobile = useIsMobile();
+  const [fromDate, setFromDate] = React.useState<Date | undefined>(undefined);
+  const [toDate, setToDate] = React.useState<Date | undefined>(undefined);
+
+  const filteredOrders = React.useMemo(() => {
+    return mockOrders.filter(order => {
+        const orderDate = new Date(order.createdAt);
+        if (fromDate) {
+            const fromDateStart = new Date(fromDate);
+            fromDateStart.setHours(0, 0, 0, 0);
+            if (orderDate < fromDateStart) return false;
+        }
+        if (toDate) {
+            const toDateEnd = new Date(toDate);
+            toDateEnd.setHours(23, 59, 59, 999);
+            if (orderDate > toDateEnd) return false;
+        }
+        return true;
+    });
+  }, [fromDate, toDate]);
 
   const moderatorsReport = React.useMemo(() => {
     const moderators = mockUsers.filter(u => u.role === "Moderator");
     return moderators.map(mod => {
-      const processedOrders = mockOrders.filter(o => o.moderatorId === mod.id).length;
+      const processedOrders = filteredOrders.filter(o => o.moderatorId === mod.id).length;
       return {
         ...mod,
         processedOrders,
       };
     });
-  }, []);
+  }, [filteredOrders]);
 
   const couriersReport = React.useMemo(() => {
     const couriers = mockUsers.filter(u => u.role === "Courier");
     return couriers.map(cour => {
-      const assignedOrders = mockOrders.filter(o => o.courierId === cour.id);
+      const assignedOrders = filteredOrders.filter(o => o.courierId === cour.id);
       const delivered = assignedOrders.filter(o => o.status === "تم التسليم").length;
       const returned = assignedOrders.filter(o => o.status === "مرتجع").length;
       const noAnswer = assignedOrders.filter(o => o.status === "لم يرد").length;
@@ -46,7 +66,7 @@ export default function StaffReportPage() {
         completionRate,
       };
     });
-  }, []);
+  }, [filteredOrders]);
   
   const moderatorsChartData = moderatorsReport.map(m => ({ name: m.name, value: m.processedOrders }));
   const couriersChartData = couriersReport.map(c => ({ name: c.name, value: c.completionRate }));
@@ -55,6 +75,12 @@ export default function StaffReportPage() {
   return (
     <div>
       <PageHeader title={language === 'ar' ? 'تقرير الموظفين' : 'Staff Report'} />
+      
+      <div className="flex items-center gap-4 mb-8">
+        <DatePicker date={fromDate} onDateChange={setFromDate} placeholder={language === 'ar' ? 'من تاريخ' : 'From date'} />
+        <DatePicker date={toDate} onDateChange={setToDate} placeholder={language === 'ar' ? 'إلى تاريخ' : 'To date'} />
+      </div>
+
       <div className="space-y-8">
         <StaffPerformanceChart 
             data={moderatorsChartData} 
