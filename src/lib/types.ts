@@ -1,4 +1,5 @@
 
+
 export type UserRole = "Admin" | "Moderator" | "Courier";
 
 export type User = {
@@ -65,4 +66,11 @@ export type Product = {
   sku: string;
   isActive: boolean;
   createdAt: string;
+};
+
+export type Customer = {
+  customerName: string;
+  customerPhone: string;
+  customerAddress: string;
+  zoning: string;
 };

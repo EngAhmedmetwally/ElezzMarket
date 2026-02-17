@@ -1,5 +1,5 @@
 
-import type { User, Order, CommissionRule, Product, OrderStatus, StatusHistoryItem } from './types';
+import type { User, Order, CommissionRule, Product, OrderStatus, StatusHistoryItem, Customer } from './types';
 
 export const mockUsers: User[] = [
   { id: 'usr_1', name: 'مستخدم مسؤول', email: 'admin@elezz.com', role: 'Admin', avatarUrl: '/avatars/01.png', status: 'نشط', createdAt: '2023-10-01', orderVisibility: 'all' },
@@ -17,7 +17,7 @@ export const mockOrders: Order[] = [
     customerAddress: '123 شارع النصر، القاهرة', 
     zoning: 'القاهرة', 
     status: 'تم التسليم', 
-    items: [{ productName: 'ماوس لاسلكي', quantity: 1, price: 350 }, { productName: 'لوحة مفاتيح', quantity: 1, price: 600 }], 
+    items: [{ productName: 'ماوس لاسلكي', quantity: 1, price: 350 }, { productName: 'لوحة مفاتيح ميكانيكية', quantity: 1, price: 600 }], 
     total: 950,
     commission: 47.5, 
     moderatorId: 'usr_3', 
@@ -39,7 +39,7 @@ export const mockOrders: Order[] = [
     customerAddress: '456 شارع التحرير، الجيزة', 
     zoning: 'الجيزة', 
     status: 'تم الارسال', 
-    items: [{ productName: 'شاشة', quantity: 1, price: 4500 }], 
+    items: [{ productName: 'شاشة 27 بوصة', quantity: 1, price: 4500 }], 
     total: 4500,
     commission: 225, 
     moderatorId: 'usr_4', 
@@ -60,7 +60,7 @@ export const mockOrders: Order[] = [
     customerAddress: '789 شارع عباس، الإسكندرية', 
     zoning: 'الإسكندرية', 
     status: 'تم الحجز', 
-    items: [{ productName: 'حامل لابتوب', quantity: 2, price: 400 }], 
+    items: [{ productName: 'حامل لابتوب ألومنيوم', quantity: 2, price: 400 }], 
     total: 800,
     commission: 40,
     moderatorId: 'usr_3', 
@@ -96,7 +96,7 @@ export const mockOrders: Order[] = [
     customerAddress: '21 شارع جمال عبد الناصر، الجيزة', 
     zoning: 'الجيزة', 
     status: 'ملغي', 
-    items: [{ productName: 'كاميرا ويب', quantity: 1, price: 1200 }], 
+    items: [{ productName: 'كاميرا ويب 4K', quantity: 1, price: 1200 }], 
     total: 1200,
     commission: 0,
     moderatorId: 'usr_3', 
@@ -137,7 +137,7 @@ export const mockOrders: Order[] = [
     customerAddress: '55 شارع الحجاز، القاهرة', 
     zoning: 'القاهرة', 
     status: 'ملغي', 
-    items: [{ productName: 'سماعة ألعاب', quantity: 1, price: 1800 }], 
+    items: [{ productName: 'سماعة ألعاب لاسلكية', quantity: 1, price: 1800 }], 
     total: 1800,
     commission: 0, 
     moderatorId: 'usr_3', 
@@ -159,7 +159,7 @@ export const mockOrders: Order[] = [
     customerAddress: '88 شارع فيصل، الجيزة', 
     zoning: 'الجيزة', 
     status: 'تم التسليم', 
-    items: [{ productName: 'كرسي مريح', quantity: 1, price: 6000 }], 
+    items: [{ productName: 'كرسي مكتب مريح', quantity: 1, price: 6000 }], 
     total: 6000,
     commission: 300, 
     moderatorId: 'usr_4', 
@@ -193,3 +193,16 @@ export const mockProducts: Product[] = [
   { id: 'prod_8', name: 'سماعة ألعاب لاسلكية', price: 1800, sku: 'HP-GM-WL-03', isActive: true, createdAt: '2023-05-30' },
   { id: 'prod_9', name: 'كرسي مكتب مريح', price: 6000, sku: 'CH-ERG-01', isActive: true, createdAt: '2023-06-15' },
 ];
+
+const uniqueCustomers = new Map<string, Customer>();
+mockOrders.forEach(order => {
+    if (!uniqueCustomers.has(order.customerPhone)) {
+        uniqueCustomers.set(order.customerPhone, {
+            customerName: order.customerName,
+            customerPhone: order.customerPhone,
+            customerAddress: order.customerAddress,
+            zoning: order.zoning,
+        });
+    }
+});
+export const mockCustomers: Customer[] = Array.from(uniqueCustomers.values());

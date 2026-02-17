@@ -5,51 +5,68 @@ import { PageHeader } from "@/components/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useLanguage } from "@/components/language-provider";
-import { mockProducts } from "@/lib/data";
-import { Badge } from "@/components/ui/badge";
-import { ProductsStatusChart } from "../components/products-status-chart";
+import { mockOrders } from "@/lib/data";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { StaffPerformanceChart } from "../components/staff-performance-chart";
+import { Progress } from "@/components/ui/progress";
 
 export default function ProductsReportPage() {
   const { language } = useLanguage();
   const isMobile = useIsMobile();
-  
-  const statusData = React.useMemo(() => {
-    const active = mockProducts.filter(p => p.isActive).length;
-    const inactive = mockProducts.length - active;
-    return [
-        { name: language === 'ar' ? 'متوفر' : 'In Stock', value: active, fill: 'hsl(var(--chart-2))' },
-        { name: language === 'ar' ? 'نفذ' : 'Out of Stock', value: inactive, fill: 'hsl(var(--chart-5))' }
-    ];
-  }, [language]);
 
-  const formatCurrency = (value: number) => new Intl.NumberFormat(language === 'ar' ? 'ar-EG' : 'en-US', {
-      style: "currency",
-      currency: "EGP",
-  }).format(value);
+  const productsSales = React.useMemo(() => {
+    const sales: Record<string, number> = {};
+    mockOrders.forEach(order => {
+        order.items.forEach(item => {
+            sales[item.productName] = (sales[item.productName] || 0) + item.quantity;
+        });
+    });
+
+    const sortedSales = Object.entries(sales)
+        .map(([name, count]) => ({ name, count }))
+        .sort((a, b) => b.count - a.count);
+    
+    const totalSoldCount = sortedSales.reduce((acc, item) => acc + item.count, 0);
+
+    return sortedSales.map(item => ({
+        ...item, 
+        percentage: totalSoldCount > 0 ? (item.count / totalSoldCount) * 100 : 0 
+    }));
+  }, []);
+
+  const topProductsChartData = productsSales.slice(0, 10).reverse().map(p => ({ name: p.name, value: p.count }));
 
   return (
     <div className="space-y-8">
       <PageHeader title={language === 'ar' ? 'تقرير المنتجات' : 'Products Report'} />
-      <div className="grid md:grid-cols-3 gap-8">
-        <div className="md:col-span-2">
+      <div className="grid lg:grid-cols-3 gap-8">
+        <div className="lg:col-span-3">
+             <StaffPerformanceChart 
+                data={topProductsChartData} 
+                title={language === 'ar' ? 'المنتجات الأكثر مبيعًا' : 'Top Selling Products'}
+                barDataKey="products"
+                barLabel={language === 'ar' ? 'الكمية المباعة' : 'Quantity Sold'}
+            />
+        </div>
+        <div className="lg:col-span-3">
             <Card>
                 <CardHeader>
-                <CardTitle>{language === 'ar' ? 'قائمة المنتجات الحالية' : 'Current Product List'}</CardTitle>
+                <CardTitle>{language === 'ar' ? 'تقرير مبيعات جميع المنتجات' : 'All Products Sales Report'}</CardTitle>
                 </CardHeader>
                 <CardContent>
                 {isMobile ? (
                     <div className="space-y-4">
-                        {mockProducts.map((product) => (
-                            <Card key={product.id}>
-                                <CardContent className="p-4 flex justify-between items-center">
-                                    <div className="flex-1">
-                                        <p className="font-medium">{product.name}</p>
-                                        <p className="text-sm text-muted-foreground">{formatCurrency(product.price)}</p>
+                        {productsSales.map((product) => (
+                            <Card key={product.name}>
+                                <CardContent className="p-4">
+                                    <div className="flex justify-between items-start">
+                                        <p className="font-medium flex-1 pr-4">{product.name}</p>
+                                        <p className="font-bold">{product.count} <span className="text-xs font-normal text-muted-foreground">{language === 'ar' ? 'وحدة' : 'units'}</span></p>
                                     </div>
-                                     <Badge variant={product.isActive ? "secondary" : "destructive"}>
-                                        {product.isActive ? (language === 'ar' ? 'متوفر' : 'In Stock') : (language === 'ar' ? 'نفذ' : 'Out of Stock')}
-                                    </Badge>
+                                    <div className="flex items-center gap-2 mt-2">
+                                        <Progress value={product.percentage} className="h-2" />
+                                        <span className="text-xs text-muted-foreground">{product.percentage.toFixed(1)}%</span>
+                                    </div>
                                 </CardContent>
                             </Card>
                         ))}
@@ -59,22 +76,21 @@ export default function ProductsReportPage() {
                         <TableHeader>
                         <TableRow>
                             <TableHead>{language === 'ar' ? 'المنتج' : 'Product'}</TableHead>
-                            <TableHead className="text-center">{language === 'ar' ? 'الحالة' : 'Status'}</TableHead>
-                            <TableHead className="text-end">{language === 'ar' ? 'السعر' : 'Price'}</TableHead>
+                            <TableHead className="text-end">{language === 'ar' ? 'الكمية المباعة' : 'Quantity Sold'}</TableHead>
+                            <TableHead className="w-[150px] text-end">{language === 'ar' ? 'نسبة المبيعات' : 'Sales Percentage'}</TableHead>
                         </TableRow>
                         </TableHeader>
                         <TableBody>
-                        {mockProducts.map((product) => (
-                            <TableRow key={product.id}>
-                            <TableCell className="font-medium">{product.name}</TableCell>
-                            <TableCell className="text-center">
-                                <Badge variant={product.isActive ? "secondary" : "destructive"}>
-                                {product.isActive ? (language === 'ar' ? 'متوفر' : 'In Stock') : (language === 'ar' ? 'نفذ' : 'Out of Stock')}
-                                </Badge>
-                            </TableCell>
-                            <TableCell className="text-end">
-                                {formatCurrency(product.price)}
-                            </TableCell>
+                        {productsSales.map((product) => (
+                            <TableRow key={product.name}>
+                                <TableCell className="font-medium">{product.name}</TableCell>
+                                <TableCell className="text-end font-bold">{product.count}</TableCell>
+                                <TableCell className="text-end">
+                                    <div className="flex items-center justify-end gap-2">
+                                        <span className="text-xs text-muted-foreground">{product.percentage.toFixed(1)}%</span>
+                                        <Progress value={product.percentage} className="h-2 w-24" />
+                                    </div>
+                                </TableCell>
                             </TableRow>
                         ))}
                         </TableBody>
@@ -82,9 +98,6 @@ export default function ProductsReportPage() {
                 )}
                 </CardContent>
             </Card>
-        </div>
-        <div>
-            <ProductsStatusChart data={statusData} />
         </div>
       </div>
     </div>

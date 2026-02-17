@@ -9,6 +9,7 @@ import {
 } from "@/components/ui/chart";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useLanguage } from "@/components/language-provider";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 const chartConfig = {
   totalCommission: {
@@ -23,6 +24,7 @@ interface CommissionChartProps {
 
 export function CommissionChart({ data: chartData }: CommissionChartProps) {
   const { language } = useLanguage();
+  const isMobile = useIsMobile();
   const chartTitle = language === 'ar' ? 'إجمالي عمولة الوسطاء' : 'Moderator Total Commissions';
 
   const formattedData = chartData.map(item => ({
@@ -39,16 +41,21 @@ export function CommissionChart({ data: chartData }: CommissionChartProps) {
       </CardHeader>
       <CardContent>
         <ChartContainer config={chartConfig} className="h-[300px] w-full">
-          <BarChart accessibilityLayer data={formattedData} layout="vertical" margin={{ left: 10, right: 30 }}>
+          <BarChart 
+            accessibilityLayer 
+            data={formattedData} 
+            layout="vertical" 
+            margin={{ left: isMobile ? 0 : 10, right: 30, top: 5, bottom: 5 }}
+          >
             <CartesianGrid horizontal={false} />
             <YAxis
               dataKey="moderator"
               type="category"
               tickLine={false}
-              tickMargin={10}
+              tickMargin={isMobile ? 5 : 10}
               axisLine={false}
-              width={80}
-              tick={{ fill: 'hsl(var(--foreground))' }}
+              width={isMobile ? 70 : 80}
+              tick={{ fill: 'hsl(var(--foreground))', fontSize: isMobile ? 10 : 12 }}
             />
             <XAxis dataKey="totalCommission" type="number" hide />
             <Tooltip
