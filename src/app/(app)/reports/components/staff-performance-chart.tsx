@@ -9,6 +9,7 @@ import {
 } from "@/components/ui/chart";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { useLanguage } from "@/components/language-provider";
 
 interface StaffPerformanceChartProps {
     data: { name: string; value: number }[];
@@ -20,6 +21,7 @@ interface StaffPerformanceChartProps {
 
 export function StaffPerformanceChart({ data, title, barDataKey, barLabel, formatter }: StaffPerformanceChartProps) {
   const isMobile = useIsMobile();
+  const { language } = useLanguage();
 
   const chartConfig = {
     [barDataKey]: {
@@ -27,6 +29,11 @@ export function StaffPerformanceChart({ data, title, barDataKey, barLabel, forma
       color: "hsl(var(--chart-1))",
     },
   };
+  
+  const yAxisFormatter = (value: number) => {
+    if (formatter && formatter(value).includes('%')) return formatter(value);
+    return new Intl.NumberFormat(language === 'ar' ? 'ar-EG' : 'en-US', { notation: 'compact', compactDisplay: 'short' }).format(value);
+  }
 
   return (
      <Card>
@@ -35,22 +42,29 @@ export function StaffPerformanceChart({ data, title, barDataKey, barLabel, forma
       </CardHeader>
       <CardContent>
         <ChartContainer config={chartConfig} className="h-[300px] w-full">
-          <BarChart accessibilityLayer data={data} margin={{ top: 20, right: 20, left: isMobile ? -20 : -10, bottom: isMobile ? 20 : 0 }}>
+          <BarChart 
+            accessibilityLayer 
+            data={data} 
+            margin={{ top: 20, right: isMobile ? 10 : 20, left: isMobile ? -20 : -10, bottom: isMobile ? 10 : 0 }}
+          >
             <CartesianGrid vertical={false} />
             <XAxis
               dataKey="name"
               tickLine={false}
               tickMargin={10}
               axisLine={false}
-              tick={{ fontSize: 12 }}
-              {...(isMobile && data.length > 5 && { // Only rotate if labels might overlap
-                angle: -45,
-                textAnchor: 'end',
-                height: 50,
-                interval: 0,
-              })}
+              tick={{ fontSize: isMobile ? 10 : 12 }}
+              angle={isMobile && data.length > 4 ? -45 : 0}
+              textAnchor={isMobile && data.length > 4 ? "end" : "middle"}
+              height={isMobile && data.length > 4 ? 60 : 30}
+              interval={0}
             />
-            <YAxis tick={{ fontSize: 12 }} />
+            <YAxis 
+                tick={{ fontSize: isMobile ? 10 : 12 }}
+                tickLine={false}
+                axisLine={false}
+                tickFormatter={yAxisFormatter}
+            />
             <Tooltip
               cursor={false}
               content={<ChartTooltipContent 
