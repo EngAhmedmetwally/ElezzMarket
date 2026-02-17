@@ -29,18 +29,20 @@ export function LanguageProvider({
   storageKey = "app-language",
   ...props
 }: LanguageProviderProps) {
-  const [language, setLanguage] = React.useState<Language>(() => {
-    if (typeof window === 'undefined') {
-      return defaultLanguage;
-    }
+  const [language, setLanguage] = React.useState<Language>(defaultLanguage)
+
+  React.useEffect(() => {
+    let storedItem: string | null = null;
     try {
-      const storedItem = localStorage.getItem(storageKey);
-      return storedItem ? (storedItem as Language) : defaultLanguage;
+      storedItem = localStorage.getItem(storageKey);
     } catch (error) {
       console.error("Error reading from localStorage", error);
-      return defaultLanguage;
     }
-  })
+
+    if (storedItem && (storedItem === 'en' || storedItem === 'ar')) {
+      setLanguage(storedItem as Language)
+    }
+  }, [storageKey]);
 
   React.useEffect(() => {
     const root = window.document.documentElement
