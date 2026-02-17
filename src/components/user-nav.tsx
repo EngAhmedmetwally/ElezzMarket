@@ -1,4 +1,7 @@
+"use client";
+
 import { CreditCard, LogOut, Settings, User } from "lucide-react";
+import { useLanguage } from "./language-provider";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -14,6 +17,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 
 export function UserNav() {
+  const { language } = useLanguage();
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -27,7 +31,7 @@ export function UserNav() {
       <DropdownMenuContent className="w-56" align="end" forceMount>
         <DropdownMenuLabel className="font-normal">
           <div className="flex flex-col space-y-1">
-            <p className="text-sm font-medium leading-none">Admin User</p>
+            <p className="text-sm font-medium leading-none">{language === 'ar' ? 'مستخدم مسؤول' : 'Admin User'}</p>
             <p className="text-xs leading-none text-muted-foreground">
               admin@elezz.com
             </p>
@@ -37,24 +41,24 @@ export function UserNav() {
         <DropdownMenuGroup>
           <DropdownMenuItem>
             <User className="mr-2 h-4 w-4" />
-            <span>Profile</span>
+            <span>{language === 'ar' ? 'الملف الشخصي' : 'Profile'}</span>
             <DropdownMenuShortcut>⇧⌘P</DropdownMenuShortcut>
           </DropdownMenuItem>
           <DropdownMenuItem>
             <CreditCard className="mr-2 h-4 w-4" />
-            <span>Billing</span>
+            <span>{language === 'ar' ? 'الفواتير' : 'Billing'}</span>
             <DropdownMenuShortcut>⌘B</DropdownMenuShortcut>
           </DropdownMenuItem>
           <DropdownMenuItem>
             <Settings className="mr-2 h-4 w-4" />
-            <span>Settings</span>
+            <span>{language === 'ar' ? 'الإعدادات' : 'Settings'}</span>
             <DropdownMenuShortcut>⌘S</DropdownMenuShortcut>
           </DropdownMenuItem>
         </DropdownMenuGroup>
         <DropdownMenuSeparator />
         <DropdownMenuItem>
           <LogOut className="mr-2 h-4 w-4" />
-          <span>Log out</span>
+          <span>{language === 'ar' ? 'تسجيل الخروج' : 'Log out'}</span>
           <DropdownMenuShortcut>⇧⌘Q</DropdownMenuShortcut>
         </DropdownMenuItem>
       </DropdownMenuContent>

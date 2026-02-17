@@ -16,25 +16,27 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { OrderForm } from "./new/order-form";
+import { useLanguage } from "@/components/language-provider";
 
 export default function OrdersPage() {
   const [isNewOrderOpen, setIsNewOrderOpen] = React.useState(false);
+  const { language } = useLanguage();
 
   return (
     <div>
-      <PageHeader title="Orders">
+      <PageHeader title={language === 'ar' ? 'الطلبات' : 'Orders'}>
         <Dialog open={isNewOrderOpen} onOpenChange={setIsNewOrderOpen}>
           <DialogTrigger asChild>
             <Button>
               <PlusCircle className="mr-2 h-4 w-4" />
-              New Order
+              {language === 'ar' ? 'طلب جديد' : 'New Order'}
             </Button>
           </DialogTrigger>
           <DialogContent className="sm:max-w-3xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle>Create New Order</DialogTitle>
+              <DialogTitle>{language === 'ar' ? 'إنشاء طلب جديد' : 'Create New Order'}</DialogTitle>
               <DialogDescription>
-                Fill in the details below to create a new order.
+                {language === 'ar' ? 'املأ التفاصيل أدناه لإنشاء طلب جديد.' : 'Fill in the details below to create a new order.'}
               </DialogDescription>
             </DialogHeader>
             <div className="py-4">

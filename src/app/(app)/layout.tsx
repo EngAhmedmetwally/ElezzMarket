@@ -24,18 +24,20 @@ import {
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
+import { useLanguage } from "@/components/language-provider";
 
 const navItems = [
-  { href: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },
-  { href: "/orders", icon: Package, label: "Orders" },
-  { href: "/users", icon: Users, label: "Users" },
-  { href: "/returns", icon: RotateCcw, label: "Returns" },
-  { href: "/commissions", icon: BadgePercent, label: "Commissions" },
-  { href: "/reports", icon: FileText, label: "Reports" },
+  { href: "/dashboard", icon: LayoutDashboard, label: "Dashboard", arLabel: "لوحة التحكم" },
+  { href: "/orders", icon: Package, label: "Orders", arLabel: "الطلبات" },
+  { href: "/users", icon: Users, label: "Users", arLabel: "المستخدمون" },
+  { href: "/returns", icon: RotateCcw, label: "Returns", arLabel: "المرتجعات" },
+  { href: "/commissions", icon: BadgePercent, label: "Commissions", arLabel: "العمولات" },
+  { href: "/reports", icon: FileText, label: "Reports", arLabel: "التقارير" },
 ];
 
 export default function AppLayout({ children }: { children: ReactNode }) {
   const pathname = usePathname();
+  const { language } = useLanguage();
 
   return (
     <SidebarProvider>
@@ -45,7 +47,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
             <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary text-primary-foreground">
               <Rocket className="h-6 w-6" />
             </div>
-            <span className="font-bold text-lg">ElEzz Market</span>
+            <span className="font-bold text-lg">{language === 'ar' ? 'سوق العز' : 'ElEzz Market'}</span>
           </div>
         </SidebarHeader>
         <SidebarContent>
@@ -55,11 +57,11 @@ export default function AppLayout({ children }: { children: ReactNode }) {
                 <SidebarMenuButton
                   asChild
                   isActive={pathname.startsWith(item.href)}
-                  tooltip={item.label}
+                  tooltip={language === 'ar' ? item.arLabel : item.label}
                 >
                   <Link href={item.href}>
                     <item.icon />
-                    <span>{item.label}</span>
+                    <span>{language === 'ar' ? item.arLabel : item.label}</span>
                   </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>

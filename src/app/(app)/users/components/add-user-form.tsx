@@ -22,6 +22,7 @@ import {
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import type { UserRole } from "@/lib/types";
+import { useLanguage } from "@/components/language-provider";
 
 const userFormSchema = z.object({
   name: z.string().min(1, "Name is required"),
@@ -37,6 +38,7 @@ interface AddUserFormProps {
 
 export function AddUserForm({ onSuccess }: AddUserFormProps) {
   const { toast } = useToast();
+  const { language } = useLanguage();
   const form = useForm<UserFormValues>({
     resolver: zodResolver(userFormSchema),
     defaultValues: {
@@ -49,12 +51,19 @@ export function AddUserForm({ onSuccess }: AddUserFormProps) {
   function onSubmit(data: UserFormValues) {
     console.log(data);
     toast({
-      title: "User Created",
-      description: `User ${data.name} has been successfully created.`,
+      title: language === 'ar' ? 'تم إنشاء المستخدم' : "User Created",
+      description: `${language === 'ar' ? 'تم إنشاء المستخدم' : 'User'} ${data.name} ${language === 'ar' ? 'بنجاح.' : 'has been successfully created.'}`,
     });
     onSuccess?.();
     form.reset();
   }
+
+  const roles = {
+    Admin: language === 'ar' ? 'مدير' : 'Admin',
+    Operations: language === 'ar' ? 'عمليات' : 'Operations',
+    Moderator: language === 'ar' ? 'وسيط' : 'Moderator',
+    Courier: language === 'ar' ? 'مندوب' : 'Courier',
+  };
 
   return (
     <Form {...form}>
@@ -64,9 +73,9 @@ export function AddUserForm({ onSuccess }: AddUserFormProps) {
           name="name"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Full Name</FormLabel>
+              <FormLabel>{language === 'ar' ? 'الاسم الكامل' : 'Full Name'}</FormLabel>
               <FormControl>
-                <Input placeholder="e.g. Ali Hassan" {...field} />
+                <Input placeholder={language === 'ar' ? 'مثال: علي حسن' : 'e.g. Ali Hassan'} {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -77,9 +86,9 @@ export function AddUserForm({ onSuccess }: AddUserFormProps) {
           name="email"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Email</FormLabel>
+              <FormLabel>{language === 'ar' ? 'البريد الإلكتروني' : 'Email'}</FormLabel>
               <FormControl>
-                <Input type="email" placeholder="e.g. ali@example.com" {...field} />
+                <Input type="email" placeholder={language === 'ar' ? 'مثال: ali@example.com' : 'e.g. ali@example.com'} {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -90,18 +99,18 @@ export function AddUserForm({ onSuccess }: AddUserFormProps) {
           name="role"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Role</FormLabel>
+              <FormLabel>{language === 'ar' ? 'الدور' : 'Role'}</FormLabel>
               <Select onValueChange={field.onChange} defaultValue={field.value}>
                 <FormControl>
                   <SelectTrigger>
-                    <SelectValue placeholder="Select a role" />
+                    <SelectValue placeholder={language === 'ar' ? 'اختر دورًا' : 'Select a role'} />
                   </SelectTrigger>
                 </FormControl>
                 <SelectContent>
-                  <SelectItem value="Admin">Admin</SelectItem>
-                  <SelectItem value="Operations">Operations</SelectItem>
-                  <SelectItem value="Moderator">Moderator</SelectItem>
-                  <SelectItem value="Courier">Courier</SelectItem>
+                  <SelectItem value="Admin">{roles.Admin}</SelectItem>
+                  <SelectItem value="Operations">{roles.Operations}</SelectItem>
+                  <SelectItem value="Moderator">{roles.Moderator}</SelectItem>
+                  <SelectItem value="Courier">{roles.Courier}</SelectItem>
                 </SelectContent>
               </Select>
               <FormMessage />
@@ -109,7 +118,7 @@ export function AddUserForm({ onSuccess }: AddUserFormProps) {
           )}
         />
         <div className="flex justify-end">
-          <Button type="submit">Add User</Button>
+          <Button type="submit">{language === 'ar' ? 'إضافة مستخدم' : 'Add User'}</Button>
         </div>
       </form>
     </Form>

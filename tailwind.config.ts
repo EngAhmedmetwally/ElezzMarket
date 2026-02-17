@@ -14,6 +14,7 @@ export default {
         headline: ['var(--font-sans)', 'sans-serif'],
         code: ['monospace'],
         sans: ['var(--font-sans)'],
+        arabic: ['Cairo', 'sans-serif'],
       },
       colors: {
         background: 'hsl(var(--background))',
