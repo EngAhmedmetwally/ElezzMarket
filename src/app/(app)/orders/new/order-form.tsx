@@ -19,19 +19,20 @@ import { useToast } from "@/hooks/use-toast";
 import { useLanguage } from "@/components/language-provider";
 
 const orderFormSchema = z.object({
-  customerName: z.string().min(1, "Customer name is required"),
-  customerPhone: z.string().min(1, "Customer phone is required"),
-  customerAddress: z.string().min(1, "Customer address is required"),
-  zoning: z.string().min(1, "Zoning is required"),
+  id: z.string().min(1, "رقم الطلب مطلوب"),
+  customerName: z.string().min(1, "اسم العميل مطلوب"),
+  customerPhone: z.string().min(1, "رقم هاتف العميل مطلوب"),
+  customerAddress: z.string().min(1, "عنوان العميل مطلوب"),
+  zoning: z.string().min(1, "المنطقة مطلوبة"),
   items: z
     .array(
       z.object({
-        productName: z.string().min(1, "Product name is required"),
-        quantity: z.coerce.number().int().min(1, "Quantity must be at least 1"),
-        price: z.coerce.number().min(0, "Price must be a positive number"),
+        productName: z.string().min(1, "اسم المنتج مطلوب"),
+        quantity: z.coerce.number().int().min(1, "الكمية يجب أن تكون 1 على الأقل"),
+        price: z.coerce.number().min(0, "السعر يجب أن يكون رقمًا موجبًا"),
       })
     )
-    .min(1, "Order must have at least one item."),
+    .min(1, "يجب أن يحتوي الطلب على عنصر واحد على الأقل."),
 });
 
 type OrderFormValues = z.infer<typeof orderFormSchema>;
@@ -46,6 +47,7 @@ export function OrderForm({ onSuccess }: OrderFormProps) {
   const form = useForm<OrderFormValues>({
     resolver: zodResolver(orderFormSchema),
     defaultValues: {
+      id: "",
       customerName: "",
       customerPhone: "",
       customerAddress: "",
@@ -75,6 +77,16 @@ export function OrderForm({ onSuccess }: OrderFormProps) {
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+        <div className="grid md:grid-cols-2 gap-4">
+           <FormField control={form.control} name="id" render={({ field }) => (
+                <FormItem>
+                <FormLabel>{language === 'ar' ? 'رقم الطلب' : 'Order ID'}</FormLabel>
+                <FormControl><Input placeholder={language === 'ar' ? 'أدخل رقم الطلب' : 'Enter Order ID'} {...field} /></FormControl>
+                <FormMessage />
+                </FormItem>
+            )}/>
+        </div>
+        
         <div>
             <h3 className="text-lg font-medium mb-4">{language === 'ar' ? 'تفاصيل العميل' : 'Customer Details'}</h3>
             <div className="grid md:grid-cols-2 gap-4">
