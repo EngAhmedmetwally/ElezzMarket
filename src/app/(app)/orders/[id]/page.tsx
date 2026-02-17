@@ -3,7 +3,7 @@
 
 import * as React from "react";
 import { useParams } from "next/navigation";
-import { mockOrders, mockUsers } from "@/lib/data";
+import { mockOrders, mockUsers, mockCommissionRules } from "@/lib/data";
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -86,8 +86,9 @@ export default function OrderDetailsPage() {
   const [selectedCourierId, setSelectedCourierId] = React.useState<string | null>(null);
 
   React.useEffect(() => {
-    setOrder(orderData);
-  }, [orderData]);
+    const updatedOrder = mockOrders.find(o => o.id.toLowerCase() === id.toLowerCase());
+    setOrder(updatedOrder);
+  }, [id]);
 
   const filteredCouriers = couriers.filter(c => c.name.toLowerCase().includes(courierSearch.toLowerCase()));
 
@@ -102,6 +103,13 @@ export default function OrderDetailsPage() {
     }
   };
 
+  const updateOrderInMockData = (updatedOrder: Order) => {
+    const orderIndex = mockOrders.findIndex(o => o.id === updatedOrder.id);
+    if (orderIndex !== -1) {
+        mockOrders[orderIndex] = updatedOrder;
+    }
+  }
+
   const handleSaveStatusChange = () => {
     if (order && selectedStatus) {
       const newHistoryItem: StatusHistoryItem = {
@@ -111,14 +119,28 @@ export default function OrderDetailsPage() {
         userName: "مستخدم مسؤول", // Hardcoded current user
       };
       
+      let salesComm = order.salesCommission || 0;
+      let deliveryComm = order.deliveryCommission || 0;
+
+      if (selectedStatus === 'تم التسليم') {
+          const deliveryCommissionRule = mockCommissionRules.find(r => r.type === 'تسليم');
+          deliveryComm = deliveryCommissionRule?.amount || 0;
+      } else if (selectedStatus === 'ملغي') {
+          salesComm = 0;
+          deliveryComm = 0;
+      }
+
       const updatedOrder: Order = {
         ...order,
         status: selectedStatus,
+        salesCommission: salesComm,
+        deliveryCommission: deliveryComm,
         statusHistory: [newHistoryItem, ...order.statusHistory],
         updatedAt: new Date().toISOString(),
       };
 
       setOrder(updatedOrder);
+      updateOrderInMockData(updatedOrder);
 
       toast({
         title: language === 'ar' ? 'تم تحديث الحالة' : 'Status Updated',
@@ -141,17 +163,27 @@ export default function OrderDetailsPage() {
         createdAt: new Date().toISOString(),
         userName: "مستخدم مسؤول", // Hardcoded current user
       };
+
+      let salesComm = order.salesCommission || 0;
+
+      if (selectedStatus === 'تم الارسال') {
+        const salesCommissionRule = mockCommissionRules.find(r => r.type === 'بيع');
+        salesComm = salesCommissionRule?.amount || 0;
+      }
       
       const updatedOrder: Order = {
         ...order,
         status: selectedStatus,
         courierId: selectedCourier.id,
         courierName: selectedCourier.name,
+        salesCommission: salesComm,
         statusHistory: [newHistoryItem, ...order.statusHistory],
         updatedAt: new Date().toISOString(),
       };
 
       setOrder(updatedOrder);
+      updateOrderInMockData(updatedOrder);
+
 
       toast({
         title: language === 'ar' ? 'تم تحديث الحالة' : 'Status Updated',

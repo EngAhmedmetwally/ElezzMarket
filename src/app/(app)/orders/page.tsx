@@ -1,3 +1,4 @@
+
 "use client";
 
 import * as React from "react";
@@ -35,10 +36,11 @@ export default function OrdersPage() {
   const [isNewOrderOpen, setIsNewOrderOpen] = React.useState(false);
   const { language } = useLanguage();
   const { toast } = useToast();
+  const [version, setVersion] = React.useState(0);
   const [fromDate, setFromDate] = React.useState<Date | undefined>(undefined);
   const [toDate, setToDate] = React.useState<Date | undefined>(undefined);
 
-  const columns = getOrderColumns(language);
+  const columns = getOrderColumns(language, () => setVersion(v => v + 1));
 
   const filteredOrders = React.useMemo(() => {
     return mockOrders.filter(order => {
@@ -55,7 +57,7 @@ export default function OrdersPage() {
         }
         return true;
     });
-  }, [fromDate, toDate]);
+  }, [fromDate, toDate, version]);
   
   const ordersByStatus = React.useMemo(() => {
     const statusCounts = filteredOrders.reduce((acc, order) => {
@@ -188,7 +190,7 @@ export default function OrdersPage() {
         </Card>
       </div>
 
-      <OrdersClient data={filteredOrders} columns={columns} />
+      <OrdersClient data={filteredOrders} columns={columns} onUpdate={() => setVersion(v => v + 1)} />
     </div>
   );
 }

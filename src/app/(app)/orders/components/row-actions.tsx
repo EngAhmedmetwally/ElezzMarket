@@ -6,8 +6,8 @@ import { MoreHorizontal, Search } from "lucide-react";
 import Link from "next/link";
 import { useLanguage } from "@/components/language-provider";
 import { useToast } from "@/hooks/use-toast";
-import type { Order, OrderStatus, User } from "@/lib/types";
-import { mockUsers } from "@/lib/data";
+import type { Order, OrderStatus, User, StatusHistoryItem } from "@/lib/types";
+import { mockUsers, mockOrders, mockCommissionRules } from "@/lib/data";
 import { cn } from "@/lib/utils";
 
 import { Button } from "@/components/ui/button";
@@ -29,6 +29,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 interface RowActionsProps {
   order: Order;
+  onUpdate: () => void;
 }
 
 const allowedTransitions: Record<OrderStatus, OrderStatus[]> = {
@@ -38,7 +39,7 @@ const allowedTransitions: Record<OrderStatus, OrderStatus[]> = {
     "ملغي": [],
 };
 
-export function RowActions({ order }: RowActionsProps) {
+export function RowActions({ order, onUpdate }: RowActionsProps) {
   const { language } = useLanguage();
   const { toast } = useToast();
 
@@ -65,6 +66,13 @@ export function RowActions({ order }: RowActionsProps) {
   };
   
   const handleSaveStatusChange = () => {
+    const orderIndex = mockOrders.findIndex(o => o.id === order.id);
+    if (orderIndex === -1) {
+        toast({ variant: "destructive", title: "Error", description: "Order not found." });
+        return;
+    }
+    const currentOrder = mockOrders[orderIndex];
+
     const selectedCourier = couriers.find(c => c.id === selectedCourierId);
 
     if (!selectedStatus) {
@@ -85,14 +93,40 @@ export function RowActions({ order }: RowActionsProps) {
       return;
     }
     
-    // This is where you would typically make an API call to update the order.
-    // For this mock setup, we'll just show a toast.
-    console.log({
-        orderId: order.id,
-        newStatus: selectedStatus,
-        courier: selectedCourier?.name,
-        note: note,
-    });
+    let salesComm = currentOrder.salesCommission || 0;
+    let deliveryComm = currentOrder.deliveryCommission || 0;
+
+    if (selectedStatus === 'تم الارسال') {
+        const salesCommissionRule = mockCommissionRules.find(r => r.type === 'بيع');
+        salesComm = salesCommissionRule?.amount || 0;
+    } else if (selectedStatus === 'تم التسليم') {
+        const deliveryCommissionRule = mockCommissionRules.find(r => r.type === 'تسليم');
+        deliveryComm = deliveryCommissionRule?.amount || 0;
+    } else if (selectedStatus === 'ملغي') {
+        salesComm = 0;
+        deliveryComm = 0;
+    }
+
+    const newHistoryItem: StatusHistoryItem = {
+        status: selectedStatus,
+        notes: note,
+        createdAt: new Date().toISOString(),
+        userName: "مستخدم مسؤول", // Hardcoded user
+    };
+
+    const updatedOrder: Order = {
+        ...currentOrder,
+        status: selectedStatus,
+        courierId: selectedCourier?.id ?? currentOrder.courierId,
+        courierName: selectedCourier?.name ?? currentOrder.courierName,
+        salesCommission: salesComm,
+        deliveryCommission: deliveryComm,
+        statusHistory: [newHistoryItem, ...currentOrder.statusHistory],
+        updatedAt: new Date().toISOString(),
+    };
+    
+    mockOrders[orderIndex] = updatedOrder;
+    onUpdate();
     
     toast({
       title: language === 'ar' ? 'تم تحديث الحالة' : 'Status Updated',

@@ -42,11 +42,13 @@ import { RowActions } from "./row-actions";
 interface DataTableProps<TData extends Order, TValue> {
   columns: ColumnDef<TData, TValue>[];
   data: TData[];
+  onUpdate: () => void;
 }
 
 export function OrdersClient<TData extends Order, TValue>({
   columns,
   data,
+  onUpdate
 }: DataTableProps<TData, TValue>) {
   const [sorting, setSorting] = React.useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>(
@@ -182,7 +184,7 @@ export function OrdersClient<TData extends Order, TValue>({
                             </div>
                         )}
                       </div>
-                      <RowActions order={row.original} />
+                      <RowActions order={row.original} onUpdate={onUpdate} />
                     </div>
                   </CardContent>
                 </Card>
