@@ -10,7 +10,7 @@ import { mockOrders, mockUsers } from "@/lib/data";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Progress } from "@/components/ui/progress";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { StaffPerformanceChart } from "./components/staff-performance-chart";
+import { StaffPerformanceChart } from "../components/staff-performance-chart";
 
 export default function StaffReportPage() {
   const { language } = useLanguage();
