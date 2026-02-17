@@ -1,3 +1,4 @@
+
 export type UserRole = "Admin" | "Operations" | "Moderator" | "Courier";
 
 export type User = {
@@ -50,4 +51,13 @@ export type CommissionRule = {
   amount: number;
   fromDate: string;
   toDate: string;
+};
+
+export type Product = {
+  id: string;
+  name: string;
+  price: number;
+  sku: string;
+  isActive: boolean;
+  createdAt: string;
 };

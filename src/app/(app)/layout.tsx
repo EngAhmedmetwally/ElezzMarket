@@ -1,3 +1,4 @@
+
 "use client";
 
 import {
@@ -10,6 +11,9 @@ import {
   SidebarMenuButton,
   SidebarInset,
   SidebarRail,
+  SidebarMenuSub,
+  SidebarMenuSubItem,
+  SidebarMenuSubButton,
 } from "@/components/ui/sidebar";
 import AppHeader from "@/components/app-header";
 import {
@@ -17,7 +21,7 @@ import {
   Users,
   Package,
   FileText,
-  Truck,
+  ShoppingBag,
   RotateCcw,
   BadgePercent,
   Rocket,
@@ -33,7 +37,16 @@ const navItems = [
   { href: "/users", icon: Users, label: "Users", arLabel: "المستخدمون" },
   { href: "/returns", icon: RotateCcw, label: "Returns", arLabel: "المرتجعات" },
   { href: "/commissions", icon: BadgePercent, label: "Commissions", arLabel: "العمولات" },
-  { href: "/reports", icon: FileText, label: "Reports", arLabel: "التقارير" },
+  {
+    label: "Reports",
+    arLabel: "التقارير",
+    icon: FileText,
+    href: "/reports",
+    children: [
+      { href: "/reports", label: "Commissions", arLabel: "العمولات" },
+      { href: "/reports/products", label: "Products", arLabel: "المنتجات" },
+    ],
+  },
 ];
 
 export default function AppLayout({ children }: { children: ReactNode }) {
@@ -56,17 +69,41 @@ export default function AppLayout({ children }: { children: ReactNode }) {
         <SidebarContent>
           <SidebarMenu>
             {navItems.map((item) => (
-              <SidebarMenuItem key={item.href}>
-                <SidebarMenuButton
-                  asChild
-                  isActive={pathname.startsWith(item.href)}
-                  tooltip={language === 'ar' ? item.arLabel : item.label}
-                >
-                  <Link href={item.href}>
-                    <item.icon />
-                    <span>{language === 'ar' ? item.arLabel : item.label}</span>
-                  </Link>
-                </SidebarMenuButton>
+              <SidebarMenuItem key={item.href || item.label}>
+                {item.children ? (
+                  <>
+                     <SidebarMenuButton
+                      asChild
+                      isActive={pathname === item.href || item.children.some(child => pathname.startsWith(child.href) && child.href !== item.href)}
+                      tooltip={language === 'ar' ? item.arLabel : item.label}
+                    >
+                       <Link href={item.href!}>
+                        <item.icon />
+                        <span>{language === 'ar' ? item.arLabel : item.label}</span>
+                      </Link>
+                    </SidebarMenuButton>
+                    <SidebarMenuSub>
+                      {item.children.map((child) => (
+                         <SidebarMenuSubItem key={child.href}>
+                           <SidebarMenuSubButton asChild isActive={pathname === child.href}>
+                              <Link href={child.href}>{language === 'ar' ? child.arLabel : child.label}</Link>
+                           </SidebarMenuSubButton>
+                        </SidebarMenuSubItem>
+                      ))}
+                    </SidebarMenuSub>
+                  </>
+                ) : (
+                  <SidebarMenuButton
+                    asChild
+                    isActive={pathname.startsWith(item.href!)}
+                    tooltip={language === 'ar' ? item.arLabel : item.label}
+                  >
+                    <Link href={item.href!}>
+                      <item.icon />
+                      <span>{language === 'ar' ? item.arLabel : item.label}</span>
+                    </Link>
+                  </SidebarMenuButton>
+                )}
               </SidebarMenuItem>
             ))}
           </SidebarMenu>
@@ -83,3 +120,4 @@ export default function AppLayout({ children }: { children: ReactNode }) {
     </SidebarProvider>
   );
 }
+

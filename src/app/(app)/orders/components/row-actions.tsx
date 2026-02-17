@@ -1,7 +1,9 @@
+
 "use client";
 
 import { MoreHorizontal } from "lucide-react";
 import Link from "next/link";
+import { useLanguage } from "@/components/language-provider";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -18,6 +20,8 @@ interface RowActionsProps {
 }
 
 export function RowActions({ orderId }: RowActionsProps) {
+  const { language } = useLanguage();
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -27,17 +31,19 @@ export function RowActions({ orderId }: RowActionsProps) {
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
-        <DropdownMenuLabel>Actions</DropdownMenuLabel>
+        <DropdownMenuLabel>{language === 'ar' ? 'الإجراءات' : 'Actions'}</DropdownMenuLabel>
         <DropdownMenuItem onClick={() => navigator.clipboard.writeText(orderId)}>
-          Copy Order ID
+          {language === 'ar' ? 'نسخ رقم الطلب' : 'Copy Order ID'}
         </DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem asChild>
-          <Link href={`/orders/${orderId}`}>View details</Link>
+          <Link href={`/orders/${orderId}`}>{language === 'ar' ? 'عرض التفاصيل' : 'View details'}</Link>
         </DropdownMenuItem>
-        <DropdownMenuItem>Update status</DropdownMenuItem>
+        <DropdownMenuItem>{language === 'ar' ? 'تحديث الحالة' : 'Update status'}</DropdownMenuItem>
         <DropdownMenuSeparator />
-        <DropdownMenuItem className="text-destructive focus:text-destructive focus:bg-destructive/10">Delete order</DropdownMenuItem>
+        <DropdownMenuItem className="text-destructive focus:text-destructive focus:bg-destructive/10">
+          {language === 'ar' ? 'حذف الطلب' : 'Delete order'}
+        </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
   );

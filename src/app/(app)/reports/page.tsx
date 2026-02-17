@@ -1,3 +1,4 @@
+
 "use client";
 
 import * as React from "react";
@@ -7,6 +8,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { useLanguage } from "@/components/language-provider";
 import { Button } from "@/components/ui/button"
 import { DatePicker } from "@/components/ui/datepicker"
+import Link from "next/link";
+import { ArrowRight } from "lucide-react";
 
 const commissionReportData = [
     { moderator: 'علي حسن', sales: '50,000 ج.م', salesCommission: '2,500 ج.م', deliveries: 100, deliveryCommission: '1,000 ج.م', returns: 5, returnCommission: '- 250 ج.م', totalCommission: '3,250 ج.م' },
@@ -75,12 +78,26 @@ export default function ReportsPage() {
         </Card>
 
         <Card>
-          <CardHeader>
-            <CardTitle>{language === 'ar' ? 'تقارير أخرى' : 'Other Reports'}</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p>{language === 'ar' ? 'ستكون التقارير والتحليلات التفصيلية الأخرى متاحة هنا قريبًا.' : 'Detailed reports and analytics will be available here.'}</p>
-          </CardContent>
+            <CardHeader>
+                <CardTitle>{language === 'ar' ? 'تقارير إضافية' : 'Additional Reports'}</CardTitle>
+            </CardHeader>
+            <CardContent>
+                <div className="grid gap-4 md:grid-cols-2">
+                    <Link href="/reports/products">
+                        <Card className="hover:bg-muted/50 transition-colors">
+                            <CardHeader className="flex flex-row items-center justify-between">
+                                <CardTitle className="text-lg">{language === 'ar' ? 'تقرير المنتجات' : 'Products Report'}</CardTitle>
+                                <ArrowRight className="h-5 w-5 text-muted-foreground" />
+                            </CardHeader>
+                            <CardContent>
+                                <p className="text-muted-foreground text-sm">
+                                    {language === 'ar' ? 'عرض قائمة بجميع المنتجات وأسعارها وحالاتها.' : 'View a list of all products, their prices, and stock status.'}
+                                </p>
+                            </CardContent>
+                        </Card>
+                    </Link>
+                </div>
+            </CardContent>
         </Card>
       </div>
     </div>

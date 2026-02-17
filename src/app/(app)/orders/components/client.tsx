@@ -1,3 +1,4 @@
+
 "use client";
 
 import * as React from "react";
@@ -106,7 +107,7 @@ export function OrdersClient<TData, TValue>({
               <TableRow key={headerGroup.id}>
                 {headerGroup.headers.map((header) => {
                   return (
-                    <TableHead key={header.id} className={header.column.id === 'actions' || header.column.id === 'status' ? 'text-center' : (header.column.id === 'total' ? 'text-end' : 'text-start')}>
+                    <TableHead key={header.id}>
                       {header.isPlaceholder
                         ? null
                         : flexRender(
@@ -127,7 +128,7 @@ export function OrdersClient<TData, TValue>({
                   data-state={row.getIsSelected() && "selected"}
                 >
                   {row.getVisibleCells().map((cell) => (
-                    <TableCell key={cell.id} className={cell.column.id === 'actions' || cell.column.id === 'status' ? 'text-center' : (cell.column.id === 'total' ? 'text-end' : 'text-start')}>
+                    <TableCell key={cell.id}>
                       {flexRender(
                         cell.column.columnDef.cell,
                         cell.getContext()
@@ -151,8 +152,7 @@ export function OrdersClient<TData, TValue>({
       </div>
       <div className="flex items-center justify-end space-x-2 py-4">
         <div className="flex-1 text-sm text-muted-foreground">
-          {table.getFilteredSelectedRowModel().rows.length} of{" "}
-          {table.getFilteredRowModel().rows.length} row(s) selected.
+          {language === 'ar' ? `تم تحديد ${table.getFilteredSelectedRowModel().rows.length} من ${table.getFilteredRowModel().rows.length} صف.` : `${table.getFilteredSelectedRowModel().rows.length} of ${table.getFilteredRowModel().rows.length} row(s) selected.`}
         </div>
         <Button
           variant="outline"

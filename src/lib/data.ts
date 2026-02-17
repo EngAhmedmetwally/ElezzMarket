@@ -1,4 +1,5 @@
-import type { User, Order, CommissionRule } from './types';
+
+import type { User, Order, CommissionRule, Product } from './types';
 
 export const mockUsers: User[] = [
   { id: 'usr_1', name: 'مستخدم مسؤول', email: 'admin@elezz.com', role: 'Admin', avatarUrl: '/avatars/01.png', status: 'نشط', createdAt: '2023-10-01' },
@@ -25,4 +26,16 @@ export const mockCommissionRules: CommissionRule[] = [
     { id: 'cr_2', type: 'تسليم', amount: 10, fromDate: '2024-01-01', toDate: '2024-01-31' },
     { id: 'cr_3', type: 'إرجاع', amount: -20, fromDate: '2024-01-01', toDate: '2024-01-31' },
     { id: 'cr_4', type: 'بيع', amount: 55, fromDate: '2024-02-01', toDate: '2024-02-29' },
+];
+
+export const mockProducts: Product[] = [
+  { id: 'prod_1', name: 'ماوس لاسلكي', price: 350, sku: 'MO-WL-01', isActive: true, createdAt: '2023-01-15' },
+  { id: 'prod_2', name: 'لوحة مفاتيح ميكانيكية', price: 600, sku: 'KB-MECH-05', isActive: true, createdAt: '2023-01-20' },
+  { id: 'prod_3', name: 'شاشة 27 بوصة', price: 4500, sku: 'MON-27-QHD-01', isActive: false, createdAt: '2023-02-10' },
+  { id: 'prod_4', name: 'حامل لابتوب ألومنيوم', price: 400, sku: 'LS-ALU-02', isActive: true, createdAt: '2023-03-01' },
+  { id: 'prod_5', name: 'موزع USB-C', price: 750, sku: 'HUB-USBC-08', isActive: true, createdAt: '2023-03-05' },
+  { id: 'prod_6', name: 'كاميرا ويب 4K', price: 1200, sku: 'WC-4K-PRO', isActive: true, createdAt: '2023-04-11' },
+  { id: 'prod_7', name: 'هارد SSD خارجي 1 تيرابايت', price: 2500, sku: 'SSD-EXT-1TB-01', isActive: false, createdAt: '2023-04-22' },
+  { id: 'prod_8', name: 'سماعة ألعاب لاسلكية', price: 1800, sku: 'HP-GM-WL-03', isActive: true, createdAt: '2023-05-30' },
+  { id: 'prod_9', name: 'كرسي مكتب مريح', price: 6000, sku: 'CH-ERG-01', isActive: true, createdAt: '2023-06-15' },
 ];

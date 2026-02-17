@@ -1,3 +1,4 @@
+
 "use client";
 
 import type { ColumnDef } from "@tanstack/react-table";
@@ -48,20 +49,22 @@ export const getOrderColumns = (language: 'ar' | 'en'): ColumnDef<Order>[] => [
   },
   {
     accessorKey: "status",
-    header: language === 'ar' ? "الحالة" : "Status",
-    cell: ({ row }) => <StatusBadge status={row.getValue("status")} />,
+    header: () => <div className="text-center">{language === 'ar' ? "الحالة" : "Status"}</div>,
+    cell: ({ row }) => <div className="text-center"><StatusBadge status={row.getValue("status")} /></div>,
   },
   {
     accessorKey: "total",
     header: ({ column }) => {
       return (
-        <Button
-          variant="ghost"
-          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-        >
-          {language === 'ar' ? "الاجمالي" : "Total"}
-          <ArrowUpDown className={language === 'ar' ? 'mr-2 h-4 w-4' : 'ml-2 h-4 w-4'} />
-        </Button>
+        <div className="text-end">
+          <Button
+            variant="ghost"
+            onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+          >
+            {language === 'ar' ? "الاجمالي" : "Total"}
+            <ArrowUpDown className={language === 'ar' ? 'ms-2 h-4 w-4' : 'ml-2 h-4 w-4'} />
+          </Button>
+        </div>
       );
     },
     cell: ({ row }) => {
@@ -71,31 +74,34 @@ export const getOrderColumns = (language: 'ar' | 'en'): ColumnDef<Order>[] => [
         currency: "EGP",
       }).format(amount);
 
-      return <div className="font-medium">{formatted}</div>;
+      return <div className="text-end font-medium">{formatted}</div>;
     },
   },
   {
     accessorKey: "moderatorName",
-    header: language === 'ar' ? "المودريتور" : "Moderator",
+    header: () => <div className="hidden lg:table-cell text-start">{language === 'ar' ? "المودريتور" : "Moderator"}</div>,
+    cell: ({ row }) => <div className="hidden lg:table-cell">{row.original.moderatorName}</div>,
   },
   {
     accessorKey: "createdAt",
     header: ({ column }) => (
+      <div className="hidden md:table-cell">
        <Button
             variant="ghost"
             onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
           >
             {language === 'ar' ? "التاريخ" : "Date"}
-            <ArrowUpDown className={language === 'ar' ? 'mr-2 h-4 w-4' : 'ml-2 h-4 w-4'} />
+            <ArrowUpDown className={language === 'ar' ? 'ms-2 h-4 w-4' : 'ml-2 h-4 w-4'} />
           </Button>
+      </div>
     ),
-    cell: ({ row }) => new Date(row.getValue("createdAt")).toLocaleDateString(language === 'ar' ? 'ar-EG' : 'en-US'),
+    cell: ({ row }) => <div className="hidden md:table-cell">{new Date(row.getValue("createdAt")).toLocaleDateString(language === 'ar' ? 'ar-EG' : 'en-US')}</div>,
   },
   {
     id: "actions",
-    header: language === 'ar' ? "الإجراءات" : "Actions",
+    header: () => <div className="text-center">{language === 'ar' ? "الإجراءات" : "Actions"}</div>,
     cell: ({ row }) => {
-      return <RowActions orderId={row.original.id} />;
+      return <div className="text-center"><RowActions orderId={row.original.id} /></div>;
     },
   },
 ];
