@@ -7,7 +7,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { useLanguage } from "@/components/language-provider";
 import { mockProducts } from "@/lib/data";
 import { Badge } from "@/components/ui/badge";
-import { ProductsStatusChart } from "./components/products-status-chart";
+import { ProductsStatusChart } from "../components/products-status-chart";
 
 export default function ProductsReportPage() {
   const { language } = useLanguage();
