@@ -9,6 +9,7 @@ import {
   SidebarMenuItem,
   SidebarMenuButton,
   SidebarInset,
+  SidebarRail,
 } from "@/components/ui/sidebar";
 import AppHeader from "@/components/app-header";
 import {
@@ -42,7 +43,8 @@ export default function AppLayout({ children }: { children: ReactNode }) {
 
   return (
     <SidebarProvider side={side}>
-      <Sidebar side={side}>
+      <Sidebar side={side} collapsible="icon">
+        <SidebarRail />
         <SidebarHeader className="p-4">
           <div className="flex items-center gap-2">
             <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary text-primary-foreground">

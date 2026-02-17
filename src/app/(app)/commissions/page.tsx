@@ -23,6 +23,8 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast"
 import { useLanguage } from "@/components/language-provider"
+import { mockCommissionRules } from "@/lib/data"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 
 const commissionFormSchema = z.object({
   sale: z.object({
@@ -162,7 +164,7 @@ export default function CommissionsPage() {
   }
 
   return (
-    <div>
+    <div className="space-y-8">
       <PageHeader title={language === 'ar' ? 'العمولات' : 'Commissions'} />
       <Card>
         <CardHeader>
@@ -183,6 +185,35 @@ export default function CommissionsPage() {
               </div>
             </form>
           </Form>
+        </CardContent>
+      </Card>
+
+       <Card>
+        <CardHeader>
+          <CardTitle>{language === 'ar' ? 'قواعد العمولات المسجلة' : 'Registered Commission Rules'}</CardTitle>
+          <CardDescription>{language === 'ar' ? 'قائمة بقواعد العمولات الحالية.' : 'List of current commission rules.'}</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>{language === 'ar' ? 'النوع' : 'Type'}</TableHead>
+                <TableHead>{language === 'ar' ? 'المبلغ' : 'Amount'}</TableHead>
+                <TableHead>{language === 'ar' ? 'من تاريخ' : 'From Date'}</TableHead>
+                <TableHead>{language === 'ar' ? 'إلى تاريخ' : 'To Date'}</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {mockCommissionRules.map((rule) => (
+                <TableRow key={rule.id}>
+                  <TableCell>{language === 'ar' ? (rule.type === 'Sale' ? 'بيع' : rule.type === 'Delivery' ? 'تسليم' : 'إرجاع') : rule.type}</TableCell>
+                  <TableCell>{rule.amount}</TableCell>
+                  <TableCell>{format(new Date(rule.fromDate), "PPP")}</TableCell>
+                  <TableCell>{format(new Date(rule.toDate), "PPP")}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
         </CardContent>
       </Card>
     </div>

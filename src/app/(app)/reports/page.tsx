@@ -1,9 +1,22 @@
 "use client";
 
+import * as React from "react";
 import { PageHeader } from "@/components/page-header";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useLanguage } from "@/components/language-provider";
+import { format } from "date-fns"
+import { Calendar as CalendarIcon } from "lucide-react"
+import type { DateRange } from "react-day-picker"
+
+import { cn } from "@/lib/utils"
+import { Button } from "@/components/ui/button"
+import { Calendar } from "@/components/ui/calendar"
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover"
 
 const commissionReportData = [
   { moderator: 'Ali Hassan', sales: 'EGP 50,000', salesCommission: 'EGP 2,500', deliveries: 100, deliveryCommission: 'EGP 1,000', returns: 5, returnCommission: '- EGP 250', totalCommission: 'EGP 3,250' },
@@ -14,6 +27,10 @@ const commissionReportData = [
 
 export default function ReportsPage() {
   const { language } = useLanguage();
+    const [date, setDate] = React.useState<DateRange | undefined>({
+    from: new Date(new Date().getFullYear(), new Date().getMonth(), 1),
+    to: new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0),
+  })
 
   return (
     <div>
@@ -21,8 +38,51 @@ export default function ReportsPage() {
       <div className="space-y-8">
         <Card>
           <CardHeader>
-            <CardTitle>{language === 'ar' ? 'تقرير العمولات' : 'Commission Report'}</CardTitle>
-            <CardDescription>{language === 'ar' ? 'ملخص شهري لعمولات الوسطاء' : 'Monthly summary of moderator commissions'}</CardDescription>
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                <div>
+                    <CardTitle>{language === 'ar' ? 'تقرير العمولات' : 'Commission Report'}</CardTitle>
+                    <CardDescription>{language === 'ar' ? 'ملخص عمولات الوسطاء حسب النطاق الزمني' : 'Moderator commissions summary by date range'}</CardDescription>
+                </div>
+                <div className="flex items-center gap-2">
+                    <Popover>
+                        <PopoverTrigger asChild>
+                        <Button
+                            id="date"
+                            variant={"outline"}
+                            className={cn(
+                            "w-[260px] justify-start text-left font-normal",
+                            !date && "text-muted-foreground"
+                            )}
+                        >
+                            <CalendarIcon className="mr-2 h-4 w-4" />
+                            {date?.from ? (
+                            date.to ? (
+                                <>
+                                {format(date.from, "LLL dd, y")} -{" "}
+                                {format(date.to, "LLL dd, y")}
+                                </>
+                            ) : (
+                                format(date.from, "LLL dd, y")
+                            )
+                            ) : (
+                            <span>{language === 'ar' ? 'اختر تاريخ' : 'Pick a date'}</span>
+                            )}
+                        </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0" align="end">
+                        <Calendar
+                            initialFocus
+                            mode="range"
+                            defaultMonth={date?.from}
+                            selected={date}
+                            onSelect={setDate}
+                            numberOfMonths={2}
+                        />
+                        </PopoverContent>
+                    </Popover>
+                    <Button>{language === 'ar' ? 'إنشاء تقرير' : 'Generate Report'}</Button>
+                </div>
+            </div>
           </CardHeader>
           <CardContent>
             <Table>

@@ -43,3 +43,11 @@ export type Order = {
   updatedAt: string;
   notes?: string;
 };
+
+export type CommissionRule = {
+  id: string;
+  type: 'Sale' | 'Delivery' | 'Return';
+  amount: number;
+  fromDate: string;
+  toDate: string;
+};
