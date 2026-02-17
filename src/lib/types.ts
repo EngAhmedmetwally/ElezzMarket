@@ -9,15 +9,14 @@ export type User = {
   avatarUrl: string;
   status: "نشط" | "معطل";
   createdAt: string;
+  orderVisibility?: "all" | "own";
 };
 
 export type OrderStatus =
   | "تم الحجز"
   | "تم الارسال"
   | "تم التسليم"
-  | "ملغي"
-  | "مرتجع"
-  | "لم يرد";
+  | "ملغي";
 
 export type OrderItem = {
   productName: string;
@@ -53,7 +52,7 @@ export type Order = {
 
 export type CommissionRule = {
   id: string;
-  type: 'بيع' | 'تسليم' | 'إرجاع';
+  type: 'بيع' | 'تسليم';
   amount: number;
   fromDate: string;
   toDate: string;

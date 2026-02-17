@@ -2,11 +2,11 @@
 import type { User, Order, CommissionRule, Product, OrderStatus, StatusHistoryItem } from './types';
 
 export const mockUsers: User[] = [
-  { id: 'usr_1', name: 'مستخدم مسؤول', email: 'admin@elezz.com', role: 'Admin', avatarUrl: '/avatars/01.png', status: 'نشط', createdAt: '2023-10-01' },
-  { id: 'usr_3', name: 'علي حسن', email: 'ali.hassan@elezz.com', role: 'Moderator', avatarUrl: '/avatars/03.png', status: 'نشط', createdAt: '2023-10-02' },
-  { id: 'usr_4', name: 'فاطمة أحمد', email: 'fatima.ahmed@elezz.com', role: 'Moderator', avatarUrl: '/avatars/04.png', status: 'نشط', createdAt: '2023-10-02' },
-  { id: 'usr_5', name: 'عمر إبراهيم', email: 'omar.ibrahim@elezz.com', role: 'Courier', avatarUrl: '/avatars/05.png', status: 'نشط', createdAt: '2023-10-03' },
-  { id: 'usr_6', name: 'ليلى مصطفى', email: 'layla.mustafa@elezz.com', role: 'Courier', avatarUrl: '/avatars/06.png', status: 'معطل', createdAt: '2023-10-03' },
+  { id: 'usr_1', name: 'مستخدم مسؤول', email: 'admin@elezz.com', role: 'Admin', avatarUrl: '/avatars/01.png', status: 'نشط', createdAt: '2023-10-01', orderVisibility: 'all' },
+  { id: 'usr_3', name: 'علي حسن', email: 'ali.hassan@elezz.com', role: 'Moderator', avatarUrl: '/avatars/03.png', status: 'نشط', createdAt: '2023-10-02', orderVisibility: 'own' },
+  { id: 'usr_4', name: 'فاطمة أحمد', email: 'fatima.ahmed@elezz.com', role: 'Moderator', avatarUrl: '/avatars/04.png', status: 'نشط', createdAt: '2023-10-02', orderVisibility: 'own' },
+  { id: 'usr_5', name: 'عمر إبراهيم', email: 'omar.ibrahim@elezz.com', role: 'Courier', avatarUrl: '/avatars/05.png', status: 'نشط', createdAt: '2023-10-03', orderVisibility: 'own' },
+  { id: 'usr_6', name: 'ليلى مصطفى', email: 'layla.mustafa@elezz.com', role: 'Courier', avatarUrl: '/avatars/06.png', status: 'معطل', createdAt: '2023-10-03', orderVisibility: 'own' },
 ];
 
 export const mockOrders: Order[] = [
@@ -114,10 +114,10 @@ export const mockOrders: Order[] = [
     customerPhone: '01187654321', 
     customerAddress: '32 طريق صلاح سالم، القاهرة', 
     zoning: 'القاهرة', 
-    status: 'مرتجع', 
+    status: 'ملغي', 
     items: [{ productName: 'هارد SSD خارجي 1 تيرابايت', quantity: 1, price: 2500 }], 
     total: 2500,
-    commission: -50, 
+    commission: 0, 
     moderatorId: 'usr_4', 
     moderatorName: 'فاطمة أحمد', 
     courierId: 'usr_6', 
@@ -125,7 +125,7 @@ export const mockOrders: Order[] = [
     createdAt: '2023-10-22T12:00:00Z', 
     updatedAt: '2023-10-24T13:00:00Z',
     statusHistory: [
-        { status: 'مرتجع', createdAt: '2023-10-24T13:00:00Z', notes: 'المنتج لم يعجب العميل.', userName: 'ليلى مصطفى' },
+        { status: 'ملغي', createdAt: '2023-10-24T13:00:00Z', notes: 'المنتج لم يعجب العميل.', userName: 'ليلى مصطفى' },
         { status: 'تم الارسال', createdAt: '2023-10-23T10:00:00Z', userName: 'فاطمة أحمد' },
         { status: 'تم الحجز', createdAt: '2023-10-22T12:00:00Z', userName: 'فاطمة أحمد' },
     ]
@@ -136,7 +136,7 @@ export const mockOrders: Order[] = [
     customerPhone: '01276543210', 
     customerAddress: '55 شارع الحجاز، القاهرة', 
     zoning: 'القاهرة', 
-    status: 'لم يرد', 
+    status: 'ملغي', 
     items: [{ productName: 'سماعة ألعاب', quantity: 1, price: 1800 }], 
     total: 1800,
     commission: 0, 
@@ -147,7 +147,7 @@ export const mockOrders: Order[] = [
     createdAt: '2023-10-23T10:00:00Z', 
     updatedAt: '2023-10-24T11:00:00Z',
     statusHistory: [
-        { status: 'لم يرد', createdAt: '2023-10-24T11:00:00Z', notes: 'العميل لم يرد على الهاتف.', userName: 'عمر إبراهيم' },
+        { status: 'ملغي', createdAt: '2023-10-24T11:00:00Z', notes: 'العميل لم يرد على الهاتف.', userName: 'عمر إبراهيم' },
         { status: 'تم الارسال', createdAt: '2023-10-24T10:00:00Z', userName: 'علي حسن' },
         { status: 'تم الحجز', createdAt: '2023-10-23T10:00:00Z', userName: 'علي حسن' },
     ]
@@ -179,7 +179,6 @@ export const mockOrders: Order[] = [
 export const mockCommissionRules: CommissionRule[] = [
     { id: 'cr_1', type: 'بيع', amount: 50, fromDate: '2024-01-01', toDate: '2024-01-31' },
     { id: 'cr_2', type: 'تسليم', amount: 10, fromDate: '2024-01-01', toDate: '2024-01-31' },
-    { id: 'cr_3', type: 'إرجاع', amount: -20, fromDate: '2024-01-01', toDate: '2024-01-31' },
     { id: 'cr_4', type: 'بيع', amount: 55, fromDate: '2024-02-01', toDate: '2024-02-29' },
 ];
 

@@ -26,6 +26,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useLanguage } from "@/components/language-provider";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Checkbox } from "@/components/ui/checkbox";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 
 const permissionsSchema = z.object({
   view: z.boolean().default(false),
@@ -38,6 +39,7 @@ const userFormSchema = z.object({
   username: z.string().min(1, "اسم المستخدم مطلوب"),
   password: z.string().min(6, "كلمة المرور يجب أن لا تقل عن 6 أحرف"),
   role: z.enum(["Admin", "Moderator", "Courier"]),
+  orderVisibility: z.enum(["all", "own"]).default("own"),
   permissions: z.object({
     dashboard: permissionsSchema.pick({ view: true }),
     orders: permissionsSchema,
@@ -80,6 +82,7 @@ export function AddUserForm({ onSuccess }: AddUserFormProps) {
       username: "",
       password: "",
       role: "Moderator",
+      orderVisibility: "own",
       permissions: {
         dashboard: { view: true },
         orders: { view: true, add: true, edit: false, delete: false },
@@ -163,6 +166,41 @@ export function AddUserForm({ onSuccess }: AddUserFormProps) {
                   <SelectItem value="Courier">{roles.Courier}</SelectItem>
                 </SelectContent>
               </Select>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
+          name="orderVisibility"
+          render={({ field }) => (
+            <FormItem className="space-y-3">
+              <FormLabel>{language === 'ar' ? 'صلاحية عرض الطلبات' : 'Order Visibility'}</FormLabel>
+              <FormControl>
+                <RadioGroup
+                  onValueChange={field.onChange}
+                  defaultValue={field.value}
+                  className="flex gap-4"
+                >
+                  <FormItem className="flex items-center space-x-2 space-y-0">
+                    <FormControl>
+                      <RadioGroupItem value="own" />
+                    </FormControl>
+                    <FormLabel className="font-normal">
+                      {language === 'ar' ? 'عرض طلباته فقط' : 'View Own Orders Only'}
+                    </FormLabel>
+                  </FormItem>
+                  <FormItem className="flex items-center space-x-2 space-y-0">
+                    <FormControl>
+                      <RadioGroupItem value="all" />
+                    </FormControl>
+                    <FormLabel className="font-normal">
+                      {language === 'ar' ? 'عرض كل الطلبات' : 'View All Orders'}
+                    </FormLabel>
+                  </FormItem>
+                </RadioGroup>
+              </FormControl>
               <FormMessage />
             </FormItem>
           )}

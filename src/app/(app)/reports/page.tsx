@@ -14,9 +14,9 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { CommissionChart } from "./components/commission-chart";
 
 const commissionReportData = [
-    { moderator: 'علي حسن', sales: 50000, salesCommission: 2500, deliveries: 100, deliveryCommission: 1000, returns: 5, returnCommission: -250, totalCommission: 3250 },
-    { moderator: 'فاطمة أحمد', sales: 45000, salesCommission: 2250, deliveries: 90, deliveryCommission: 900, returns: 2, returnCommission: -100, totalCommission: 3050 },
-    { moderator: 'مشرف آخر', sales: 60000, salesCommission: 3000, deliveries: 120, deliveryCommission: 1200, returns: 8, returnCommission: -400, totalCommission: 3800 },
+    { moderator: 'علي حسن', sales: 50000, salesCommission: 2500, deliveries: 100, deliveryCommission: 1000, totalCommission: 3500 },
+    { moderator: 'فاطمة أحمد', sales: 45000, salesCommission: 2250, deliveries: 90, deliveryCommission: 900, totalCommission: 3150 },
+    { moderator: 'مشرف آخر', sales: 60000, salesCommission: 3000, deliveries: 120, deliveryCommission: 1200, totalCommission: 4200 },
 ];
 
 
@@ -67,8 +67,6 @@ export default function ReportsPage() {
                                 <div className="flex justify-between"><span>{language === 'ar' ? 'عمولة البيع' : 'Sales Commission'}</span> <span>{formatCurrency(row.salesCommission)}</span></div>
                                 <div className="flex justify-between"><span>{language === 'ar' ? 'التسليمات' : 'Deliveries'}</span> <span>{row.deliveries}</span></div>
                                 <div className="flex justify-between"><span>{language === 'ar' ? 'عمولة التسليم' : 'Delivery Commission'}</span> <span>{formatCurrency(row.deliveryCommission)}</span></div>
-                                <div className="flex justify-between"><span>{language === 'ar' ? 'المرتجعات' : 'Returns'}</span> <span>{row.returns}</span></div>
-                                <div className="flex justify-between"><span>{language === 'ar' ? 'عمولة الإرجاع' : 'Return Commission'}</span> <span className="text-destructive">{formatCurrency(row.returnCommission)}</span></div>
                             </CardContent>
                         </Card>
                     ))}
@@ -82,8 +80,6 @@ export default function ReportsPage() {
                     <TableHead className="text-end">{language === 'ar' ? 'عمولة البيع' : 'Sales Commission'}</TableHead>
                     <TableHead className="text-end">{language === 'ar' ? 'التسليمات' : 'Deliveries'}</TableHead>
                     <TableHead className="text-end">{language === 'ar' ? 'عمولة التسليم' : 'Delivery Commission'}</TableHead>
-                    <TableHead className="text-end">{language === 'ar' ? 'المرتجعات' : 'Returns'}</TableHead>
-                    <TableHead className="text-end">{language === 'ar' ? 'عمولة الإرجاع' : 'Return Commission'}</TableHead>
                     <TableHead className="text-end">{language === 'ar' ? 'إجمالي العمولة' : 'Total Commission'}</TableHead>
                     </TableRow>
                 </TableHeader>
@@ -95,8 +91,6 @@ export default function ReportsPage() {
                         <TableCell className="text-end">{formatCurrency(row.salesCommission)}</TableCell>
                         <TableCell className="text-end">{row.deliveries}</TableCell>
                         <TableCell className="text-end">{formatCurrency(row.deliveryCommission)}</TableCell>
-                        <TableCell className="text-end">{row.returns}</TableCell>
-                        <TableCell className="text-end text-destructive">{formatCurrency(row.returnCommission)}</TableCell>
                         <TableCell className="text-end font-medium">{formatCurrency(row.totalCommission)}</TableCell>
                     </TableRow>
                     ))}

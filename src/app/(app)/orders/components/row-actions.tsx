@@ -25,7 +25,7 @@ interface RowActionsProps {
   orderId: string;
 }
 
-const orderStatuses: OrderStatus[] = ["تم الحجز", "تم الارسال", "تم التسليم", "ملغي", "مرتجع", "لم يرد"];
+const orderStatuses: OrderStatus[] = ["تم الحجز", "تم الارسال", "تم التسليم", "ملغي"];
 
 export function RowActions({ orderId }: RowActionsProps) {
   const { language } = useLanguage();

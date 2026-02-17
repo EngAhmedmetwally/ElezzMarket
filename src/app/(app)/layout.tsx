@@ -37,7 +37,6 @@ const navItems = [
   { href: "/dashboard", icon: LayoutDashboard, label: "Dashboard", arLabel: "لوحة التحكم" },
   { href: "/orders", icon: Package, label: "Orders", arLabel: "الطلبات" },
   { href: "/users", icon: Users, label: "Users", arLabel: "المستخدمون" },
-  { href: "/returns", icon: RotateCcw, label: "Returns", arLabel: "المرتجعات" },
   { href: "/commissions", icon: BadgePercent, label: "Commissions", arLabel: "العمولات" },
   {
     label: "Reports",
@@ -123,4 +122,3 @@ export default function AppLayout({ children }: { children: ReactNode }) {
     </SidebarProvider>
   );
 }
-
