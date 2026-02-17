@@ -1,0 +1,760 @@
+{
+  "entities": {
+    "User": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "User",
+      "type": "object",
+      "description": "Represents a system user who can log into the application (e.g., Admin, Operations, Moderator, Courier).",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the User entity."
+        },
+        "email": {
+          "type": "string",
+          "description": "The user's email address, used for login.",
+          "format": "email"
+        },
+        "fullName": {
+          "type": "string",
+          "description": "The full name of the user."
+        },
+        "phoneNumber": {
+          "type": "string",
+          "description": "The contact phone number for the user."
+        },
+        "roleId": {
+          "type": "string",
+          "description": "Reference to the Role assigned to this user. (Relationship: Role 1:N User)"
+        },
+        "isActive": {
+          "type": "boolean",
+          "description": "Indicates whether the user account is active or disabled."
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Timestamp when the user account was created.",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "Timestamp when the user account was last updated.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "email",
+        "fullName",
+        "phoneNumber",
+        "roleId",
+        "isActive",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "Role": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Role",
+      "type": "object",
+      "description": "Defines a specific system role (e.g., Admin, Operations, Moderator, Courier) with a set of associated permissions.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Role entity."
+        },
+        "name": {
+          "type": "string",
+          "description": "The name of the role (e.g., 'Admin', 'Operations', 'Moderator', 'Courier')."
+        },
+        "description": {
+          "type": "string",
+          "description": "A description of the role's responsibilities and capabilities."
+        },
+        "permissionIds": {
+          "type": "array",
+          "description": "References to Permissions assigned to this role. (Relationship: Role N:N Permission)",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "description",
+        "permissionIds"
+      ]
+    },
+    "Permission": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Permission",
+      "type": "object",
+      "description": "Represents a specific granular permission within the system that can be assigned to roles.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Permission entity."
+        },
+        "name": {
+          "type": "string",
+          "description": "The programmatic name of the permission (e.g., 'manage_users', 'create_order')."
+        },
+        "description": {
+          "type": "string",
+          "description": "A clear description of what this permission allows."
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "description"
+      ]
+    },
+    "Customer": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Customer",
+      "type": "object",
+      "description": "Represents a customer who places an order in the market.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Customer entity."
+        },
+        "firstName": {
+          "type": "string",
+          "description": "The first name of the customer."
+        },
+        "lastName": {
+          "type": "string",
+          "description": "The last name of the customer."
+        },
+        "email": {
+          "type": "string",
+          "description": "The email address of the customer (optional).",
+          "format": "email"
+        },
+        "phoneNumber": {
+          "type": "string",
+          "description": "The primary contact phone number for the customer."
+        },
+        "address": {
+          "type": "string",
+          "description": "The primary street address of the customer."
+        },
+        "city": {
+          "type": "string",
+          "description": "The city where the customer resides."
+        },
+        "state": {
+          "type": "string",
+          "description": "The state or region where the customer resides (optional)."
+        },
+        "zipCode": {
+          "type": "string",
+          "description": "The postal code for the customer's address (optional)."
+        },
+        "zoning": {
+          "type": "string",
+          "description": "The geographical zoning associated with the customer's location."
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Timestamp when the customer record was created.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "firstName",
+        "lastName",
+        "phoneNumber",
+        "address",
+        "city",
+        "zoning",
+        "createdAt"
+      ]
+    },
+    "Product": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Product",
+      "type": "object",
+      "description": "Represents a product available for sale in the market.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Product entity."
+        },
+        "name": {
+          "type": "string",
+          "description": "The name of the product."
+        },
+        "description": {
+          "type": "string",
+          "description": "A detailed description of the product (optional)."
+        },
+        "price": {
+          "type": "number",
+          "description": "The current selling price of the product."
+        },
+        "sku": {
+          "type": "string",
+          "description": "Stock Keeping Unit, a unique identifier for the product (optional)."
+        },
+        "isActive": {
+          "type": "boolean",
+          "description": "Indicates whether the product is currently available for sale."
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Timestamp when the product record was created.",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "Timestamp when the product record was last updated.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "price",
+        "isActive",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "Order": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Order",
+      "type": "object",
+      "description": "Represents a single sales order placed by a customer, including details about products, status, and associated personnel.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Order entity."
+        },
+        "customerId": {
+          "type": "string",
+          "description": "Reference to the Customer who placed this order. (Relationship: Customer 1:N Order)"
+        },
+        "moderatorId": {
+          "type": "string",
+          "description": "Reference to the User (with 'Moderator' role) who managed this order. (Relationship: User 1:N Order)"
+        },
+        "courierId": {
+          "type": "string",
+          "description": "Reference to the User (with 'Courier' role) assigned to deliver this order (optional). (Relationship: User 1:N Order)"
+        },
+        "orderDate": {
+          "type": "string",
+          "description": "The date and time when the order was placed or created.",
+          "format": "date-time"
+        },
+        "status": {
+          "type": "string",
+          "description": "The current status of the order (e.g., 'Pending', 'Confirmed', 'Shipped', 'Delivered', 'Returned', 'No Answer', 'Cancelled')."
+        },
+        "totalAmount": {
+          "type": "number",
+          "description": "The calculated total amount of the order, including products, shipping, and taxes."
+        },
+        "shippingAddress": {
+          "type": "string",
+          "description": "The full street address for shipping the order."
+        },
+        "shippingCity": {
+          "type": "string",
+          "description": "The city for shipping the order."
+        },
+        "shippingZoning": {
+          "type": "string",
+          "description": "The geographical zoning specific to this order's delivery location."
+        },
+        "isLocked": {
+          "type": "boolean",
+          "description": "Indicates if the order's core details are locked after creation, preventing most edits."
+        },
+        "notes": {
+          "type": "string",
+          "description": "General notes or comments related to the order (optional)."
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Timestamp when the order record was created.",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "Timestamp when the order record was last updated.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "customerId",
+        "moderatorId",
+        "orderDate",
+        "status",
+        "totalAmount",
+        "shippingAddress",
+        "shippingCity",
+        "shippingZoning",
+        "isLocked",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "OrderItem": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "OrderItem",
+      "type": "object",
+      "description": "Represents a specific product item included as a line item within an order.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the OrderItem entity."
+        },
+        "orderId": {
+          "type": "string",
+          "description": "Reference to the Order this item belongs to. (Relationship: Order 1:N OrderItem)"
+        },
+        "productId": {
+          "type": "string",
+          "description": "Reference to the Product being ordered. (Relationship: Product 1:N OrderItem)"
+        },
+        "quantity": {
+          "type": "number",
+          "description": "The quantity of the product ordered."
+        },
+        "unitPrice": {
+          "type": "number",
+          "description": "The price of a single unit of the product at the time of order."
+        },
+        "subtotal": {
+          "type": "number",
+          "description": "The calculated subtotal for this order item (quantity * unitPrice)."
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Timestamp when the order item was created.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "orderId",
+        "productId",
+        "quantity",
+        "unitPrice",
+        "subtotal",
+        "createdAt"
+      ]
+    },
+    "CommissionRule": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "CommissionRule",
+      "type": "object",
+      "description": "Defines the rules for calculating commissions based on various criteria, such as order type or user performance.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the CommissionRule entity."
+        },
+        "name": {
+          "type": "string",
+          "description": "A descriptive name for the commission rule (e.g., 'Standard Moderator Commission')."
+        },
+        "description": {
+          "type": "string",
+          "description": "A detailed description of how this commission rule works."
+        },
+        "type": {
+          "type": "string",
+          "description": "The type of commission (e.g., 'booking' for order creation, 'delivery' for order delivery)."
+        },
+        "isGlobal": {
+          "type": "boolean",
+          "description": "Indicates if this rule applies globally to all relevant users or is user-specific."
+        },
+        "applicableUserId": {
+          "type": "string",
+          "description": "Reference to a specific User if the rule is not global (optional). (Relationship: User 1:N CommissionRule)"
+        },
+        "minOrderCount": {
+          "type": "number",
+          "description": "The minimum number of orders required to qualify for this tiered commission (optional)."
+        },
+        "maxOrderCount": {
+          "type": "number",
+          "description": "The maximum number of orders for which this tiered commission applies (optional)."
+        },
+        "commissionRate": {
+          "type": "number",
+          "description": "The percentage rate of the commission (e.g., 0.05 for 5%) (optional)."
+        },
+        "fixedAmount": {
+          "type": "number",
+          "description": "A fixed monetary amount for the commission (optional)."
+        },
+        "startDate": {
+          "type": "string",
+          "description": "The date from which this commission rule becomes active.",
+          "format": "date-time"
+        },
+        "endDate": {
+          "type": "string",
+          "description": "The date when this commission rule ceases to be active (optional).",
+          "format": "date-time"
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Timestamp when the commission rule was created.",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "Timestamp when the commission rule was last updated.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "description",
+        "type",
+        "isGlobal",
+        "startDate",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "Commission": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Commission",
+      "type": "object",
+      "description": "Represents a single calculated commission payment or record for a specific order and user.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Commission entity."
+        },
+        "orderId": {
+          "type": "string",
+          "description": "Reference to the Order for which this commission was earned. (Relationship: Order 1:N Commission)"
+        },
+        "userId": {
+          "type": "string",
+          "description": "Reference to the User (Moderator or Courier) who earned this commission. (Relationship: User 1:N Commission)"
+        },
+        "commissionRuleId": {
+          "type": "string",
+          "description": "Reference to the CommissionRule that was applied to calculate this commission. (Relationship: CommissionRule 1:N Commission)"
+        },
+        "type": {
+          "type": "string",
+          "description": "The type of commission (e.g., 'booking' or 'delivery')."
+        },
+        "amount": {
+          "type": "number",
+          "description": "The monetary amount of the commission earned."
+        },
+        "calculationDate": {
+          "type": "string",
+          "description": "The date and time when the commission was calculated.",
+          "format": "date-time"
+        },
+        "status": {
+          "type": "string",
+          "description": "The payment status of the commission (e.g., 'Calculated', 'Paid', 'Pending')."
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Timestamp when the commission record was created.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "orderId",
+        "userId",
+        "commissionRuleId",
+        "type",
+        "amount",
+        "calculationDate",
+        "status",
+        "createdAt"
+      ]
+    },
+    "MonthlyCommissionSummary": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "MonthlyCommissionSummary",
+      "type": "object",
+      "description": "Aggregated monthly commission summary for each moderator, providing a breakdown of earnings.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the MonthlyCommissionSummary entity."
+        },
+        "moderatorId": {
+          "type": "string",
+          "description": "Reference to the User (with 'Moderator' role) for whom this summary is generated. (Relationship: User 1:N MonthlyCommissionSummary)"
+        },
+        "month": {
+          "type": "number",
+          "description": "The month (1-12) for which the summary is generated."
+        },
+        "year": {
+          "type": "number",
+          "description": "The year for which the summary is generated."
+        },
+        "totalBookingCommissions": {
+          "type": "number",
+          "description": "The total amount of booking commissions for the month."
+        },
+        "totalDeliveryCommissions": {
+          "type": "number",
+          "description": "The total amount of delivery commissions for the month."
+        },
+        "totalCommissions": {
+          "type": "number",
+          "description": "The total aggregated commissions (booking + delivery) for the month."
+        },
+        "totalOrdersProcessed": {
+          "type": "number",
+          "description": "The total number of orders processed by the moderator in the month."
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Timestamp when the summary record was created.",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "Timestamp when the summary record was last updated.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "moderatorId",
+        "month",
+        "year",
+        "totalBookingCommissions",
+        "totalDeliveryCommissions",
+        "totalCommissions",
+        "totalOrdersProcessed",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "OrderFollowUp": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "OrderFollowUp",
+      "type": "object",
+      "description": "Tracks follow-up notes and actions for specific orders, particularly those with 'Returned' or 'No Answer' statuses.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the OrderFollowUp entity."
+        },
+        "orderId": {
+          "type": "string",
+          "description": "Reference to the Order to which this follow-up note applies. (Relationship: Order 1:N OrderFollowUp)"
+        },
+        "userId": {
+          "type": "string",
+          "description": "Reference to the User who made this follow-up note. (Relationship: User 1:N OrderFollowUp)"
+        },
+        "note": {
+          "type": "string",
+          "description": "The content of the follow-up note."
+        },
+        "followUpDate": {
+          "type": "string",
+          "description": "The date and time when the follow-up action or note was recorded.",
+          "format": "date-time"
+        },
+        "statusAfterFollowUp": {
+          "type": "string",
+          "description": "The status of the order after this particular follow-up action (optional)."
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Timestamp when the follow-up record was created.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "orderId",
+        "userId",
+        "note",
+        "followUpDate",
+        "createdAt"
+      ]
+    }
+  },
+  "auth": {
+    "providers": [
+      "password",
+      "anonymous"
+    ]
+  },
+  "firestore": {
+    "structure": [
+      {
+        "path": "/users/{userId}",
+        "definition": {
+          "entityName": "User",
+          "schema": {
+            "$ref": "#/backend/entities/User"
+          },
+          "description": "Stores user profiles for system administrators, operations, moderators, and couriers. Access: Users can read/write their own profile (`request.auth.uid == userId`). Admins can read/write all user profiles. Role ID is stored here for display, but explicit global role collections are used for authorization."
+        }
+      },
+      {
+        "path": "/roles/{roleId}",
+        "definition": {
+          "entityName": "Role",
+          "schema": {
+            "$ref": "#/backend/entities/Role"
+          },
+          "description": "Defines system roles (e.g., Admin, Operations). Access: Read-only for most authenticated users to understand roles. Read/write by Admin users. No denormalization required as these are configuration entities."
+        }
+      },
+      {
+        "path": "/permissions/{permissionId}",
+        "definition": {
+          "entityName": "Permission",
+          "schema": {
+            "$ref": "#/backend/entities/Permission"
+          },
+          "description": "Stores granular system permissions. Access: Read-only for most authenticated users. Read/write by Admin users. No denormalization required as these are configuration entities."
+        }
+      },
+      {
+        "path": "/admins/{userId}",
+        "definition": {
+          "entityName": "User",
+          "schema": {
+            "$ref": "#/backend/entities/User"
+          },
+          "description": "A dedicated collection to signify admin status. The existence of a document at `/admins/{userId}` grants administrative privileges. This supports Authorization Independence (DBAC) and efficient rule checks. Document content can be minimal, e.g., `{ 'exists': true }`."
+        }
+      },
+      {
+        "path": "/operations/{userId}",
+        "definition": {
+          "entityName": "User",
+          "schema": {
+            "$ref": "#/backend/entities/User"
+          },
+          "description": "A dedicated collection to signify operations status. The existence of a document at `/operations/{userId}` grants operations privileges. This supports Authorization Independence (DBAC) and efficient rule checks."
+        }
+      },
+      {
+        "path": "/moderators/{userId}",
+        "definition": {
+          "entityName": "User",
+          "schema": {
+            "$ref": "#/backend/entities/User"
+          },
+          "description": "A dedicated collection to signify moderator status. The existence of a document at `/moderators/{userId}` grants moderator privileges. This supports Authorization Independence (DBAC) and efficient rule checks."
+        }
+      },
+      {
+        "path": "/couriers/{userId}",
+        "definition": {
+          "entityName": "User",
+          "schema": {
+            "$ref": "#/backend/entities/User"
+          },
+          "description": "A dedicated collection to signify courier status. The existence of a document at `/couriers/{userId}` grants courier privileges. This supports Authorization Independence (DBAC) and efficient rule checks."
+        }
+      },
+      {
+        "path": "/customers/{customerId}",
+        "definition": {
+          "entityName": "Customer",
+          "schema": {
+            "$ref": "#/backend/entities/Customer"
+          },
+          "description": "Stores customer details. Access: Read/write by Admin and Operations users. Read-only by Moderators. Customers do not directly interact with these records via login in this system."
+        }
+      },
+      {
+        "path": "/products/{productId}",
+        "definition": {
+          "entityName": "Product",
+          "schema": {
+            "$ref": "#/backend/entities/Product"
+          },
+          "description": "Stores product catalog data. Access: Read/write by Admin and Operations users. Read-only by Moderators for order creation. No denormalization required as product access is global or role-based."
+        }
+      },
+      {
+        "path": "/orders/{orderId}",
+        "definition": {
+          "entityName": "Order",
+          "schema": {
+            "$ref": "#/backend/entities/Order"
+          },
+          "description": "Stores sales order details. Includes denormalized 'moderatorId' and 'courierId' for Authorization Independence, enabling direct role-based access checks (e.g., Moderator can read/write their assigned orders, Courier can update status for their assigned orders). Supports QAPs for listing orders by assigned moderator or courier."
+        }
+      },
+      {
+        "path": "/orders/{orderId}/orderItems/{orderItemId}",
+        "definition": {
+          "entityName": "OrderItem",
+          "schema": {
+            "$ref": "#/backend/entities/OrderItem"
+          },
+          "description": "Subcollection storing individual product items within an order. For Authorization Independence, each OrderItem document MUST include denormalized 'orderModeratorId' and 'orderCourierId' copied from its parent Order. This allows rules to grant access based on the order's assigned personnel without a 'get()' call, supporting QAPs for order items."
+        }
+      },
+      {
+        "path": "/commissionRules/{commissionRuleId}",
+        "definition": {
+          "entityName": "CommissionRule",
+          "schema": {
+            "$ref": "#/backend/entities/CommissionRule"
+          },
+          "description": "Defines rules for commission calculation. Access: Read/write by Admin and Operations users. Read-only for system logic. The 'applicableUserId' field on the document allows for specific user-based rules without further denormalization for authorization."
+        }
+      },
+      {
+        "path": "/commissions/{commissionId}",
+        "definition": {
+          "entityName": "Commission",
+          "schema": {
+            "$ref": "#/backend/entities/Commission"
+          },
+          "description": "Records individual commission payments for users and orders. Includes 'userId' (the earner) for Authorization Independence, allowing users to read their own commissions (`request.auth.uid == resource.data.userId`). Admins/Operations can read all. Supports QAPs for user-specific commission lists."
+        }
+      },
+      {
+        "path": "/monthlyCommissionSummaries/{monthlyCommissionSummaryId}",
+        "definition": {
+          "entityName": "MonthlyCommissionSummary",
+          "schema": {
+            "$ref": "#/backend/entities/MonthlyCommissionSummary"
+          },
+          "description": "Aggregated monthly commission summaries per moderator. Includes 'moderatorId' for Authorization Independence, allowing moderators to read their own summaries (`request.auth.uid == resource.data.moderatorId`). Admins/Operations can read all. Supports QAPs for moderator-specific summaries."
+        }
+      },
+      {
+        "path": "/orderFollowUps/{orderFollowUpId}",
+        "definition": {
+          "entityName": "OrderFollowUp",
+          "schema": {
+            "$ref": "#/backend/entities/OrderFollowUp"
+          },
+          "description": "Tracks follow-up notes and actions for specific orders. For Authorization Independence, each OrderFollowUp document MUST include denormalized 'orderModeratorId' and 'orderCourierId' copied from its associated Order. This allows access and QAPs based on the order's assigned personnel, alongside the 'userId' who made the note."
+        }
+      }
+    ],
+    "reasoning": "The Firestore data structure for ElEzz Market - Sales Automation is designed to prioritize Authorization Independence, Structural Segregation, and clear Access Modeling, ensuring robust, scalable, and debuggable security rules. Each collection adheres to a homogeneous security posture, meaning all documents within a given collection share similar access requirements.\n\n**Authorization Independence (CRITICAL):** This is achieved primarily through strategic denormalization. For entities where access depends on a related parent or assigned user, the relevant authorization fields are copied directly into the document itself. For instance:\n*   The `Order` entity includes `moderatorId` and `courierId` directly, allowing rules to check `request.auth.uid == resource.data.moderatorId` without costly and insecure `get()` operations on other collections.\n*   `OrderItem` documents, although nested under an order, will also denormalize `orderModeratorId` and `orderCourierId` (copied from their parent `Order`). This ensures that authorization for an individual order item does not rely on fetching the parent `Order` document, making operations atomic and rules simpler.\n*   Similarly, `OrderFollowUp` documents will include denormalized `orderModeratorId` and `orderCourierId` to allow direct authorization checks and filtering based on the responsible personnel without needing to `get()` the parent `Order`.\n*   For user roles, instead of relying solely on a `roleId` field within the user's profile, dedicated root-level collections like `/admins/{userId}`, `/operations/{userId}`, `/moderators/{userId}`, and `/couriers/{userId}` are used. The mere existence of a document in these collections grants the respective role, enabling highly efficient `exists()` checks in security rules, which are inherently authorization-independent and support DBAC (Database Access Control) principles.\n\n**QAPs (Queries as Authorization Policies):** The structure facilitates secure `list` operations by ensuring that necessary authorization fields are present on the documents themselves, allowing Firestore rules to efficiently filter based on these fields. For example:\n*   A Moderator can query `/orders` and rules can enforce `allow list: if request.auth.uid == resource.data.moderatorId;` without needing to fetch other documents.\n*   Couriers can list their assigned orders using `resource.data.courierId`.\n*   A Moderator or Courier can list `OrderItem`s or `OrderFollowUp`s related to their orders because the `orderModeratorId` and `orderCourierId` fields are denormalized within those documents, enabling efficient filtering and access control on subcollections/related data without `get()` calls.\n*   Global role collections (e.g., `/admins`) allow Admins to list all documents in sensitive collections (e.g., all `/users`, `/orders`) where appropriate, while other users are restricted by ownership or specific role-based fields.\n\nThis design minimizes rule complexity, enhances debuggability, and inherently supports atomic operations by removing hierarchical authorization dependencies, making the system secure and performant."
+  }
+}
