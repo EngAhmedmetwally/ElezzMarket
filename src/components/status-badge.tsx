@@ -11,8 +11,6 @@ const statusColors: Record<string, string> = {
   "تم الارسال": "bg-purple-100 text-purple-800 dark:bg-purple-900/70 dark:text-purple-300 border-purple-300/50 dark:border-purple-700/80",
   "تم التسليم": "bg-green-100 text-green-800 dark:bg-green-900/70 dark:text-green-300 border-green-300/50 dark:border-green-700/80",
   "ملغي": "bg-gray-100 text-gray-800 dark:bg-gray-800/70 dark:text-gray-300 border-gray-300/50 dark:border-gray-600/80",
-  "مرتجع": "bg-red-100 text-red-800 dark:bg-red-900/70 dark:text-red-300 border-red-300/50 dark:border-red-700/80",
-  "لم يرد": "bg-orange-100 text-orange-800 dark:bg-orange-900/70 dark:text-orange-300 border-orange-300/50 dark:border-orange-700/80",
   // User Statuses
   "نشط": "bg-green-100 text-green-800 dark:bg-green-900/70 dark:text-green-300 border-green-300/50 dark:border-green-700/80",
   "معطل": "bg-gray-100 text-gray-800 dark:bg-gray-800/70 dark:text-gray-300 border-gray-300/50 dark:border-gray-600/80",

@@ -52,17 +52,15 @@ export default function StaffReportPage() {
     return couriers.map(cour => {
       const assignedOrders = filteredOrders.filter(o => o.courierId === cour.id);
       const delivered = assignedOrders.filter(o => o.status === "تم التسليم").length;
-      const returned = assignedOrders.filter(o => o.status === "مرتجع").length;
-      const noAnswer = assignedOrders.filter(o => o.status === "لم يرد").length;
-      const totalAttempted = delivered + returned + noAnswer;
+      const cancelled = assignedOrders.filter(o => o.status === 'ملغي' && o.courierId === cour.id).length;
+      const totalAttempted = delivered + cancelled;
       const completionRate = totalAttempted > 0 ? (delivered / totalAttempted) * 100 : 0;
       
       return {
         ...cour,
         assignedCount: assignedOrders.length,
         delivered,
-        returned,
-        noAnswer,
+        cancelled,
         completionRate,
       };
     });
@@ -173,8 +171,7 @@ export default function StaffReportPage() {
                              <CardContent className="p-4 pt-0 space-y-2 text-sm">
                                 <div className="flex justify-between"><span>{language === 'ar' ? 'إجمالي المسند' : 'Total Assigned'}</span> <span>{cour.assignedCount}</span></div>
                                 <div className="flex justify-between"><span>{language === 'ar' ? 'تم التسليم' : 'Delivered'}</span> <span>{cour.delivered}</span></div>
-                                <div className="flex justify-between"><span>{language === 'ar' ? 'مرتجع' : 'Returned'}</span> <span>{cour.returned}</span></div>
-                                <div className="flex justify-between"><span>{language === 'ar' ? 'لم يرد' : 'No Answer'}</span> <span>{cour.noAnswer}</span></div>
+                                <div className="flex justify-between"><span>{language === 'ar' ? 'ملغي' : 'Cancelled'}</span> <span>{cour.cancelled}</span></div>
                              </CardContent>
                         </Card>
                     ))}
@@ -186,8 +183,7 @@ export default function StaffReportPage() {
                     <TableHead className="text-start">{language === 'ar' ? 'المندوب' : 'Courier'}</TableHead>
                     <TableHead className="text-end">{language === 'ar' ? 'إجمالي المسند' : 'Total Assigned'}</TableHead>
                     <TableHead className="text-end">{language === 'ar' ? 'تم التسليم' : 'Delivered'}</TableHead>
-                    <TableHead className="text-end">{language === 'ar' ? 'مرتجع' : 'Returned'}</TableHead>
-                    <TableHead className="text-end">{language === 'ar' ? 'لم يرد' : 'No Answer'}</TableHead>
+                    <TableHead className="text-end">{language === 'ar' ? 'ملغي' : 'Cancelled'}</TableHead>
                     <TableHead className="w-[120px] text-end">{language === 'ar' ? 'نسبة الإنجاز' : 'Completion Rate'}</TableHead>
                     </TableRow>
                 </TableHeader>
@@ -205,8 +201,7 @@ export default function StaffReportPage() {
                         </TableCell>
                         <TableCell className="text-end">{cour.assignedCount}</TableCell>
                         <TableCell className="text-end">{cour.delivered}</TableCell>
-                        <TableCell className="text-end">{cour.returned}</TableCell>
-                        <TableCell className="text-end">{cour.noAnswer}</TableCell>
+                        <TableCell className="text-end">{cour.cancelled}</TableCell>
                         <TableCell className="text-end">
                         <div className="flex items-center justify-end gap-2">
                             <span className="text-xs text-muted-foreground">{cour.completionRate.toFixed(0)}%</span>

@@ -23,7 +23,12 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
 
-const orderStatuses: OrderStatus[] = ["تم الحجز", "تم الارسال", "تم التسليم", "ملغي"];
+const allowedTransitions: Record<OrderStatus, OrderStatus[]> = {
+    "تم الحجز": ["تم الارسال", "ملغي"],
+    "تم الارسال": ["تم التسليم", "ملغي"],
+    "تم التسليم": [],
+    "ملغي": [],
+};
 
 function StatusHistoryTimeline({ history }: { history: StatusHistoryItem[] }) {
     const { language } = useLanguage();
@@ -177,6 +182,8 @@ export default function OrderDetailsPage() {
     );
   }
 
+  const availableStatuses = allowedTransitions[order.status] || [];
+
   return (
     <>
       <div className="print:p-8">
@@ -230,12 +237,15 @@ export default function OrderDetailsPage() {
                   </CardHeader>
                   <CardContent className="flex flex-col gap-4">
                       <StatusBadge status={order.status} className="text-base w-fit" />
-                       <Select value={order.status} onValueChange={handleStatusChangeRequest}>
+                       <Select 
+                          onValueChange={(newStatus: OrderStatus) => handleStatusChangeRequest(newStatus)}
+                          disabled={availableStatuses.length === 0}
+                        >
                           <SelectTrigger>
                               <SelectValue placeholder={language === 'ar' ? "تغيير الحالة" : "Change status"} />
                           </SelectTrigger>
                           <SelectContent>
-                              {orderStatuses.map((status) => (
+                              {availableStatuses.map((status) => (
                               <SelectItem key={status} value={status}>
                                   {status}
                               </SelectItem>

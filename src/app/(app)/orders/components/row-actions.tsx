@@ -31,7 +31,12 @@ interface RowActionsProps {
   order: Order;
 }
 
-const orderStatuses: OrderStatus[] = ["تم الحجز", "تم الارسال", "تم التسليم", "ملغي"];
+const allowedTransitions: Record<OrderStatus, OrderStatus[]> = {
+    "تم الحجز": ["تم الارسال", "ملغي"],
+    "تم الارسال": ["تم التسليم", "ملغي"],
+    "تم التسليم": [],
+    "ملغي": [],
+};
 
 export function RowActions({ order }: RowActionsProps) {
   const { language } = useLanguage();
@@ -40,17 +45,19 @@ export function RowActions({ order }: RowActionsProps) {
   const [isModalOpen, setIsModalOpen] = React.useState(false);
   
   // State for the modal form
-  const [selectedStatus, setSelectedStatus] = React.useState<OrderStatus>(order.status);
+  const [selectedStatus, setSelectedStatus] = React.useState<OrderStatus | undefined>(undefined);
   const [note, setNote] = React.useState("");
   const [courierSearch, setCourierSearch] = React.useState("");
   const [selectedCourierId, setSelectedCourierId] = React.useState<string | null>(order.courierId ?? null);
   
   const [couriers] = React.useState<User[]>(() => mockUsers.filter(u => u.role === 'Courier'));
   const filteredCouriers = couriers.filter(c => c.name.toLowerCase().includes(courierSearch.toLowerCase()));
+  
+  const availableStatuses = allowedTransitions[order.status] || [];
 
   const handleOpenModal = () => {
     // Reset state when opening
-    setSelectedStatus(order.status);
+    setSelectedStatus(undefined);
     setSelectedCourierId(order.courierId ?? null);
     setNote("");
     setCourierSearch("");
@@ -59,6 +66,15 @@ export function RowActions({ order }: RowActionsProps) {
   
   const handleSaveStatusChange = () => {
     const selectedCourier = couriers.find(c => c.id === selectedCourierId);
+
+    if (!selectedStatus) {
+        toast({
+            variant: "destructive",
+            title: language === 'ar' ? 'خطأ' : 'Error',
+            description: language === 'ar' ? 'يرجى اختيار حالة جديدة.' : 'Please select a new status.',
+        });
+        return;
+    }
 
     if (selectedStatus === "تم الارسال" && !selectedCourier) {
       toast({
@@ -104,7 +120,7 @@ export function RowActions({ order }: RowActionsProps) {
           <DropdownMenuItem asChild>
             <Link href={`/orders/${order.id}`}>{language === 'ar' ? 'عرض التفاصيل' : 'View details'}</Link>
           </DropdownMenuItem>
-          <DropdownMenuItem onSelect={handleOpenModal}>
+          <DropdownMenuItem onSelect={handleOpenModal} disabled={availableStatuses.length === 0}>
             {language === 'ar' ? 'تحديث الحالة' : 'Update status'}
           </DropdownMenuItem>
           <DropdownMenuSeparator />
@@ -126,7 +142,7 @@ export function RowActions({ order }: RowActionsProps) {
                         <SelectValue placeholder={language === 'ar' ? "اختر الحالة الجديدة" : "Select new status"} />
                     </SelectTrigger>
                     <SelectContent>
-                        {orderStatuses.map((status) => (
+                        {availableStatuses.map((status) => (
                         <SelectItem key={status} value={status}>
                             {status}
                         </SelectItem>

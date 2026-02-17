@@ -19,8 +19,6 @@ const statusColors: Record<string, string> = {
     "تم الحجز": "hsl(var(--chart-1))",
     "تم الارسال": "hsl(var(--chart-3))",
     "تم التسليم": "hsl(var(--chart-2))",
-    "مرتجع": "hsl(var(--chart-5))",
-    "لم يرد": "hsl(var(--chart-5))",
     "ملغي": "hsl(var(--chart-5))",
 };
 
@@ -32,8 +30,6 @@ const chartConfig = {
     "تم الحجز": { label: "تم الحجز", color: "hsl(var(--chart-1))" },
     "تم الارسال": { label: "تم الارسال", color: "hsl(var(--chart-3))" },
     "تم التسليم": { label: "تم التسليم", color: "hsl(var(--chart-2))" },
-    "مرتجع": { label: "مرتجع", color: "hsl(var(--chart-5))" },
-    "لم يرد": { label: "لم يرد", color: "hsl(var(--chart-5))" },
     "ملغي": { label: "ملغي", color: "hsl(var(--chart-5))" },
 }
 
