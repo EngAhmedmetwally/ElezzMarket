@@ -10,12 +10,12 @@ export default function OrdersPage() {
   return (
     <div>
       <PageHeader title="Orders" >
-        <Link href="/orders/new" passHref>
-          <Button>
+        <Button asChild>
+          <Link href="/orders/new">
             <PlusCircle className="mr-2 h-4 w-4" />
             New Order
-          </Button>
-        </Link>
+          </Link>
+        </Button>
       </PageHeader>
       <OrdersClient data={mockOrders} columns={columns} />
     </div>

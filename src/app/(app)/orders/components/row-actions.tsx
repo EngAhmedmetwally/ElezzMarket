@@ -32,9 +32,9 @@ export function RowActions({ orderId }: RowActionsProps) {
           Copy Order ID
         </DropdownMenuItem>
         <DropdownMenuSeparator />
-        <Link href={`/orders/${orderId}`} passHref>
-          <DropdownMenuItem>View details</DropdownMenuItem>
-        </Link>
+        <DropdownMenuItem asChild>
+          <Link href={`/orders/${orderId}`}>View details</Link>
+        </DropdownMenuItem>
         <DropdownMenuItem>Update status</DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem className="text-destructive focus:text-destructive focus:bg-destructive/10">Delete order</DropdownMenuItem>
