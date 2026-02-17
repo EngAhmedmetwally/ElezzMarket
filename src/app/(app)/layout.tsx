@@ -61,12 +61,12 @@ export default function AppLayout({ children }: { children: ReactNode }) {
       <Sidebar side={side} collapsible="icon">
         <SidebarRail />
         <SidebarHeader className="p-4">
-          <div className="flex items-center gap-2">
+          <Link href="/" className="flex items-center gap-2">
             <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary text-primary-foreground">
               <Rocket className="h-6 w-6" />
             </div>
             <span className="font-bold text-lg">{language === 'ar' ? 'سوق العز' : 'ElEzz Market'}</span>
-          </div>
+          </Link>
         </SidebarHeader>
         <SidebarContent>
           <SidebarMenu>

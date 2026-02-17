@@ -128,7 +128,7 @@ export const getOrderColumns = (language: 'ar' | 'en'): ColumnDef<Order>[] => [
     id: "actions",
     header: () => <div className="text-center">{language === 'ar' ? "الإجراءات" : "Actions"}</div>,
     cell: ({ row }) => {
-      return <div className="text-center"><RowActions orderId={row.original.id} /></div>;
+      return <div className="text-center"><RowActions order={row.original} /></div>;
     },
   },
 ];
