@@ -14,15 +14,7 @@ import {
   ChartTooltip,
   ChartTooltipContent,
 } from "@/components/ui/chart";
-
-const chartData = [
-  { month: "January", sales: 186 },
-  { month: "February", sales: 305 },
-  { month: "March", sales: 237 },
-  { month: "April", sales: 273 },
-  { month: "May", sales: 209 },
-  { month: "June", sales: 214 },
-];
+import { useLanguage } from "@/components/language-provider";
 
 const chartConfig = {
   sales: {
@@ -31,12 +23,20 @@ const chartConfig = {
   },
 };
 
-export function SalesChart() {
+interface SalesChartProps {
+    data: { month: string; sales: number }[];
+}
+
+export function SalesChart({ data: chartData }: SalesChartProps) {
+  const { language } = useLanguage();
+  const chartTitle = language === 'ar' ? 'نظرة عامة على المبيعات' : 'Sales Overview';
+  const chartDescription = language === 'ar' ? 'المبيعات مع مرور الوقت' : 'Sales over time';
+
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Sales Overview</CardTitle>
-        <CardDescription>January - June 2024</CardDescription>
+        <CardTitle>{chartTitle}</CardTitle>
+        <CardDescription>{chartDescription}</CardDescription>
       </CardHeader>
       <CardContent>
         <ChartContainer config={chartConfig} className="h-[300px] w-full">
@@ -47,7 +47,7 @@ export function SalesChart() {
               tickLine={false}
               tickMargin={10}
               axisLine={false}
-              tickFormatter={(value) => value.slice(0, 3)}
+              tickFormatter={(value) => typeof value === 'string' ? value.slice(0, 3) : value}
             />
             <YAxis />
             <Tooltip

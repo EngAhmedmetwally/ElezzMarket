@@ -12,41 +12,59 @@ import {
   ChartTooltip,
   ChartTooltipContent,
 } from "@/components/ui/chart";
+import { useLanguage } from "@/components/language-provider";
 
-const data = [
-  { name: "Delivered", value: 400, fill: "hsl(var(--chart-2))" },
-  { name: "Shipped", value: 300, fill: "hsl(var(--chart-3))" },
-  { name: "Pending", value: 200, fill: "hsl(var(--chart-4))" },
-  { name: "Returned", value: 100, fill: "hsl(var(--chart-5))" },
-];
+const statusColors: Record<string, string> = {
+    "تم التوصيل": "hsl(var(--chart-2))",
+    "تم الشحن": "hsl(var(--chart-3))",
+    "قيد المعالجة": "hsl(var(--chart-4))",
+    "قيد الانتظار": "hsl(var(--chart-1))",
+    "مرتجع": "hsl(var(--chart-5))",
+    "لم يرد": "hsl(var(--chart-5))",
+    "ملغي": "hsl(var(--chart-5))",
+};
+
 
 const chartConfig = {
     orders: {
         label: "Orders"
     },
-    Delivered: {
-        label: "Delivered",
-        color: "hsl(var(--chart-2))",
-    },
-    Shipped: {
-        label: "Shipped",
-        color: "hsl(var(--chart-3))",
-    },
-    Pending: {
-        label: "Pending",
-        color: "hsl(var(--chart-4))",
-    },
-    Returned: {
-        label: "Returned",
-        color: "hsl(var(--chart-5))",
-    },
+    "تم التوصيل": { label: "تم التوصيل", color: "hsl(var(--chart-2))" },
+    "تم الشحن": { label: "تم الشحن", color: "hsl(var(--chart-3))" },
+    "قيد المعالجة": { label: "قيد المعالجة", color: "hsl(var(--chart-4))" },
+    "قيد الانتظار": { label: "قيد الانتظار", color: "hsl(var(--chart-1))" },
+    "مرتجع": { label: "مرتجع", color: "hsl(var(--chart-5))" },
+    "لم يرد": { label: "لم يرد", color: "hsl(var(--chart-5))" },
+    "ملغي": { label: "ملغي", color: "hsl(var(--chart-5))" },
 }
 
-export function OrdersByStatusChart() {
+interface OrdersByStatusChartProps {
+    data: { name: string; value: number }[];
+}
+
+export function OrdersByStatusChart({ data }: OrdersByStatusChartProps) {
+    const { language } = useLanguage();
+    const chartTitle = language === 'ar' ? 'الطلبات حسب الحالة' : 'Orders by Status';
+
+    const chartData = data.map(item => ({...item, fill: statusColors[item.name] || 'hsl(var(--muted))' }))
+
+    if (!chartData || chartData.length === 0) {
+        return (
+            <Card>
+                <CardHeader>
+                    <CardTitle>{chartTitle}</CardTitle>
+                </CardHeader>
+                <CardContent className="flex items-center justify-center min-h-[348px]">
+                    <p className="text-muted-foreground">{language === 'ar' ? 'لا توجد بيانات لعرضها' : 'No data to display'}</p>
+                </CardContent>
+            </Card>
+        )
+    }
+
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Orders by Status</CardTitle>
+        <CardTitle>{chartTitle}</CardTitle>
       </CardHeader>
       <CardContent>
         <ChartContainer config={chartConfig} className="mx-auto aspect-square max-h-[300px]">
@@ -56,7 +74,7 @@ export function OrdersByStatusChart() {
               content={<ChartTooltipContent hideLabel />}
             />
             <Pie
-              data={data}
+              data={chartData}
               dataKey="value"
               nameKey="name"
               cx="50%"
@@ -66,7 +84,7 @@ export function OrdersByStatusChart() {
               paddingAngle={5}
               labelLine={false}
             >
-              {data.map((entry) => (
+              {chartData.map((entry) => (
                 <Cell key={`cell-${entry.name}`} fill={entry.fill} />
               ))}
             </Pie>
