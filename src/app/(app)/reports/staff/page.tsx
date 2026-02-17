@@ -94,30 +94,49 @@ export default function StaffReportPage() {
             <CardDescription>{language === 'ar' ? 'ملخص أداء الوسطاء' : 'Performance summary for moderators'}</CardDescription>
           </CardHeader>
           <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="text-start">{language === 'ar' ? 'الوسيط' : 'Moderator'}</TableHead>
-                  <TableHead className="text-end">{language === 'ar' ? 'إجمالي الطلبات المعالجة' : 'Total Orders Processed'}</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {moderatorsReport.map((mod) => (
-                  <TableRow key={mod.id}>
-                    <TableCell className="font-medium text-start">
-                       <div className="flex items-center gap-2">
-                            <Avatar className="h-8 w-8">
-                                <AvatarImage src={mod.avatarUrl} alt={mod.name} data-ai-hint="avatar" />
-                                <AvatarFallback>{mod.name.charAt(0)}</AvatarFallback>
-                            </Avatar>
-                            <span>{mod.name}</span>
-                        </div>
-                    </TableCell>
-                    <TableCell className="text-end">{mod.processedOrders}</TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+            {isMobile ? (
+                 <div className="space-y-4">
+                    {moderatorsReport.map(mod => (
+                        <Card key={mod.id}>
+                            <CardContent className="p-4 flex items-center gap-4">
+                                <Avatar className="h-10 w-10">
+                                    <AvatarImage src={mod.avatarUrl} alt={mod.name} data-ai-hint="avatar" />
+                                    <AvatarFallback>{mod.name.charAt(0)}</AvatarFallback>
+                                </Avatar>
+                                <div className="flex-1">
+                                    <p className="font-medium">{mod.name}</p>
+                                    <p className="text-sm text-muted-foreground">{language === 'ar' ? `الطلبات المعالجة: ${mod.processedOrders}` : `Processed Orders: ${mod.processedOrders}`}</p>
+                                </div>
+                            </CardContent>
+                        </Card>
+                    ))}
+                 </div>
+            ) : (
+                <Table>
+                <TableHeader>
+                    <TableRow>
+                    <TableHead className="text-start">{language === 'ar' ? 'الوسيط' : 'Moderator'}</TableHead>
+                    <TableHead className="text-end">{language === 'ar' ? 'إجمالي الطلبات المعالجة' : 'Total Orders Processed'}</TableHead>
+                    </TableRow>
+                </TableHeader>
+                <TableBody>
+                    {moderatorsReport.map((mod) => (
+                    <TableRow key={mod.id}>
+                        <TableCell className="font-medium text-start">
+                        <div className="flex items-center gap-2">
+                                <Avatar className="h-8 w-8">
+                                    <AvatarImage src={mod.avatarUrl} alt={mod.name} data-ai-hint="avatar" />
+                                    <AvatarFallback>{mod.name.charAt(0)}</AvatarFallback>
+                                </Avatar>
+                                <span>{mod.name}</span>
+                            </div>
+                        </TableCell>
+                        <TableCell className="text-end">{mod.processedOrders}</TableCell>
+                    </TableRow>
+                    ))}
+                </TableBody>
+                </Table>
+            )}
           </CardContent>
         </Card>
 
@@ -151,7 +170,7 @@ export default function StaffReportPage() {
                                     </div>
                                 </div>
                             </CardHeader>
-                             <CardContent className="space-y-2 text-sm">
+                             <CardContent className="p-4 pt-0 space-y-2 text-sm">
                                 <div className="flex justify-between"><span>{language === 'ar' ? 'إجمالي المسند' : 'Total Assigned'}</span> <span>{cour.assignedCount}</span></div>
                                 <div className="flex justify-between"><span>{language === 'ar' ? 'تم التسليم' : 'Delivered'}</span> <span>{cour.delivered}</span></div>
                                 <div className="flex justify-between"><span>{language === 'ar' ? 'مرتجع' : 'Returned'}</span> <span>{cour.returned}</span></div>

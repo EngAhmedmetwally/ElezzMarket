@@ -4,6 +4,8 @@
 import { MoreHorizontal } from "lucide-react";
 import Link from "next/link";
 import { useLanguage } from "@/components/language-provider";
+import { useToast } from "@/hooks/use-toast";
+import type { OrderStatus } from "@/lib/types";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -13,14 +15,28 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
+  DropdownMenuPortal,
 } from "@/components/ui/dropdown-menu";
 
 interface RowActionsProps {
   orderId: string;
 }
 
+const orderStatuses: OrderStatus[] = ["تم الحجز", "تم الارسال", "تم التسليم", "ملغي", "مرتجع", "لم يرد"];
+
 export function RowActions({ orderId }: RowActionsProps) {
   const { language } = useLanguage();
+  const { toast } = useToast();
+
+  const handleStatusUpdate = (status: OrderStatus) => {
+    toast({
+      title: language === 'ar' ? 'تم تحديث الحالة' : 'Status Updated',
+      description: `${language === 'ar' ? 'تم تغيير حالة الطلب إلى' : 'Order status changed to'} ${status}`,
+    });
+  };
 
   return (
     <DropdownMenu>
@@ -39,7 +55,20 @@ export function RowActions({ orderId }: RowActionsProps) {
         <DropdownMenuItem asChild>
           <Link href={`/orders/${orderId}`}>{language === 'ar' ? 'عرض التفاصيل' : 'View details'}</Link>
         </DropdownMenuItem>
-        <DropdownMenuItem>{language === 'ar' ? 'تحديث الحالة' : 'Update status'}</DropdownMenuItem>
+        <DropdownMenuSub>
+          <DropdownMenuSubTrigger>
+            <span>{language === 'ar' ? 'تحديث الحالة' : 'Update status'}</span>
+          </DropdownMenuSubTrigger>
+          <DropdownMenuPortal>
+            <DropdownMenuSubContent>
+              {orderStatuses.map((status) => (
+                <DropdownMenuItem key={status} onClick={() => handleStatusUpdate(status)}>
+                  <span>{status}</span>
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuSubContent>
+          </DropdownMenuPortal>
+        </DropdownMenuSub>
         <DropdownMenuSeparator />
         <DropdownMenuItem className="text-destructive focus:text-destructive focus:bg-destructive/10">
           {language === 'ar' ? 'حذف الطلب' : 'Delete order'}

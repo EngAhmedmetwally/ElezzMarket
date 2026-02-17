@@ -8,9 +8,11 @@ import { useLanguage } from "@/components/language-provider";
 import { mockProducts } from "@/lib/data";
 import { Badge } from "@/components/ui/badge";
 import { ProductsStatusChart } from "../components/products-status-chart";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 export default function ProductsReportPage() {
   const { language } = useLanguage();
+  const isMobile = useIsMobile();
   
   const statusData = React.useMemo(() => {
     const active = mockProducts.filter(p => p.isActive).length;
@@ -20,6 +22,11 @@ export default function ProductsReportPage() {
         { name: language === 'ar' ? 'نفذ' : 'Out of Stock', value: inactive, fill: 'hsl(var(--chart-5))' }
     ];
   }, [language]);
+
+  const formatCurrency = (value: number) => new Intl.NumberFormat(language === 'ar' ? 'ar-EG' : 'en-US', {
+      style: "currency",
+      currency: "EGP",
+  }).format(value);
 
   return (
     <div className="space-y-8">
@@ -31,33 +38,48 @@ export default function ProductsReportPage() {
                 <CardTitle>{language === 'ar' ? 'قائمة المنتجات الحالية' : 'Current Product List'}</CardTitle>
                 </CardHeader>
                 <CardContent>
-                <Table>
-                    <TableHeader>
-                    <TableRow>
-                        <TableHead>{language === 'ar' ? 'المنتج' : 'Product'}</TableHead>
-                        <TableHead className="text-center">{language === 'ar' ? 'الحالة' : 'Status'}</TableHead>
-                        <TableHead className="text-end">{language === 'ar' ? 'السعر' : 'Price'}</TableHead>
-                    </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                    {mockProducts.map((product) => (
-                        <TableRow key={product.id}>
-                        <TableCell className="font-medium">{product.name}</TableCell>
-                        <TableCell className="text-center">
-                            <Badge variant={product.isActive ? "secondary" : "destructive"}>
-                            {product.isActive ? (language === 'ar' ? 'متوفر' : 'In Stock') : (language === 'ar' ? 'نفذ' : 'Out of Stock')}
-                            </Badge>
-                        </TableCell>
-                        <TableCell className="text-end">
-                            {new Intl.NumberFormat(language === 'ar' ? 'ar-EG' : 'en-US', {
-                            style: "currency",
-                            currency: "EGP",
-                            }).format(product.price)}
-                        </TableCell>
+                {isMobile ? (
+                    <div className="space-y-4">
+                        {mockProducts.map((product) => (
+                            <Card key={product.id}>
+                                <CardContent className="p-4 flex justify-between items-center">
+                                    <div className="flex-1">
+                                        <p className="font-medium">{product.name}</p>
+                                        <p className="text-sm text-muted-foreground">{formatCurrency(product.price)}</p>
+                                    </div>
+                                     <Badge variant={product.isActive ? "secondary" : "destructive"}>
+                                        {product.isActive ? (language === 'ar' ? 'متوفر' : 'In Stock') : (language === 'ar' ? 'نفذ' : 'Out of Stock')}
+                                    </Badge>
+                                </CardContent>
+                            </Card>
+                        ))}
+                    </div>
+                ) : (
+                    <Table>
+                        <TableHeader>
+                        <TableRow>
+                            <TableHead>{language === 'ar' ? 'المنتج' : 'Product'}</TableHead>
+                            <TableHead className="text-center">{language === 'ar' ? 'الحالة' : 'Status'}</TableHead>
+                            <TableHead className="text-end">{language === 'ar' ? 'السعر' : 'Price'}</TableHead>
                         </TableRow>
-                    ))}
-                    </TableBody>
-                </Table>
+                        </TableHeader>
+                        <TableBody>
+                        {mockProducts.map((product) => (
+                            <TableRow key={product.id}>
+                            <TableCell className="font-medium">{product.name}</TableCell>
+                            <TableCell className="text-center">
+                                <Badge variant={product.isActive ? "secondary" : "destructive"}>
+                                {product.isActive ? (language === 'ar' ? 'متوفر' : 'In Stock') : (language === 'ar' ? 'نفذ' : 'Out of Stock')}
+                                </Badge>
+                            </TableCell>
+                            <TableCell className="text-end">
+                                {formatCurrency(product.price)}
+                            </TableCell>
+                            </TableRow>
+                        ))}
+                        </TableBody>
+                    </Table>
+                )}
                 </CardContent>
             </Card>
         </div>
