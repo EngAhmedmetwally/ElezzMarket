@@ -32,14 +32,19 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import type { OrderStatus } from "@/lib/types";
+import type { Order, OrderStatus } from "@/lib/types";
+import { useIsMobile } from "@/hooks/use-mobile";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { StatusBadge } from "@/components/status-badge";
+import { RowActions } from "./row-actions";
 
-interface DataTableProps<TData, TValue> {
+
+interface DataTableProps<TData extends Order, TValue> {
   columns: ColumnDef<TData, TValue>[];
   data: TData[];
 }
 
-export function OrdersClient<TData, TValue>({
+export function OrdersClient<TData extends Order, TValue>({
   columns,
   data,
 }: DataTableProps<TData, TValue>) {
@@ -50,6 +55,7 @@ export function OrdersClient<TData, TValue>({
   const [globalFilter, setGlobalFilter] = React.useState("");
   const [rowSelection, setRowSelection] = React.useState({});
   const { language } = useLanguage();
+  const isMobile = useIsMobile();
 
   const table = useReactTable({
     data,
@@ -72,9 +78,8 @@ export function OrdersClient<TData, TValue>({
 
   const orderStatuses: OrderStatus[] = ["قيد الانتظار", "مؤكد", "قيد المعالجة", "تم الشحن", "تم التوصيل", "ملغي", "مرتجع", "لم يرد"];
 
-  return (
-    <div>
-      <div className="flex flex-wrap items-center gap-4 py-4">
+  const filters = (
+    <div className="flex flex-wrap items-center gap-4 py-4">
         <Input
           placeholder={language === 'ar' ? 'بحث (رقم طلب, عميل, هاتف)...' : 'Search (ID, customer, phone)...'}
           value={globalFilter ?? ""}
@@ -100,6 +105,87 @@ export function OrdersClient<TData, TValue>({
           </SelectContent>
         </Select>
       </div>
+  );
+
+  const pagination = (
+     <div className="flex items-center justify-end space-x-2 py-4">
+        <div className="flex-1 text-sm text-muted-foreground">
+          {language === 'ar' ? `تم تحديد ${table.getFilteredSelectedRowModel().rows.length} من ${table.getFilteredRowModel().rows.length} صف.` : `${table.getFilteredSelectedRowModel().rows.length} of ${table.getFilteredRowModel().rows.length} row(s) selected.`}
+        </div>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => table.previousPage()}
+          disabled={!table.getCanPreviousPage()}
+        >
+          {language === 'ar' ? 'السابق' : 'Previous'}
+        </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => table.nextPage()}
+          disabled={!table.getCanNextPage()}
+        >
+          {language === 'ar' ? 'التالي' : 'Next'}
+        </Button>
+      </div>
+  );
+
+  if (isMobile) {
+    return (
+      <div>
+        {filters}
+        <div className="space-y-4">
+          {table.getRowModel().rows?.length ? (
+            table.getRowModel().rows.map((row) => {
+              const selectCell = row.getVisibleCells().find(cell => cell.column.id === 'select');
+              return (
+                <Card key={row.id} data-state={row.getIsSelected() && "selected"} className="data-[state=selected]:bg-muted/50">
+                  <CardHeader className="p-4">
+                    <div className="flex items-center gap-4">
+                      {selectCell && flexRender(
+                          selectCell.column.columnDef.cell,
+                          selectCell.getContext()
+                      )}
+                      <div className="flex-1">
+                        <div className="font-bold">{row.original.id}</div>
+                        <div className="text-sm text-muted-foreground">{new Date(row.original.createdAt).toLocaleDateString(language === 'ar' ? 'ar-EG' : 'en-US')}</div>
+                      </div>
+                      <StatusBadge status={row.original.status} />
+                    </div>
+                  </CardHeader>
+                  <CardContent className="p-4 pt-0 space-y-4">
+                    <div>
+                      <div className="font-medium">{row.original.customerName}</div>
+                      <div className="text-sm text-muted-foreground">{row.original.customerPhone}</div>
+                    </div>
+                    <div className="flex justify-between items-end">
+                      <div>
+                        <div className="text-xs text-muted-foreground">{language === 'ar' ? 'الإجمالي' : 'Total'}</div>
+                        <div className="font-bold">
+                          {new Intl.NumberFormat(language === 'ar' ? 'ar-EG' : 'en-US', { style: 'currency', currency: 'EGP' }).format(row.original.total)}
+                        </div>
+                      </div>
+                      <RowActions orderId={row.original.id} />
+                    </div>
+                  </CardContent>
+                </Card>
+              )
+            })
+          ) : (
+            <div className="h-24 text-center flex items-center justify-center">
+              {language === 'ar' ? 'لا توجد نتائج.' : 'No results.'}
+            </div>
+          )}
+        </div>
+        {pagination}
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      {filters}
       <div className="rounded-md border">
         <Table>
           <TableHeader>
@@ -150,27 +236,7 @@ export function OrdersClient<TData, TValue>({
           </TableBody>
         </Table>
       </div>
-      <div className="flex items-center justify-end space-x-2 py-4">
-        <div className="flex-1 text-sm text-muted-foreground">
-          {language === 'ar' ? `تم تحديد ${table.getFilteredSelectedRowModel().rows.length} من ${table.getFilteredRowModel().rows.length} صف.` : `${table.getFilteredSelectedRowModel().rows.length} of ${table.getFilteredRowModel().rows.length} row(s) selected.`}
-        </div>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => table.previousPage()}
-          disabled={!table.getCanPreviousPage()}
-        >
-          {language === 'ar' ? 'السابق' : 'Previous'}
-        </Button>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => table.nextPage()}
-          disabled={!table.getCanNextPage()}
-        >
-          {language === 'ar' ? 'التالي' : 'Next'}
-        </Button>
-      </div>
+      {pagination}
     </div>
   );
 }
