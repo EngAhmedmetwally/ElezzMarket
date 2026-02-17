@@ -19,7 +19,7 @@ import { Separator } from "@/components/ui/separator";
 import { PlusCircle, Trash2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useLanguage } from "@/components/language-provider";
-import { mockProducts, mockCustomers } from "@/lib/data";
+import { mockOrders, mockProducts, mockCustomers } from "@/lib/data";
 import type { Customer } from "@/lib/types";
 import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
@@ -95,6 +95,19 @@ export function OrderForm({ onSuccess }: OrderFormProps) {
   }, [customerNameValue]);
 
   function onSubmit(data: OrderFormValues) {
+    if (mockOrders.some(order => order.id.toLowerCase() === data.id.toLowerCase())) {
+        form.setError("id", {
+            type: "manual",
+            message: language === 'ar' ? "رقم الطلب هذا موجود بالفعل." : "This Order ID already exists.",
+        });
+        toast({
+            variant: "destructive",
+            title: language === 'ar' ? 'خطأ في الإدخال' : "Input Error",
+            description: language === 'ar' ? "رقم الطلب هذا موجود بالفعل. يرجى إدخال رقم مختلف." : "This Order ID already exists. Please enter a different one.",
+        });
+        return;
+    }
+    
     console.log(data);
     toast({
       title: language === 'ar' ? "تم إنشاء الطلب" : "Order Created",
