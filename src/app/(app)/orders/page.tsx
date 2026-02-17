@@ -12,7 +12,6 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
   DialogDescription,
 } from "@/components/ui/dialog";
 import { OrderForm } from "./new/order-form";
@@ -20,11 +19,31 @@ import { useLanguage } from "@/components/language-provider";
 import { useToast } from "@/hooks/use-toast";
 import * as XLSX from "xlsx";
 import { saveAs } from "file-saver";
+import { DatePickerWithRange } from "@/components/date-range-picker";
+import type { DateRange } from "react-day-picker";
 
 export default function OrdersPage() {
   const [isNewOrderOpen, setIsNewOrderOpen] = React.useState(false);
   const { language } = useLanguage();
   const { toast } = useToast();
+  const [dateRange, setDateRange] = React.useState<DateRange | undefined>(undefined);
+
+  const filteredOrders = React.useMemo(() => {
+    if (!dateRange?.from) return mockOrders;
+    
+    const toDate = dateRange.to ? new Date(dateRange.to) : undefined;
+    if (toDate) {
+      toDate.setHours(23, 59, 59, 999);
+    }
+
+    return mockOrders.filter(order => {
+        const orderDate = new Date(order.createdAt);
+        if (dateRange.from && orderDate < dateRange.from) return false;
+        if (toDate && orderDate > toDate) return false;
+        return true;
+    });
+  }, [dateRange]);
+
 
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -123,7 +142,10 @@ export default function OrdersPage() {
         </Button>
 
       </PageHeader>
-      <OrdersClient data={mockOrders} columns={columns} />
+      <div className="mb-4">
+        <DatePickerWithRange date={dateRange} onDateChange={setDateRange} />
+      </div>
+      <OrdersClient data={filteredOrders} columns={columns} />
     </div>
   );
 }

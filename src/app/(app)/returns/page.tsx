@@ -8,7 +8,7 @@ import { useLanguage } from "@/components/language-provider";
 
 export default function ReturnsPage() {
   const { language } = useLanguage();
-  const returnOrders = mockOrders.filter(o => o.status === 'Returned' || o.status === 'No Answer');
+  const returnOrders = mockOrders.filter(o => o.status === 'مرتجع' || o.status === 'لم يرد');
   return (
     <div>
       <PageHeader title={language === 'ar' ? 'المرتجعات و لم يرد' : 'Returns & No Answers'} />

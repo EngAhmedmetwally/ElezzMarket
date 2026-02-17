@@ -52,7 +52,7 @@ export default function DashboardPage() {
         />
         <KpiCard
           title={language === 'ar' ? 'المستخدمون النشطون' : 'Active Users'}
-          value={`+${mockUsers.filter((u) => u.status === "Active").length}`}
+          value={`+${mockUsers.filter((u) => u.status === "نشط").length}`}
           icon={<Users className="h-4 w-4" />}
           description={language === 'ar' ? '+5 عن الشهر الماضي' : '+5 from last month'}
         />

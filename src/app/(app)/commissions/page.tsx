@@ -5,18 +5,9 @@ import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
 import * as z from "zod"
 import { format } from "date-fns"
-import { Calendar as CalendarIcon } from "lucide-react"
 import type { DateRange } from "react-day-picker"
 
-import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
-import { Calendar } from "@/components/ui/calendar"
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover"
-
 import { PageHeader } from "@/components/page-header";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
@@ -25,6 +16,7 @@ import { useToast } from "@/hooks/use-toast"
 import { useLanguage } from "@/components/language-provider"
 import { mockCommissionRules } from "@/lib/data"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { DatePickerWithRange } from "@/components/date-range-picker"
 
 const commissionFormSchema = z.object({
   sale: z.object({
@@ -52,65 +44,6 @@ const commissionFormSchema = z.object({
 
 type CommissionFormValues = z.infer<typeof commissionFormSchema>;
 
-function DatePickerWithRange({
-  field,
-  className,
-}: {
-  field: any
-  className?: string
-}) {
-  const { language } = useLanguage();
-  const [date, setDate] = React.useState<DateRange | undefined>({
-    from: field.value?.from,
-    to: field.value?.to,
-  })
-
-  React.useEffect(() => {
-    field.onChange(date)
-  }, [date, field])
-
-  return (
-    <div className={cn("grid gap-2", className)}>
-      <Popover>
-        <PopoverTrigger asChild>
-          <Button
-            id="date"
-            variant={"outline"}
-            className={cn(
-              "w-full md:w-[300px] justify-start text-left font-normal",
-              !date && "text-muted-foreground"
-            )}
-          >
-            <CalendarIcon className="mr-2 h-4 w-4" />
-            {date?.from ? (
-              date.to ? (
-                <>
-                  {format(date.from, "LLL dd, y")} -{" "}
-                  {format(date.to, "LLL dd, y")}
-                </>
-              ) : (
-                format(date.from, "LLL dd, y")
-              )
-            ) : (
-              <span>{language === 'ar' ? 'اختر تاريخ' : 'Pick a date'}</span>
-            )}
-          </Button>
-        </PopoverTrigger>
-        <PopoverContent className="w-auto p-0" align="start">
-          <Calendar
-            initialFocus
-            mode="range"
-            defaultMonth={date?.from}
-            selected={date}
-            onSelect={setDate}
-            numberOfMonths={2}
-          />
-        </PopoverContent>
-      </Popover>
-    </div>
-  )
-}
-
 function CommissionSection({ form, type, title, titleAr }: { form: any, type: "sale" | "delivery" | "return", title: string, titleAr: string }) {
   const { language } = useLanguage();
   
@@ -137,7 +70,7 @@ function CommissionSection({ form, type, title, titleAr }: { form: any, type: "s
           render={({ field }) => (
             <FormItem className="flex flex-col">
               <FormLabel>{language === 'ar' ? 'من تاريخ إلى تاريخ' : 'From Date to Date'}</FormLabel>
-               <DatePickerWithRange field={field} />
+               <DatePickerWithRange date={field.value} onDateChange={field.onChange} />
               <FormMessage />
             </FormItem>
           )}
@@ -206,7 +139,7 @@ export default function CommissionsPage() {
             <TableBody>
               {mockCommissionRules.map((rule) => (
                 <TableRow key={rule.id}>
-                  <TableCell>{language === 'ar' ? (rule.type === 'Sale' ? 'بيع' : rule.type === 'Delivery' ? 'تسليم' : 'إرجاع') : rule.type}</TableCell>
+                  <TableCell>{rule.type}</TableCell>
                   <TableCell>{rule.amount}</TableCell>
                   <TableCell>{format(new Date(rule.fromDate), "PPP")}</TableCell>
                   <TableCell>{format(new Date(rule.toDate), "PPP")}</TableCell>

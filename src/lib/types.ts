@@ -6,19 +6,19 @@ export type User = {
   email: string;
   role: UserRole;
   avatarUrl: string;
-  status: "Active" | "Disabled";
+  status: "نشط" | "معطل";
   createdAt: string;
 };
 
 export type OrderStatus =
-  | "Pending"
-  | "Confirmed"
-  | "Processing"
-  | "Shipped"
-  | "Delivered"
-  | "Cancelled"
-  | "Returned"
-  | "No Answer";
+  | "قيد الانتظار"
+  | "مؤكد"
+  | "قيد المعالجة"
+  | "تم الشحن"
+  | "تم التوصيل"
+  | "ملغي"
+  | "مرتجع"
+  | "لم يرد";
 
 export type OrderItem = {
   productName: string;
@@ -46,7 +46,7 @@ export type Order = {
 
 export type CommissionRule = {
   id: string;
-  type: 'Sale' | 'Delivery' | 'Return';
+  type: 'بيع' | 'تسليم' | 'إرجاع';
   amount: number;
   fromDate: string;
   toDate: string;
