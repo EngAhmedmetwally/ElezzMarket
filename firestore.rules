@@ -143,7 +143,7 @@ service cloud.firestore {
      */
     match /users/{userId} {
       allow get: if isOwner(userId) || isAdmin();
-      allow list: if isAdmin();
+      allow list: if isSignedIn();
       allow create: if isOwner(userId) && isNewUserDocValid(userId);
       allow update: if (isOwner(userId) || isAdmin()) && isExistingDoc() && isUserDocIdImmutable();
       allow delete: if (isOwner(userId) || isAdmin()) && isExistingDoc();
@@ -213,7 +213,7 @@ service cloud.firestore {
      * @principle Segregates duties by granting write access only to management roles.
      */
     match /customers/{customerId} {
-      allow get, list: if isAdmin() || isOperations() || isModerator();
+      allow get, list: if isSignedIn();
       allow create, update, delete: if isAdmin() || isOperations();
     }
 
@@ -225,7 +225,7 @@ service cloud.firestore {
      * @principle Segregates duties, allowing sales staff to view products but not manage the catalog.
      */
     match /products/{productId} {
-      allow get, list: if isAdmin() || isOperations() || isModerator();
+      allow get, list: if isSignedIn();
       allow create, update, delete: if isAdmin() || isOperations();
     }
 
@@ -238,7 +238,7 @@ service cloud.firestore {
      */
     match /orders/{orderId} {
       allow get: if isAdmin() || isOperations() || (isExistingDoc() && isOrderPersonnel(resource.data));
-      allow list: if isAdmin() || isOperations();
+      allow list: if isSignedIn();
       allow create: if isAdmin() || isOperations() || isModerator();
       allow update: if (isAdmin() || isOperations() || (isExistingDoc() && isOrderPersonnel(resource.data))) && isExistingDoc();
       allow delete: if (isAdmin() || isOperations()) && isExistingDoc();
@@ -282,7 +282,7 @@ service cloud.firestore {
      * @principle Protects sensitive business logic and financial rules from unauthorized changes.
      */
     match /commissionRules/{commissionRuleId} {
-      allow get, list: if isAdmin() || isOperations();
+      allow get, list: if isSignedIn();
       allow create, update, delete: if isAdmin() || isOperations();
     }
 
@@ -295,7 +295,7 @@ service cloud.firestore {
      */
     match /commissions/{commissionId} {
       allow get: if isAdmin() || isOperations() || (isExistingDoc() && isOwner(resource.data.userId));
-      allow list: if isAdmin() || isOperations();
+      allow list: if isSignedIn();
       allow create, update, delete: if isAdmin() || isOperations();
     }
 
@@ -308,7 +308,7 @@ service cloud.firestore {
      */
     match /monthlyCommissionSummaries/{monthlyCommissionSummaryId} {
       allow get: if isAdmin() || isOperations() || (isExistingDoc() && isOwner(resource.data.moderatorId));
-      allow list: if isAdmin() || isOperations();
+      allow list: if isSignedIn();
       allow create, update, delete: if isAdmin() || isOperations();
     }
   }

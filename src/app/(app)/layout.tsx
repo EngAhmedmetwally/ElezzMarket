@@ -30,8 +30,10 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import type { ReactNode } from "react";
+import React, { type ReactNode } from "react";
 import { useLanguage } from "@/components/language-provider";
+import { useAuth, useUser } from "@/firebase";
+import { initiateAnonymousSignIn } from "@/firebase/non-blocking-login";
 
 const navItems = [
   { href: "/dashboard", icon: LayoutDashboard, label: "Dashboard", arLabel: "لوحة التحكم" },
@@ -55,11 +57,33 @@ export default function AppLayout({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const { language, isRTL } = useLanguage();
   const side = isRTL ? 'right' : 'left';
+  
+  const auth = useAuth();
+  const { user, isUserLoading } = useUser();
+
+  React.useEffect(() => {
+    if (auth && !isUserLoading && !user) {
+      initiateAnonymousSignIn(auth);
+    }
+  }, [auth, isUserLoading, user]);
+
+  if (isUserLoading || !user) {
+    return (
+      <div className="flex h-screen w-screen items-center justify-center bg-background">
+        <div className="flex flex-col items-center gap-4">
+          <Rocket className="h-12 w-12 animate-pulse text-primary" />
+          <p className="text-muted-foreground">
+            {' '}
+            {language === 'ar' ? 'جاري المصادقة...' : 'Authenticating...'}{' '}
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <SidebarProvider side={side}>
       <Sidebar side={side} collapsible="icon">
-        <SidebarRail />
         <SidebarHeader className="p-4">
           <Link href="/" className="flex items-center gap-2">
             <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary text-primary-foreground">
