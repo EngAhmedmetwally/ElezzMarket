@@ -1,46 +1,45 @@
-
 {
   "rules": {
     "orders": {
       "$y": {
         "$m": {
           "$d": {
-            ".read": "auth != null",
-            ".write": "auth != null"
+            ".read": true,
+            ".write": true
           }
         }
       }
     },
     "order-lookup": {
-        ".read": "auth != null",
+        ".read": true,
         "$orderId": {
-            ".write": "auth != null"
+            ".write": true
         }
     },
     "customer-orders": {
-        ".read": "auth != null",
+        ".read": true,
         "$phone": {
             "$orderId": {
-                ".write": "auth != null"
+                ".write": true
             }
         }
     },
     "users": {
-        ".read": "auth != null",
-        ".write": "auth != null",
+        ".read": true,
+        ".write": true,
         ".indexOn": ["role", "username"]
     },
     "commission-rules": {
-      ".read": "auth != null",
-      ".write": "auth != null"
+      ".read": true,
+      ".write": true
     },
     "customers": {
-        ".read": "auth != null",
-        ".write": "auth != null"
+        ".read": true,
+        ".write": true
     },
     "products": {
-        ".read": "auth != null",
-        ".write": "auth != null"
+        ".read": true,
+        ".write": true
     }
   }
 }
