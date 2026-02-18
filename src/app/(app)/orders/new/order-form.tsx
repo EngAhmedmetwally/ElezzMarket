@@ -23,8 +23,8 @@ import { mockProducts, mockCustomers } from "@/lib/data";
 import type { Customer } from "@/lib/types";
 import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
-import { useFirestore, useUser, setDocumentNonBlocking } from "@/firebase";
-import { doc, getDoc, serverTimestamp } from "firebase/firestore";
+import { useDatabase, useUser, setDocumentNonBlocking } from "@/firebase";
+import { ref, get, serverTimestamp } from "firebase/database";
 
 const orderFormSchema = z.object({
   id: z.string().min(1, "رقم الطلب مطلوب"),
@@ -52,7 +52,7 @@ interface OrderFormProps {
 export function OrderForm({ onSuccess }: OrderFormProps) {
   const { toast } = useToast();
   const { language } = useLanguage();
-  const firestore = useFirestore();
+  const database = useDatabase();
   const { user } = useUser();
 
   const form = useForm<OrderFormValues>({
@@ -100,7 +100,7 @@ export function OrderForm({ onSuccess }: OrderFormProps) {
   }, [customerNameValue]);
 
   async function onSubmit(data: OrderFormValues) {
-    if (!firestore || !user) {
+    if (!database || !user) {
       toast({
         variant: "destructive",
         title: language === 'ar' ? 'خطأ' : 'Error',
@@ -109,10 +109,10 @@ export function OrderForm({ onSuccess }: OrderFormProps) {
       return;
     }
 
-    const orderRef = doc(firestore, 'orders', data.id);
+    const orderRef = ref(database, 'orders/' + data.id);
     
-    const docSnap = await getDoc(orderRef);
-    if (docSnap.exists()) {
+    const snapshot = await get(orderRef);
+    if (snapshot.exists()) {
         form.setError("id", {
             type: "manual",
             message: language === 'ar' ? "رقم الطلب هذا موجود بالفعل." : "This Order ID already exists.",
@@ -134,15 +134,15 @@ export function OrderForm({ onSuccess }: OrderFormProps) {
         items: data.items,
         total: total,
         status: "تم الحجز",
-        moderatorId: user.uid,
-        moderatorName: user.displayName || user.email || 'Unknown',
+        moderatorId: user.id,
+        moderatorName: user.name || user.email || 'Unknown',
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
         statusHistory: [
             {
                 status: 'تم الحجز',
                 createdAt: new Date().toISOString(),
-                userName: user.displayName || user.email || 'Unknown',
+                userName: user.name || user.email || 'Unknown',
             }
         ],
         salesCommission: 0,
@@ -150,7 +150,7 @@ export function OrderForm({ onSuccess }: OrderFormProps) {
     };
     
     // Use non-blocking write
-    setDocumentNonBlocking(orderRef, newOrder, {});
+    setDocumentNonBlocking(orderRef, newOrder);
 
     toast({
         title: language === 'ar' ? "تم إنشاء الطلب" : "Order Created",
