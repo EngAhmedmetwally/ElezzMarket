@@ -2,7 +2,6 @@
 "use client";
 
 import * as React from "react";
-import { mockOrders } from "@/lib/data";
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import { PlusCircle, Upload, Download, MoreHorizontal } from "lucide-react";
@@ -30,6 +29,10 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { useCollection, useFirestore, useMemoFirebase } from "@/firebase";
+import { collection, query, orderBy } from "firebase/firestore";
+import type { Order } from "@/lib/types";
+import { Skeleton } from "@/components/ui/skeleton";
 
 
 export default function OrdersPage() {
@@ -39,11 +42,29 @@ export default function OrdersPage() {
   const [version, setVersion] = React.useState(0);
   const [fromDate, setFromDate] = React.useState<Date | undefined>(undefined);
   const [toDate, setToDate] = React.useState<Date | undefined>(undefined);
+  const firestore = useFirestore();
 
   const columns = getOrderColumns(language, () => setVersion(v => v + 1));
 
+  const ordersQuery = useMemoFirebase(() => {
+    if (!firestore) return null;
+    return query(collection(firestore, "orders"), orderBy("createdAt", "desc"));
+  }, [firestore]);
+
+  const { data: ordersData, isLoading } = useCollection<any>(ordersQuery);
+
+  const orders: Order[] = React.useMemo(() => {
+    if (!ordersData) return [];
+    return ordersData.map((doc: any): Order => ({
+      ...doc,
+      id: doc.id,
+      createdAt: doc.createdAt?.toDate ? doc.createdAt.toDate().toISOString() : new Date().toISOString(),
+      updatedAt: doc.updatedAt?.toDate ? doc.updatedAt.toDate().toISOString() : new Date().toISOString(),
+    }));
+  }, [ordersData]);
+
   const filteredOrders = React.useMemo(() => {
-    return mockOrders.filter(order => {
+    return orders.filter(order => {
         const orderDate = new Date(order.createdAt);
         if (fromDate) {
             const fromDateStart = new Date(fromDate);
@@ -57,7 +78,7 @@ export default function OrdersPage() {
         }
         return true;
     });
-  }, [fromDate, toDate, version]);
+  }, [orders, fromDate, toDate, version]);
   
   const ordersByStatus = React.useMemo(() => {
     const statusCounts = filteredOrders.reduce((acc, order) => {
@@ -100,7 +121,7 @@ export default function OrdersPage() {
   };
 
   const handleFileDownload = () => {
-    const sheetData = mockOrders.map(order => ({
+    const sheetData = orders.map(order => ({
         'رقم الاوردر': order.id,
         'التاريخ': new Date(order.createdAt).toLocaleDateString('ar-EG'),
         'اسم العميل': order.customerName,
@@ -112,8 +133,8 @@ export default function OrdersPage() {
         'المودريتور': order.moderatorName,
         'حالة الاوردر': order.status,
         'التسليم': order.status,
-        'عمولة الحجز': 5, // Mock data
-        'عمولة التسليم': 5, // Mock data
+        'عمولة الحجز': order.salesCommission || 0,
+        'عمولة التسليم': order.deliveryCommission || 0,
     }));
 
     const worksheet = XLSX.utils.json_to_sheet(sheetData);
@@ -190,7 +211,25 @@ export default function OrdersPage() {
         </Card>
       </div>
 
-      <OrdersClient data={filteredOrders} columns={columns} onUpdate={() => setVersion(v => v + 1)} />
+      {isLoading ? (
+        <div className="space-y-4">
+            <div className="flex items-center py-4">
+                <Skeleton className="h-10 w-full max-w-sm" />
+                <Skeleton className="h-10 w-full max-w-xs ml-4" />
+            </div>
+            <div className="rounded-md border p-4">
+                <div className="space-y-3">
+                    <Skeleton className="h-12 w-full" />
+                    <Skeleton className="h-12 w-full" />
+                    <Skeleton className="h-12 w-full" />
+                    <Skeleton className="h-12 w-full" />
+                    <Skeleton className="h-12 w-full" />
+                </div>
+            </div>
+        </div>
+      ) : (
+        <OrdersClient data={filteredOrders} columns={columns} onUpdate={() => setVersion(v => v + 1)} />
+      )}
     </div>
   );
 }

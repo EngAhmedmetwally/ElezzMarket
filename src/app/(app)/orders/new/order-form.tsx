@@ -19,10 +19,12 @@ import { Separator } from "@/components/ui/separator";
 import { PlusCircle, Trash2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useLanguage } from "@/components/language-provider";
-import { mockOrders, mockProducts, mockCustomers } from "@/lib/data";
+import { mockProducts, mockCustomers } from "@/lib/data";
 import type { Customer } from "@/lib/types";
 import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
+import { useFirestore, useUser } from "@/firebase";
+import { doc, getDoc, setDoc, serverTimestamp } from "firebase/firestore";
 
 const orderFormSchema = z.object({
   id: z.string().min(1, "رقم الطلب مطلوب"),
@@ -50,6 +52,9 @@ interface OrderFormProps {
 export function OrderForm({ onSuccess }: OrderFormProps) {
   const { toast } = useToast();
   const { language } = useLanguage();
+  const firestore = useFirestore();
+  const { user } = useUser();
+
   const form = useForm<OrderFormValues>({
     resolver: zodResolver(orderFormSchema),
     defaultValues: {
@@ -94,8 +99,20 @@ export function OrderForm({ onSuccess }: OrderFormProps) {
       setCustomerSearch(customerNameValue);
   }, [customerNameValue]);
 
-  function onSubmit(data: OrderFormValues) {
-    if (mockOrders.some(order => order.id.toLowerCase() === data.id.toLowerCase())) {
+  async function onSubmit(data: OrderFormValues) {
+    if (!firestore || !user) {
+      toast({
+        variant: "destructive",
+        title: language === 'ar' ? 'خطأ' : 'Error',
+        description: language === 'ar' ? 'لا يمكن إنشاء الطلب. يرجى تسجيل الدخول أولاً.' : 'Cannot create order. Please sign in first.',
+      });
+      return;
+    }
+
+    const orderRef = doc(firestore, 'orders', data.id);
+    
+    const docSnap = await getDoc(orderRef);
+    if (docSnap.exists()) {
         form.setError("id", {
             type: "manual",
             message: language === 'ar' ? "رقم الطلب هذا موجود بالفعل." : "This Order ID already exists.",
@@ -108,13 +125,47 @@ export function OrderForm({ onSuccess }: OrderFormProps) {
         return;
     }
     
-    console.log(data);
-    toast({
-      title: language === 'ar' ? "تم إنشاء الطلب" : "Order Created",
-      description: language === 'ar' ? "تم إنشاء طلب جديد بنجاح." : "A new order has been successfully created.",
-    });
-    onSuccess?.();
-    form.reset();
+    const newOrder = {
+        id: data.id,
+        customerName: data.customerName,
+        customerPhone: data.customerPhone,
+        customerAddress: data.customerAddress,
+        zoning: data.zoning,
+        items: data.items,
+        total: total,
+        status: "تم الحجز",
+        moderatorId: user.uid,
+        moderatorName: user.displayName || user.email || 'Unknown',
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+        statusHistory: [
+            {
+                status: 'تم الحجز',
+                createdAt: new Date().toISOString(),
+                userName: user.displayName || user.email || 'Unknown',
+            }
+        ],
+        salesCommission: 0,
+        deliveryCommission: 0,
+    };
+
+    setDoc(orderRef, newOrder as any)
+      .then(() => {
+        toast({
+          title: language === 'ar' ? "تم إنشاء الطلب" : "Order Created",
+          description: language === 'ar' ? "تم إنشاء طلب جديد بنجاح." : "A new order has been successfully created.",
+        });
+        onSuccess?.();
+        form.reset();
+      })
+      .catch((error) => {
+        console.error("Error creating order: ", error);
+        toast({
+            variant: "destructive",
+            title: language === 'ar' ? 'خطأ' : 'Error',
+            description: language === 'ar' ? 'حدث خطأ أثناء إنشاء الطلب.' : 'An error occurred while creating the order.',
+        });
+      });
   }
 
   return (
