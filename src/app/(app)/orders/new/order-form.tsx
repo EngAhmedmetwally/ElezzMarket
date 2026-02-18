@@ -124,18 +124,18 @@ export function OrderForm({ onSuccess }: OrderFormProps) {
     const datePath = `${monthYear}/${day}`;
 
     const orderPath = `orders/${datePath}/${data.id}`;
-    const orderIdRef = ref(database, orderPath);
+    const orderIdRef = ref(database, `order-lookup/${data.id}`);
     const snapshot = await get(orderIdRef);
     
     if (snapshot.exists()) {
         form.setError("id", {
             type: "manual",
-            message: language === 'ar' ? "رقم الطلب هذا موجود بالفعل في هذا اليوم." : "This Order ID already exists for this day.",
+            message: language === 'ar' ? "رقم الطلب هذا موجود بالفعل." : "This Order ID already exists.",
         });
         toast({
             variant: "destructive",
             title: language === 'ar' ? 'خطأ في الإدخال' : "Input Error",
-            description: language === 'ar' ? "رقم الطلب هذا موجود بالفعل في هذا اليوم. يرجى إدخال رقم مختلف." : "This Order ID already exists for this day. Please enter a different one.",
+            description: language === 'ar' ? "رقم الطلب هذا موجود بالفعل. يرجى إدخال رقم مختلف." : "This Order ID already exists. Please enter a different one.",
         });
         return;
     }
@@ -151,8 +151,14 @@ export function OrderForm({ onSuccess }: OrderFormProps) {
             const existingProduct = allProducts.find(p => p.id === productId || p.name.toLowerCase() === item.productName.toLowerCase());
 
             if (existingProduct) {
+                // Product exists, run a transaction to update salesCount
                 productId = existingProduct.id;
+                const productSalesRef = ref(database, `products/${productId}/salesCount`);
+                await runTransaction(productSalesRef, (currentCount) => {
+                    return (currentCount || 0) + item.quantity;
+                });
             } else {
+                // Product is new, create it with the initial salesCount
                 const newProductRef = push(ref(database, 'products'));
                 productId = newProductRef.key!;
                 const newProduct: Omit<Product, 'id'> = {
@@ -161,7 +167,7 @@ export function OrderForm({ onSuccess }: OrderFormProps) {
                     isActive: true,
                     createdAt: new Date().toISOString(),
                     sku: `SKU-${Date.now()}-${Math.random().toString(36).substring(2, 7).toUpperCase()}`,
-                    salesCount: 0
+                    salesCount: item.quantity // Set initial sales count directly
                 };
                 updates[`products/${productId}`] = newProduct;
             }
@@ -170,12 +176,8 @@ export function OrderForm({ onSuccess }: OrderFormProps) {
                 throw new Error(`Could not determine product ID for ${item.productName}`);
             }
 
+            // `resolvedItems` is used to build the order object later
             resolvedItems.push({ ...item, productId });
-
-            const productSalesRef = ref(database, `products/${productId}/salesCount`);
-            await runTransaction(productSalesRef, (currentCount) => {
-                return (currentCount || 0) + item.quantity;
-            });
         }));
         
         const newOrder = {
