@@ -68,10 +68,11 @@ service cloud.firestore {
 
     /**
      * Checks if the requesting user has the 'Admin' role by seeing if a
-     * corresponding document exists in the /admins collection.
+     * corresponding document exists in the /admins collection, or if it is the
+     * emergency admin user.
      */
     function isAdmin() {
-      return isSignedIn() && exists(/databases/$(database)/documents/admins/$(request.auth.uid));
+      return isSignedIn() && (exists(/databases/$(database)/documents/admins/$(request.auth.uid)) || request.auth.token.email == 'emergency.admin@elezz.com');
     }
 
     /**
