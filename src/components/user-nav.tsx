@@ -2,6 +2,9 @@
 
 import { CreditCard, LogOut, Settings, User } from "lucide-react";
 import { useLanguage } from "./language-provider";
+import { useAuth } from "@/firebase";
+import { signOut } from "firebase/auth";
+import { useRouter } from "next/navigation";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -18,6 +21,14 @@ import {
 
 export function UserNav() {
   const { language } = useLanguage();
+  const auth = useAuth();
+  const router = useRouter();
+
+  const handleLogout = async () => {
+    await signOut(auth);
+    router.push('/');
+  }
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -56,7 +67,7 @@ export function UserNav() {
           </DropdownMenuItem>
         </DropdownMenuGroup>
         <DropdownMenuSeparator />
-        <DropdownMenuItem>
+        <DropdownMenuItem onSelect={handleLogout}>
           <LogOut className="me-2 h-4 w-4" />
           <span>{language === 'ar' ? 'تسجيل الخروج' : 'Log out'}</span>
           <DropdownMenuShortcut>⇧⌘Q</DropdownMenuShortcut>

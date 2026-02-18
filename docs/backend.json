@@ -598,8 +598,7 @@
   },
   "auth": {
     "providers": [
-      "password",
-      "anonymous"
+      "password"
     ]
   },
   "firestore": {
@@ -751,7 +750,7 @@
           "schema": {
             "$ref": "#/backend/entities/OrderFollowUp"
           },
-          "description": "Tracks follow-up notes and actions for specific orders. For Authorization Independence, each OrderFollowUp document MUST include denormalized 'orderModeratorId' and 'orderCourierId' copied from its associated Order. This allows access and QAPs based on the order's assigned personnel, alongside the 'userId' who made the note."
+          "description": "Tracks follow-up notes and actions for specific orders, particularly those with 'Returned' or 'No Answer' statuses. For Authorization Independence, each OrderFollowUp document MUST include denormalized 'orderModeratorId' and 'orderCourierId' copied from its associated Order. This allows access and QAPs based on the order's assigned personnel, alongside the 'userId' who made the note."
         }
       }
     ],

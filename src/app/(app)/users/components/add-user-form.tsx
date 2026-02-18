@@ -121,7 +121,7 @@ export function AddUserForm({ onSuccess, userToEdit }: AddUserFormProps) {
     } else {
         const userToCreate = {
           name: data.fullName,
-          email: `${data.username}@example.com`,
+          email: `${data.username}@elezz.com`,
           role: data.role,
           permissions: data.permissions,
         }

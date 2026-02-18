@@ -1,5 +1,3 @@
-
-
 "use client";
 
 import {
@@ -29,11 +27,10 @@ import {
   Users2,
 } from "lucide-react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import React, { type ReactNode } from "react";
 import { useLanguage } from "@/components/language-provider";
-import { useAuth, useUser } from "@/firebase";
-import { initiateAnonymousSignIn } from "@/firebase/non-blocking-login";
+import { useUser } from "@/firebase";
 
 const navItems = [
   { href: "/dashboard", icon: LayoutDashboard, label: "Dashboard", arLabel: "لوحة التحكم" },
@@ -56,17 +53,17 @@ const navItems = [
 
 export default function AppLayout({ children }: { children: ReactNode }) {
   const pathname = usePathname();
+  const router = useRouter();
   const { language, isRTL } = useLanguage();
   const side = isRTL ? 'right' : 'left';
   
-  const auth = useAuth();
   const { user, isUserLoading } = useUser();
 
   React.useEffect(() => {
-    if (auth && !isUserLoading && !user) {
-      initiateAnonymousSignIn(auth);
+    if (!isUserLoading && !user) {
+      router.replace('/');
     }
-  }, [auth, isUserLoading, user]);
+  }, [user, isUserLoading, router]);
 
   if (isUserLoading || !user) {
     return (
@@ -74,8 +71,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
         <div className="flex flex-col items-center gap-4">
           <Rocket className="h-12 w-12 animate-pulse text-primary" />
           <p className="text-muted-foreground">
-            {' '}
-            {language === 'ar' ? 'جاري المصادقة...' : 'Authenticating...'}{' '}
+            {language === 'ar' ? 'جاري التحقق...' : 'Verifying...'}
           </p>
         </div>
       </div>
