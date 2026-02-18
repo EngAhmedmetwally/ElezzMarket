@@ -1,4 +1,3 @@
-
 "use client";
 
 import * as React from "react";
@@ -147,39 +146,36 @@ export function OrderForm({ onSuccess }: OrderFormProps) {
     try {
         const resolvedItems: OrderItem[] = [];
 
-        await Promise.all(data.items.map(async (item) => {
+        for (const item of data.items) {
             let productId = item.productId;
             const existingProduct = allProducts.find(p => p.id === productId || p.name.toLowerCase() === item.productName.toLowerCase());
 
             if (existingProduct) {
-                // Product exists, run a transaction to update salesCount
                 productId = existingProduct.id;
                 const productSalesRef = ref(database, `products/${productId}/salesCount`);
                 await runTransaction(productSalesRef, (currentCount) => {
                     return (currentCount || 0) + item.quantity;
                 });
             } else {
-                // Product is new, create it with the initial salesCount
                 const newProductRef = push(ref(database, 'products'));
                 productId = newProductRef.key!;
-                const newProduct: Omit<Product, 'id' | 'salesCount'> & { salesCount: number, name: string} = {
+                const newProductData = {
                     name: item.productName,
                     price: item.price,
                     isActive: true,
                     createdAt: new Date().toISOString(),
                     sku: `SKU-${Date.now()}-${Math.random().toString(36).substring(2, 7).toUpperCase()}`,
-                    salesCount: item.quantity // Set initial sales count directly
+                    salesCount: item.quantity
                 };
-                updates[`products/${productId}`] = newProduct;
+                updates[`products/${productId}`] = newProductData;
             }
             
             if (!productId) {
                 throw new Error(`Could not determine product ID for ${item.productName}`);
             }
 
-            // `resolvedItems` is used to build the order object later
             resolvedItems.push({ ...item, productId });
-        }));
+        }
         
         const newOrder = {
             id: data.id,
@@ -206,7 +202,6 @@ export function OrderForm({ onSuccess }: OrderFormProps) {
         };
         updates[orderPath] = newOrder;
         
-        // Add to lookup tables
         updates[`order-lookup/${data.id}`] = { path: datePath };
         updates[`customer-orders/${data.customerPhone}/${data.id}`] = true;
 
