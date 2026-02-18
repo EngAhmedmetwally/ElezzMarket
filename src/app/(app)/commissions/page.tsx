@@ -6,6 +6,7 @@ import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
 import * as z from "zod"
 import { format } from "date-fns"
+import { ref } from "firebase/database"
 
 import { Button } from "@/components/ui/button"
 import { PageHeader } from "@/components/page-header";
@@ -14,10 +15,11 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast"
 import { useLanguage } from "@/components/language-provider"
-import { mockCommissionRules } from "@/lib/data"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { DatePicker } from "@/components/ui/datepicker"
 import { useIsMobile } from "@/hooks/use-mobile"
+import { useCollection, useDatabase, useMemoFirebase, setDocumentNonBlocking } from "@/firebase"
+import type { CommissionRule } from "@/lib/types"
 
 const commissionFormSchema = z.object({
   sale: z.object({
@@ -81,17 +83,61 @@ function CommissionSection({ form, type, title, titleAr }: { form: any, type: "s
   )
 }
 
-
 export default function CommissionsPage() {
   const { toast } = useToast()
   const { language } = useLanguage();
   const isMobile = useIsMobile();
+  const database = useDatabase();
+
+  const rulesQuery = useMemoFirebase(() => database ? ref(database, "commission-rules") : null, [database]);
+  const { data: commissionRules } = useCollection<CommissionRule>(rulesQuery);
+  
   const form = useForm<CommissionFormValues>({
     resolver: zodResolver(commissionFormSchema),
   });
 
+  React.useEffect(() => {
+    if (commissionRules) {
+      const saleRule = commissionRules.find(r => r.id === 'sale');
+      const deliveryRule = commissionRules.find(r => r.id === 'delivery');
+      
+      form.reset({
+        sale: {
+          amount: saleRule?.amount || 0,
+          fromDate: saleRule ? new Date(saleRule.fromDate) : new Date(),
+          toDate: saleRule ? new Date(saleRule.toDate) : new Date(),
+        },
+        delivery: {
+          amount: deliveryRule?.amount || 0,
+          fromDate: deliveryRule ? new Date(deliveryRule.fromDate) : new Date(),
+          toDate: deliveryRule ? new Date(deliveryRule.toDate) : new Date(),
+        },
+      });
+    }
+  }, [commissionRules, form]);
+
   function onSubmit(data: CommissionFormValues) {
-    console.log(data)
+    if (!database) return;
+
+    const saleRuleRef = ref(database, 'commission-rules/sale');
+    const deliveryRuleRef = ref(database, 'commission-rules/delivery');
+
+    const newSaleRule: Omit<CommissionRule, 'id'> = {
+      type: 'بيع',
+      amount: data.sale.amount,
+      fromDate: data.sale.fromDate.toISOString(),
+      toDate: data.sale.toDate.toISOString(),
+    };
+    const newDeliveryRule: Omit<CommissionRule, 'id'> = {
+      type: 'تسليم',
+      amount: data.delivery.amount,
+      fromDate: data.delivery.fromDate.toISOString(),
+      toDate: data.delivery.toDate.toISOString(),
+    };
+
+    setDocumentNonBlocking(saleRuleRef, newSaleRule);
+    setDocumentNonBlocking(deliveryRuleRef, newDeliveryRule);
+    
     toast({
       title: language === 'ar' ? 'تم تحديث العمولات' : "Commissions Updated",
       description: language === 'ar' ? 'تم حفظ قواعد العمولات بنجاح.' : "Commission rules have been saved successfully.",
@@ -132,7 +178,7 @@ export default function CommissionsPage() {
         <CardContent>
           {isMobile ? (
              <div className="space-y-4">
-                {mockCommissionRules.map((rule) => (
+                {commissionRules?.map((rule) => (
                     <Card key={rule.id}>
                         <CardHeader className="p-4">
                             <CardTitle className="text-lg">{rule.type}</CardTitle>
@@ -162,7 +208,7 @@ export default function CommissionsPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {mockCommissionRules.map((rule) => (
+                {commissionRules?.map((rule) => (
                   <TableRow key={rule.id}>
                     <TableCell className="font-medium text-start">{rule.type}</TableCell>
                     <TableCell className="text-end">{formatCurrency(rule.amount)}</TableCell>

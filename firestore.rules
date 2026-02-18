@@ -1,9 +1,20 @@
 {
   "rules": {
-    ".read": "auth != null",
-    ".write": "auth != null",
+    ".read": true,
+    ".write": true,
     "orders": {
-      ".indexOn": ["customerPhone", "createdAt"]
+      ".indexOn": [
+        "createdAt",
+        "customerPhone",
+        "status",
+        "moderatorId",
+        "courierId"
+      ]
+    },
+    "users": {
+      ".indexOn": [
+        "role"
+      ]
     }
   }
 }

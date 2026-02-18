@@ -12,12 +12,57 @@ import Link from "next/link";
 import { ArrowLeft, ArrowRight } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { CommissionChart } from "./components/commission-chart";
-import { mockOrders, mockUsers } from "@/lib/data";
+import { useCollection, useDatabase, useMemoFirebase } from "@/firebase";
+import type { Order, User } from "@/lib/types";
+import { Skeleton } from "@/components/ui/skeleton";
+import { ref } from "firebase/database";
 
+
+function ReportsSkeleton() {
+  return (
+    <div className="space-y-8">
+      <Skeleton className="h-[350px] w-full" />
+      <Card>
+        <CardHeader>
+           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+              <div>
+                  <Skeleton className="h-6 w-64 mb-2" />
+                  <Skeleton className="h-4 w-80" />
+              </div>
+              <div className="flex flex-col sm:flex-row items-center gap-2">
+                  <Skeleton className="h-10 w-full sm:w-40" />
+                  <Skeleton className="h-10 w-full sm:w-40" />
+                  <Skeleton className="h-10 w-full sm:w-28" />
+              </div>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            <Skeleton className="h-12 w-full" />
+            <Skeleton className="h-12 w-full" />
+            <Skeleton className="h-12 w-full" />
+          </div>
+        </CardContent>
+      </Card>
+       <Card>
+          <CardHeader>
+              <Skeleton className="h-6 w-48" />
+          </CardHeader>
+          <CardContent>
+              <div className="grid gap-4 md:grid-cols-2">
+                  <Skeleton className="h-36" />
+                  <Skeleton className="h-36" />
+              </div>
+          </CardContent>
+      </Card>
+    </div>
+  )
+}
 
 export default function ReportsPage() {
   const { language, isRTL } = useLanguage();
   const isMobile = useIsMobile();
+  const database = useDatabase();
     const [fromDate, setFromDate] = React.useState<Date | undefined>(
         new Date(new Date().getFullYear(), new Date().getMonth(), 1)
     );
@@ -26,8 +71,17 @@ export default function ReportsPage() {
     );
     const Arrow = isRTL ? ArrowLeft : ArrowRight;
 
+    const ordersQuery = useMemoFirebase(() => database ? ref(database, "orders") : null, [database]);
+    const { data: ordersData, isLoading: isLoadingOrders } = useCollection<Order>(ordersQuery);
+
+    const usersQuery = useMemoFirebase(() => database ? ref(database, "users") : null, [database]);
+    const { data: usersData, isLoading: isLoadingUsers } = useCollection<User>(usersQuery);
+
+
     const commissionReportData = React.useMemo(() => {
-    const filteredOrders = mockOrders.filter(order => {
+    if (!ordersData || !usersData) return [];
+
+    const filteredOrders = ordersData.filter(order => {
         const orderDate = new Date(order.createdAt);
         if (fromDate) {
             const fromDateStart = new Date(fromDate);
@@ -42,7 +96,7 @@ export default function ReportsPage() {
         return true;
     });
 
-    const moderators = mockUsers.filter(u => u.role === 'Moderator');
+    const moderators = usersData.filter(u => u.role === 'Moderator');
     
     return moderators.map(moderator => {
       const moderatorOrders = filteredOrders.filter(o => o.moderatorId === moderator.id);
@@ -65,12 +119,20 @@ export default function ReportsPage() {
         totalCommission,
       };
     }).filter(d => d.totalCommission > 0 || d.sales > 0);
-  }, [fromDate, toDate]);
+  }, [ordersData, usersData, fromDate, toDate]);
 
 
     const chartData = commissionReportData.map(d => ({ moderator: d.moderator, totalCommission: d.totalCommission }));
     const formatCurrency = (value: number) => new Intl.NumberFormat(language === 'ar' ? 'ar-EG' : 'en-US', { style: 'currency', currency: 'EGP' }).format(value);
 
+    if (isLoadingOrders || isLoadingUsers) {
+      return (
+        <div>
+          <PageHeader title={language === 'ar' ? 'التقارير' : 'Reports'} />
+          <ReportsSkeleton />
+        </div>
+      )
+    }
 
   return (
     <div>
@@ -87,7 +149,6 @@ export default function ReportsPage() {
                 <div className="flex flex-col sm:flex-row items-center gap-2">
                     <DatePicker date={fromDate} onDateChange={setFromDate} placeholder={language === 'ar' ? 'من تاريخ' : 'From Date'} />
                     <DatePicker date={toDate} onDateChange={setToDate} placeholder={language === 'ar' ? 'إلى تاريخ' : 'To Date'} />
-                    <Button className="w-full sm:w-auto">{language === 'ar' ? 'إنشاء تقرير' : 'Generate Report'}</Button>
                 </div>
             </div>
           </CardHeader>

@@ -1,3 +1,4 @@
+
 "use client";
 
 import * as React from "react";
@@ -12,32 +13,59 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { mockOrders, mockUsers } from "@/lib/data";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useLanguage } from "@/components/language-provider";
 import { DatePicker } from "@/components/ui/datepicker";
+import { useCollection, useDatabase, useMemoFirebase } from "@/firebase";
+import { ref, query } from "firebase/database";
+import type { Order, User } from "@/lib/types";
+import { Skeleton } from "@/components/ui/skeleton";
+
+function DashboardSkeleton() {
+  const { language } = useLanguage();
+  return (
+    <div>
+      <PageHeader title={language === 'ar' ? 'لوحة التحكم' : 'Dashboard'} />
+      <div className="flex items-center gap-4 mb-8">
+        <Skeleton className="h-10 w-40" />
+        <Skeleton className="h-10 w-40" />
+      </div>
+       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 mb-8">
+         <Skeleton className="h-28" />
+         <Skeleton className="h-28" />
+         <Skeleton className="h-28" />
+         <Skeleton className="h-28" />
+       </div>
+       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div className="lg:col-span-2">
+            <Skeleton className="h-[350px]" />
+        </div>
+        <div>
+            <Skeleton className="h-[350px]" />
+        </div>
+         <div className="lg:col-span-3">
+            <Skeleton className="h-[400px]" />
+        </div>
+       </div>
+    </div>
+  )
+}
 
 export default function DashboardPage() {
   const { language } = useLanguage();
   const [fromDate, setFromDate] = React.useState<Date | undefined>(undefined);
   const [toDate, setToDate] = React.useState<Date | undefined>(undefined);
+  const database = useDatabase();
 
-  // State for top moderators to avoid hydration issues
-  const [topModeratorsWithSales, setTopModeratorsWithSales] = React.useState<any[]>([]);
+  const ordersQuery = useMemoFirebase(() => database ? query(ref(database, "orders")) : null, [database]);
+  const { data: ordersData, isLoading: isLoadingOrders } = useCollection<Order>(ordersQuery);
 
-  React.useEffect(() => {
-    const topModerators = mockUsers
-      .filter((u) => u.role === "Moderator")
-      .slice(0, 5)
-      .map(user => ({
-          ...user,
-          sales: Math.floor(Math.random() * 5000 + 1000)
-      }));
-    setTopModeratorsWithSales(topModerators);
-  }, []); // Run only on client-side after mount
+  const usersQuery = useMemoFirebase(() => database ? query(ref(database, "users")) : null, [database]);
+  const { data: usersData, isLoading: isLoadingUsers } = useCollection<User>(usersQuery);
 
   const filteredOrders = React.useMemo(() => {
-    return mockOrders.filter(order => {
+    if (!ordersData) return [];
+    return ordersData.filter(order => {
         const orderDate = new Date(order.createdAt);
         if (fromDate) {
             const fromDateStart = new Date(fromDate);
@@ -51,11 +79,12 @@ export default function DashboardPage() {
         }
         return true;
     });
-  }, [fromDate, toDate]);
+  }, [ordersData, fromDate, toDate]);
 
   const totalSales = filteredOrders.reduce((acc, order) => acc + order.total, 0);
   const totalOrders = filteredOrders.length;
   const avgOrderValue = totalOrders > 0 ? totalSales / totalOrders : 0;
+  const activeUsersCount = usersData ? usersData.filter(u => u.status === 'نشط').length : 0;
 
   const ordersByStatus = React.useMemo(() => {
     const statusCounts = filteredOrders.reduce((acc, order) => {
@@ -76,6 +105,31 @@ export default function DashboardPage() {
       return Array.from(salesMap, ([month, sales]) => ({ month, sales }));
   }, [filteredOrders, language]);
 
+  const topModerators = React.useMemo(() => {
+    if (!usersData || !ordersData) return [];
+    
+    const moderators = usersData.filter(u => u.role === 'Moderator');
+    
+    return moderators.map(moderator => {
+      const moderatorSales = filteredOrders
+        .filter(o => o.moderatorId === moderator.id)
+        .reduce((acc, order) => acc + order.total, 0);
+      
+      return {
+        ...moderator,
+        sales: moderatorSales
+      };
+    })
+    .filter(m => m.sales > 0)
+    .sort((a, b) => b.sales - a.sales)
+    .slice(0, 5);
+
+  }, [usersData, filteredOrders]);
+
+  if (isLoadingOrders || isLoadingUsers) {
+    return <DashboardSkeleton />;
+  }
+
   return (
     <div>
       <PageHeader title={language === 'ar' ? 'لوحة التحكم' : 'Dashboard'} />
@@ -90,13 +144,11 @@ export default function DashboardPage() {
           title={language === 'ar' ? 'إجمالي الإيرادات' : 'Total Revenue'}
           value={`EGP ${totalSales.toLocaleString()}`}
           icon={<DollarSign className="h-4 w-4" />}
-          description={language === 'ar' ? '+20.1% عن الشهر الماضي' : '+20.1% from last month'}
         />
         <KpiCard
           title={language === 'ar' ? 'الطلبات' : 'Orders'}
           value={`+${totalOrders}`}
           icon={<Package className="h-4 w-4" />}
-          description={language === 'ar' ? '+180.1% عن الشهر الماضي' : '+180.1% from last month'}
         />
         <KpiCard
           title={language === 'ar' ? 'متوسط قيمة الطلب' : 'Avg. Order Value'}
@@ -105,13 +157,11 @@ export default function DashboardPage() {
             maximumFractionDigits: 2,
           })}`}
           icon={<BarChart className="h-4 w-4" />}
-          description={language === 'ar' ? '+19% عن الشهر الماضي' : '+19% from last month'}
         />
         <KpiCard
           title={language === 'ar' ? 'المستخدمون النشطون' : 'Active Users'}
-          value={`+${mockUsers.filter((u) => u.status === "نشط").length}`}
+          value={`+${activeUsersCount}`}
           icon={<Users className="h-4 w-4" />}
-          description={language === 'ar' ? '+5 عن الشهر الماضي' : '+5 from last month'}
         />
       </div>
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -128,7 +178,7 @@ export default function DashboardPage() {
             </CardHeader>
             <CardContent>
               <div className="space-y-8">
-                {topModeratorsWithSales.length > 0 ? topModeratorsWithSales.map((user) => (
+                {topModerators.length > 0 ? topModerators.map((user) => (
                   <div key={user.id} className="flex items-center">
                     <Avatar className="h-9 w-9">
                       <AvatarImage src={user.avatarUrl} alt="Avatar" data-ai-hint="avatar" />
@@ -149,7 +199,7 @@ export default function DashboardPage() {
                     </div>
                   </div>
                 )) : (
-                  <p className="text-sm text-muted-foreground">{language === 'ar' ? 'جاري تحميل بيانات الوسطاء...' : 'Loading moderators data...'}</p>
+                  <p className="text-sm text-muted-foreground">{language === 'ar' ? 'لا توجد بيانات مبيعات لعرضها.' : 'No sales data to display.'}</p>
                 )}
               </div>
             </CardContent>

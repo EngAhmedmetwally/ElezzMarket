@@ -6,9 +6,9 @@ import { MoreHorizontal, Search } from "lucide-react";
 import Link from "next/link";
 import { useLanguage } from "@/components/language-provider";
 import { useToast } from "@/hooks/use-toast";
-import type { Order, OrderStatus, User, StatusHistoryItem } from "@/lib/types";
-import { mockUsers, mockOrders, mockCommissionRules } from "@/lib/data";
+import type { Order, OrderStatus, User, StatusHistoryItem, CommissionRule } from "@/lib/types";
 import { cn } from "@/lib/utils";
+import { ref, update } from "firebase/database";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -25,7 +25,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-
+import { useDatabase, useCollection, useMemoFirebase, useUser as useAuthUser } from "@/firebase";
 
 interface RowActionsProps {
   order: Order;
@@ -42,22 +42,28 @@ const allowedTransitions: Record<OrderStatus, OrderStatus[]> = {
 export function RowActions({ order, onUpdate }: RowActionsProps) {
   const { language } = useLanguage();
   const { toast } = useToast();
+  const database = useDatabase();
+  const { user: authUser } = useAuthUser();
 
   const [isModalOpen, setIsModalOpen] = React.useState(false);
   
-  // State for the modal form
   const [selectedStatus, setSelectedStatus] = React.useState<OrderStatus | undefined>(undefined);
   const [note, setNote] = React.useState("");
   const [courierSearch, setCourierSearch] = React.useState("");
   const [selectedCourierId, setSelectedCourierId] = React.useState<string | null>(order.courierId ?? null);
   
-  const [couriers] = React.useState<User[]>(() => mockUsers.filter(u => u.role === 'Courier'));
+  const usersRef = useMemoFirebase(() => database ? ref(database, `users`) : null, [database]);
+  const { data: users } = useCollection<User>(usersRef);
+  
+  const rulesRef = useMemoFirebase(() => database ? ref(database, `commission-rules`) : null, [database]);
+  const { data: commissionRules } = useCollection<CommissionRule>(rulesRef);
+
+  const couriers = React.useMemo(() => users?.filter(u => u.role === 'Courier') || [], [users]);
   const filteredCouriers = couriers.filter(c => c.name.toLowerCase().includes(courierSearch.toLowerCase()));
   
   const availableStatuses = allowedTransitions[order.status] || [];
 
   const handleOpenModal = () => {
-    // Reset state when opening
     setSelectedStatus(undefined);
     setSelectedCourierId(order.courierId ?? null);
     setNote("");
@@ -65,14 +71,10 @@ export function RowActions({ order, onUpdate }: RowActionsProps) {
     setIsModalOpen(true);
   };
   
-  const handleSaveStatusChange = () => {
-    const orderIndex = mockOrders.findIndex(o => o.id === order.id);
-    if (orderIndex === -1) {
-        toast({ variant: "destructive", title: "Error", description: "Order not found." });
-        return;
-    }
-    const currentOrder = mockOrders[orderIndex];
+  const handleSaveStatusChange = async () => {
+    if (!database || !authUser) return;
 
+    const orderRef = ref(database, `orders/${order.id}`);
     const selectedCourier = couriers.find(c => c.id === selectedCourierId);
 
     if (!selectedStatus) {
@@ -93,39 +95,40 @@ export function RowActions({ order, onUpdate }: RowActionsProps) {
       return;
     }
     
-    let salesComm = currentOrder.salesCommission || 0;
-    let deliveryComm = currentOrder.deliveryCommission || 0;
+    let salesComm = order.salesCommission || 0;
+    let deliveryComm = order.deliveryCommission || 0;
 
-    if (selectedStatus === 'تم الارسال') {
-        const salesCommissionRule = mockCommissionRules.find(r => r.type === 'بيع');
+    if (selectedStatus === 'تم الارسال' && commissionRules) {
+        const salesCommissionRule = commissionRules.find(r => r.id === 'sale');
         salesComm = salesCommissionRule?.amount || 0;
-    } else if (selectedStatus === 'تم التسليم') {
-        const deliveryCommissionRule = mockCommissionRules.find(r => r.type === 'تسليم');
+    } else if (selectedStatus === 'تم التسليم' && commissionRules) {
+        const deliveryCommissionRule = commissionRules.find(r => r.id === 'delivery');
         deliveryComm = deliveryCommissionRule?.amount || 0;
     } else if (selectedStatus === 'ملغي') {
         salesComm = 0;
         deliveryComm = 0;
     }
+    
+    const currentHistory = order.statusHistory ? Object.values(order.statusHistory) : [];
 
     const newHistoryItem: StatusHistoryItem = {
         status: selectedStatus,
         notes: note,
         createdAt: new Date().toISOString(),
-        userName: "مستخدم مسؤول", // Hardcoded user
+        userName: authUser.name || "مستخدم مسؤول",
     };
 
-    const updatedOrder: Order = {
-        ...currentOrder,
+    const updates: Partial<Order> = {
         status: selectedStatus,
-        courierId: selectedCourier?.id ?? currentOrder.courierId,
-        courierName: selectedCourier?.name ?? currentOrder.courierName,
+        courierId: selectedCourier?.id ?? order.courierId,
+        courierName: selectedCourier?.name ?? order.courierName,
         salesCommission: salesComm,
         deliveryCommission: deliveryComm,
-        statusHistory: [newHistoryItem, ...currentOrder.statusHistory],
+        statusHistory: [...currentHistory, newHistoryItem],
         updatedAt: new Date().toISOString(),
     };
     
-    mockOrders[orderIndex] = updatedOrder;
+    await update(orderRef, updates);
     onUpdate();
     
     toast({

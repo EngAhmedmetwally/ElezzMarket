@@ -1,5 +1,8 @@
 
-import type { User, Order, CommissionRule, Product, OrderStatus, StatusHistoryItem, Customer } from './types';
+import type { User, Order, CommissionRule, Product, Customer } from './types';
+
+// This mock data is kept for reference but is no longer used by most application pages.
+// Pages now fetch live data from the Firebase Realtime Database.
 
 export const mockUsers: User[] = [
   { id: 'usr_1', name: 'مستخدم مسؤول', email: 'admin@elezz.com', role: 'Admin', avatarUrl: '/avatars/01.png', status: 'نشط', createdAt: '2023-10-01', orderVisibility: 'all' },
@@ -9,184 +12,11 @@ export const mockUsers: User[] = [
   { id: 'usr_6', name: 'ليلى مصطفى', email: 'layla.mustafa@elezz.com', role: 'Courier', avatarUrl: '/avatars/06.png', status: 'معطل', createdAt: '2023-10-03', orderVisibility: 'own' },
 ];
 
-export const mockOrders: Order[] = [
-  { 
-    id: 'ORD-001', 
-    customerName: 'خالد الفارسي', 
-    customerPhone: '01012345678', 
-    customerAddress: '123 شارع النصر، القاهرة', 
-    zoning: 'القاهرة', 
-    status: 'تم التسليم', 
-    items: [{ productName: 'ماوس لاسلكي', quantity: 1, price: 350 }, { productName: 'لوحة مفاتيح ميكانيكية', quantity: 1, price: 600 }], 
-    total: 950,
-    salesCommission: 5,
-    deliveryCommission: 5,
-    moderatorId: 'usr_3', 
-    moderatorName: 'علي حسن', 
-    courierId: 'usr_5', 
-    courierName: 'عمر إبراهيم', 
-    createdAt: '2023-10-25T10:00:00Z', 
-    updatedAt: '2023-10-26T15:30:00Z',
-    statusHistory: [
-        { status: 'تم التسليم', createdAt: '2023-10-26T15:30:00Z', notes: 'تم التسليم بنجاح.', userName: 'عمر إبراهيم' },
-        { status: 'تم الارسال', createdAt: '2023-10-26T12:00:00Z', notes: 'تم التسليم للمندوب عمر.', userName: 'علي حسن' },
-        { status: 'تم الحجز', createdAt: '2023-10-25T10:00:00Z', notes: 'تم استلام الطلب من العميل.', userName: 'علي حسن' },
-    ]
-  },
-  { 
-    id: 'ORD-002', 
-    customerName: 'نادية السيد', 
-    customerPhone: '01123456789', 
-    customerAddress: '456 شارع التحرير، الجيزة', 
-    zoning: 'الجيزة', 
-    status: 'تم الارسال', 
-    items: [{ productName: 'شاشة 27 بوصة', quantity: 1, price: 4500 }], 
-    total: 4500,
-    salesCommission: 5,
-    deliveryCommission: 0, 
-    moderatorId: 'usr_4', 
-    moderatorName: 'فاطمة أحمد', 
-    courierId: 'usr_5', 
-    courierName: 'عمر إبراهيم', 
-    createdAt: '2023-10-25T11:30:00Z', 
-    updatedAt: '2023-10-25T18:00:00Z',
-    statusHistory: [
-        { status: 'تم الارسال', createdAt: '2023-10-25T18:00:00Z', userName: 'فاطمة أحمد' },
-        { status: 'تم الحجز', createdAt: '2023-10-25T11:30:00Z', notes: 'العميل طلب توصيل سريع.', userName: 'فاطمة أحمد' },
-    ]
-  },
-  { 
-    id: 'ORD-003', 
-    customerName: 'يوسف منصور', 
-    customerPhone: '01234567890', 
-    customerAddress: '789 شارع عباس، الإسكندرية', 
-    zoning: 'الإسكندرية', 
-    status: 'تم الحجز', 
-    items: [{ productName: 'حامل لابتوب ألومنيوم', quantity: 2, price: 400 }], 
-    total: 800,
-    salesCommission: 0,
-    deliveryCommission: 0,
-    moderatorId: 'usr_3', 
-    moderatorName: 'علي حسن', 
-    createdAt: '2023-10-26T09:00:00Z', 
-    updatedAt: '2023-10-26T11:00:00Z',
-    statusHistory: [
-        { status: 'تم الحجز', createdAt: '2023-10-26T09:00:00Z', userName: 'علي حسن' },
-    ]
-  },
-  { 
-    id: 'ORD-004', 
-    customerName: 'عائشة عبدالله', 
-    customerPhone: '01543210987', 
-    customerAddress: '101 طريق الكورنيش، الإسكندرية', 
-    zoning: 'الإسكندرية', 
-    status: 'تم الحجز', 
-    items: [{ productName: 'موزع USB-C', quantity: 1, price: 750 }], 
-    total: 750, 
-    salesCommission: 0,
-    deliveryCommission: 0,
-    moderatorId: 'usr_4', 
-    moderatorName: 'فاطمة أحمد', 
-    createdAt: '2023-10-27T14:00:00Z', 
-    updatedAt: '2023-10-27T14:00:00Z',
-    statusHistory: [
-        { status: 'تم الحجز', createdAt: '2023-10-27T14:00:00Z', notes: 'في انتظار تأكيد المخزون.', userName: 'فاطمة أحمد' },
-    ]
-  },
-  { 
-    id: 'ORD-005', 
-    customerName: 'محمد صلاح', 
-    customerPhone: '01098765432', 
-    customerAddress: '21 شارع جمال عبد الناصر، الجيزة', 
-    zoning: 'الجيزة', 
-    status: 'ملغي', 
-    items: [{ productName: 'كاميرا ويب 4K', quantity: 1, price: 1200 }], 
-    total: 1200,
-    salesCommission: 0,
-    deliveryCommission: 0,
-    moderatorId: 'usr_3', 
-    moderatorName: 'علي حسن', 
-    createdAt: '2023-10-24T16:00:00Z', 
-    updatedAt: '2023-10-25T09:00:00Z',
-    statusHistory: [
-        { status: 'ملغي', createdAt: '2023-10-25T09:00:00Z', notes: 'العميل ألغى الطلب.', userName: 'علي حسن' },
-        { status: 'تم الحجز', createdAt: '2023-10-24T16:00:00Z', userName: 'علي حسن' },
-    ]
-  },
-  { 
-    id: 'ORD-006', 
-    customerName: 'هناء عادل', 
-    customerPhone: '01187654321', 
-    customerAddress: '32 طريق صلاح سالم، القاهرة', 
-    zoning: 'القاهرة', 
-    status: 'ملغي', 
-    items: [{ productName: 'هارد SSD خارجي 1 تيرابايت', quantity: 1, price: 2500 }], 
-    total: 2500,
-    salesCommission: 0, 
-    deliveryCommission: 0,
-    moderatorId: 'usr_4', 
-    moderatorName: 'فاطمة أحمد', 
-    courierId: 'usr_6', 
-    courierName: 'ليلى مصطفى', 
-    createdAt: '2023-10-22T12:00:00Z', 
-    updatedAt: '2023-10-24T13:00:00Z',
-    statusHistory: [
-        { status: 'ملغي', createdAt: '2023-10-24T13:00:00Z', notes: 'المنتج لم يعجب العميل.', userName: 'ليلى مصطفى' },
-        { status: 'تم الارسال', createdAt: '2023-10-23T10:00:00Z', userName: 'فاطمة أحمد' },
-        { status: 'تم الحجز', createdAt: '2023-10-22T12:00:00Z', userName: 'فاطمة أحمد' },
-    ]
-  },
-  { 
-    id: 'ORD-007', 
-    customerName: 'سامي محمود', 
-    customerPhone: '01276543210', 
-    customerAddress: '55 شارع الحجاز، القاهرة', 
-    zoning: 'القاهرة', 
-    status: 'ملغي', 
-    items: [{ productName: 'سماعة ألعاب لاسلكية', quantity: 1, price: 1800 }], 
-    total: 1800,
-    salesCommission: 0, 
-    deliveryCommission: 0,
-    moderatorId: 'usr_3', 
-    moderatorName: 'علي حسن', 
-    courierId: 'usr_5', 
-    courierName: 'عمر إبراهيم', 
-    createdAt: '2023-10-23T10:00:00Z', 
-    updatedAt: '2023-10-24T11:00:00Z',
-    statusHistory: [
-        { status: 'ملغي', createdAt: '2023-10-24T11:00:00Z', notes: 'العميل لم يرد على الهاتف.', userName: 'عمر إبراهيم' },
-        { status: 'تم الارسال', createdAt: '2023-10-24T10:00:00Z', userName: 'علي حسن' },
-        { status: 'تم الحجز', createdAt: '2023-10-23T10:00:00Z', userName: 'علي حسن' },
-    ]
-  },
-  { 
-    id: 'ORD-008', 
-    customerName: 'ريم طارق', 
-    customerPhone: '01065432109', 
-    customerAddress: '88 شارع فيصل، الجيزة', 
-    zoning: 'الجيزة', 
-    status: 'تم التسليم', 
-    items: [{ productName: 'كرسي مكتب مريح', quantity: 1, price: 6000 }], 
-    total: 6000,
-    salesCommission: 5,
-    deliveryCommission: 5,
-    moderatorId: 'usr_4', 
-    moderatorName: 'فاطمة أحمد', 
-    courierId: 'usr_6', 
-    courierName: 'ليلى مصطفى', 
-    createdAt: '2023-10-21T15:00:00Z', 
-    updatedAt: '2023-10-22T18:00:00Z',
-    statusHistory: [
-        { status: 'تم التسليم', createdAt: '2023-10-22T18:00:00Z', userName: 'ليلى مصطفى' },
-        { status: 'تم الارسال', createdAt: '2023-10-22T10:00:00Z', userName: 'فاطمة أحمد' },
-        { status: 'تم الحجز', createdAt: '2023-10-21T15:00:00Z', userName: 'فاطمة أحمد' },
-    ]
-  }
-];
+export const mockOrders: Order[] = [];
 
 export const mockCommissionRules: CommissionRule[] = [
-    { id: 'cr_1', type: 'بيع', amount: 5, fromDate: '2024-01-01', toDate: '2024-12-31' },
-    { id: 'cr_2', type: 'تسليم', amount: 5, fromDate: '2024-01-01', toDate: '2024-12-31' },
+    { id: 'sale', type: 'بيع', amount: 5, fromDate: '2024-01-01', toDate: '2024-12-31' },
+    { id: 'delivery', type: 'تسليم', amount: 5, fromDate: '2024-01-01', toDate: '2024-12-31' },
 ];
 
 export const mockProducts: Product[] = [
@@ -201,15 +31,4 @@ export const mockProducts: Product[] = [
   { id: 'prod_9', name: 'كرسي مكتب مريح', price: 6000, sku: 'CH-ERG-01', isActive: true, createdAt: '2023-06-15' },
 ];
 
-const uniqueCustomers = new Map<string, Customer>();
-mockOrders.forEach(order => {
-    if (!uniqueCustomers.has(order.customerPhone)) {
-        uniqueCustomers.set(order.customerPhone, {
-            customerName: order.customerName,
-            customerPhone: order.customerPhone,
-            customerAddress: order.customerAddress,
-            zoning: order.zoning,
-        });
-    }
-});
-export const mockCustomers: Customer[] = Array.from(uniqueCustomers.values());
+export const mockCustomers: Customer[] = [];

@@ -3,7 +3,6 @@
 
 import * as React from "react";
 import { useParams } from "next/navigation";
-import { mockOrders, mockUsers, mockCommissionRules } from "@/lib/data";
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -11,7 +10,7 @@ import { Separator } from "@/components/ui/separator";
 import { StatusBadge } from "@/components/status-badge";
 import { Printer, Search } from "lucide-react";
 import { useLanguage } from "@/components/language-provider";
-import type { Order, OrderStatus, StatusHistoryItem, User } from "@/lib/types";
+import type { Order, OrderStatus, StatusHistoryItem, User, CommissionRule } from "@/lib/types";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
@@ -22,6 +21,9 @@ import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
+import { useDoc, useCollection, useDatabase, useMemoFirebase, useUser as useAuthUser } from "@/firebase";
+import { ref, update } from "firebase/database";
+import { Skeleton } from "@/components/ui/skeleton";
 
 const allowedTransitions: Record<OrderStatus, OrderStatus[]> = {
     "تم الحجز": ["تم الارسال", "ملغي"],
@@ -30,65 +32,91 @@ const allowedTransitions: Record<OrderStatus, OrderStatus[]> = {
     "ملغي": [],
 };
 
-function StatusHistoryTimeline({ history }: { history: StatusHistoryItem[] }) {
+function StatusHistoryTimeline({ history }: { history?: StatusHistoryItem[] }) {
     const { language } = useLanguage();
+    const sortedHistory = React.useMemo(() => history ? [...history].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()) : [], [history]);
+    
     return (
         <Card>
             <CardHeader>
                 <CardTitle>{language === 'ar' ? 'سجل حالات الطلب' : 'Order Status History'}</CardTitle>
             </CardHeader>
             <CardContent>
-                <div className="space-y-4">
-                    {history.map((item, index) => (
-                        <div key={index} className="flex gap-4">
-                            <div className="flex flex-col items-center">
-                                <div className="w-4 h-4 rounded-full bg-primary mt-1"></div>
-                                {index < history.length - 1 && <div className="flex-1 w-0.5 bg-border"></div>}
-                            </div>
-                            <div>
-                                <div className="flex items-center gap-2 flex-wrap">
-                                    <StatusBadge status={item.status} />
-                                    <span className="font-medium">{item.userName}</span>
-                                    <span className="text-xs text-muted-foreground">
-                                        {format(new Date(item.createdAt), "PPP p")}
-                                    </span>
+                 {sortedHistory.length > 0 ? (
+                    <div className="space-y-4">
+                        {sortedHistory.map((item, index) => (
+                            <div key={index} className="flex gap-4">
+                                <div className="flex flex-col items-center">
+                                    <div className="w-4 h-4 rounded-full bg-primary mt-1"></div>
+                                    {index < sortedHistory.length - 1 && <div className="flex-1 w-0.5 bg-border"></div>}
                                 </div>
-                                {item.notes && <p className="text-sm text-muted-foreground mt-1">{item.notes}</p>}
+                                <div>
+                                    <div className="flex items-center gap-2 flex-wrap">
+                                        <StatusBadge status={item.status} />
+                                        <span className="font-medium">{item.userName}</span>
+                                        <span className="text-xs text-muted-foreground">
+                                            {format(new Date(item.createdAt), "PPP p")}
+                                        </span>
+                                    </div>
+                                    {item.notes && <p className="text-sm text-muted-foreground mt-1">{item.notes}</p>}
+                                </div>
                             </div>
-                        </div>
-                    ))}
-                </div>
+                        ))}
+                    </div>
+                ) : (
+                    <p className="text-sm text-muted-foreground">{language === 'ar' ? 'لا يوجد سجل لعرضه.' : 'No history to display.'}</p>
+                )}
             </CardContent>
         </Card>
     )
 }
+
+function OrderDetailsSkeleton() {
+    return (
+        <div>
+            <PageHeader title="..." />
+            <div className="grid md:grid-cols-3 gap-8">
+                <div className="md:col-span-2 space-y-8">
+                    <Skeleton className="h-64" />
+                    <Skeleton className="h-48" />
+                </div>
+                <div className="space-y-8">
+                    <Skeleton className="h-32" />
+                    <Skeleton className="h-48" />
+                    <Skeleton className="h-32" />
+                </div>
+            </div>
+        </div>
+    )
+}
+
 
 export default function OrderDetailsPage() {
   const params = useParams();
   const id = typeof params.id === 'string' ? params.id : '';
   const { language } = useLanguage();
   const { toast } = useToast();
+  const database = useDatabase();
+  const { user: authUser } = useAuthUser();
   
-  const orderData = React.useMemo(() => {
-    if (!id) return undefined;
-    return mockOrders.find(o => o.id.toLowerCase() === id.toLowerCase());
-  }, [id]);
+  const orderRef = useMemoFirebase(() => (database && id) ? ref(database, `orders/${id}`) : null, [database, id]);
+  const { data: order, isLoading: isLoadingOrder } = useDoc<Order>(orderRef);
+
+  const usersRef = useMemoFirebase(() => database ? ref(database, `users`) : null, [database]);
+  const { data: users, isLoading: isLoadingUsers } = useCollection<User>(usersRef);
   
-  const [order, setOrder] = React.useState<Order | undefined>(orderData);
+  const rulesRef = useMemoFirebase(() => database ? ref(database, `commission-rules`) : null, [database]);
+  const { data: commissionRules, isLoading: isLoadingRules } = useCollection<CommissionRule>(rulesRef);
+
   const [isNoteModalOpen, setIsNoteModalOpen] = React.useState(false);
   const [isCourierModalOpen, setIsCourierModalOpen] = React.useState(false);
 
   const [note, setNote] = React.useState("");
   const [selectedStatus, setSelectedStatus] = React.useState<OrderStatus | null>(null);
   
-  const [couriers] = React.useState<User[]>(() => mockUsers.filter(u => u.role === 'Courier'));
+  const couriers = React.useMemo(() => users?.filter(u => u.role === 'Courier') || [], [users]);
   const [courierSearch, setCourierSearch] = React.useState("");
   const [selectedCourierId, setSelectedCourierId] = React.useState<string | null>(null);
-
-  React.useEffect(() => {
-    const updatedOrder = mockOrders.find(o => o.id.toLowerCase() === id.toLowerCase());
-    setOrder(updatedOrder);
-  }, [id]);
 
   const filteredCouriers = couriers.filter(c => c.name.toLowerCase().includes(courierSearch.toLowerCase()));
 
@@ -103,94 +131,84 @@ export default function OrderDetailsPage() {
     }
   };
 
-  const updateOrderInMockData = (updatedOrder: Order) => {
-    const orderIndex = mockOrders.findIndex(o => o.id === updatedOrder.id);
-    if (orderIndex !== -1) {
-        mockOrders[orderIndex] = updatedOrder;
-    }
-  }
-
-  const handleSaveStatusChange = () => {
-    if (order && selectedStatus) {
+  const handleSaveStatusChange = async () => {
+    if (order && selectedStatus && database && authUser) {
       const newHistoryItem: StatusHistoryItem = {
         status: selectedStatus,
         notes: note,
         createdAt: new Date().toISOString(),
-        userName: "مستخدم مسؤول", // Hardcoded current user
+        userName: authUser.name || "مستخدم مسؤول",
       };
       
       let salesComm = order.salesCommission || 0;
       let deliveryComm = order.deliveryCommission || 0;
 
-      if (selectedStatus === 'تم التسليم') {
-          const deliveryCommissionRule = mockCommissionRules.find(r => r.type === 'تسليم');
+      if (selectedStatus === 'تم التسليم' && commissionRules) {
+          const deliveryCommissionRule = commissionRules.find(r => r.id === 'delivery');
           deliveryComm = deliveryCommissionRule?.amount || 0;
       } else if (selectedStatus === 'ملغي') {
           salesComm = 0;
           deliveryComm = 0;
       }
+      
+      const currentHistory = order.statusHistory ? Object.values(order.statusHistory) : [];
 
-      const updatedOrder: Order = {
-        ...order,
+      const updates: Partial<Order> = {
         status: selectedStatus,
         salesCommission: salesComm,
         deliveryCommission: deliveryComm,
-        statusHistory: [newHistoryItem, ...order.statusHistory],
+        statusHistory: [...currentHistory, newHistoryItem],
         updatedAt: new Date().toISOString(),
       };
-
-      setOrder(updatedOrder);
-      updateOrderInMockData(updatedOrder);
+      
+      await update(orderRef, updates);
 
       toast({
         title: language === 'ar' ? 'تم تحديث الحالة' : 'Status Updated',
         description: `${language === 'ar' ? 'تم تحديث حالة الطلب إلى' : 'Order status updated to'} ${selectedStatus}.`,
       });
       
-      // Reset
       setIsNoteModalOpen(false);
       setNote("");
       setSelectedStatus(null);
     }
   };
 
-  const handleAssignCourierAndSave = () => {
+  const handleAssignCourierAndSave = async () => {
     const selectedCourier = couriers.find(c => c.id === selectedCourierId);
-    if (order && selectedStatus && selectedCourier) {
+    if (order && selectedStatus && selectedCourier && database && authUser) {
       const newHistoryItem: StatusHistoryItem = {
         status: selectedStatus,
         notes: note,
         createdAt: new Date().toISOString(),
-        userName: "مستخدم مسؤول", // Hardcoded current user
+        userName: authUser.name || "مستخدم مسؤول",
       };
 
       let salesComm = order.salesCommission || 0;
 
-      if (selectedStatus === 'تم الارسال') {
-        const salesCommissionRule = mockCommissionRules.find(r => r.type === 'بيع');
+      if (selectedStatus === 'تم الارسال' && commissionRules) {
+        const salesCommissionRule = commissionRules.find(r => r.id === 'sale');
         salesComm = salesCommissionRule?.amount || 0;
       }
       
-      const updatedOrder: Order = {
-        ...order,
+      const currentHistory = order.statusHistory ? Object.values(order.statusHistory) : [];
+
+      const updates: Partial<Order> = {
         status: selectedStatus,
         courierId: selectedCourier.id,
         courierName: selectedCourier.name,
         salesCommission: salesComm,
-        statusHistory: [newHistoryItem, ...order.statusHistory],
+        statusHistory: [...currentHistory, newHistoryItem],
         updatedAt: new Date().toISOString(),
       };
 
-      setOrder(updatedOrder);
-      updateOrderInMockData(updatedOrder);
-
+      await update(orderRef, updates);
 
       toast({
         title: language === 'ar' ? 'تم تحديث الحالة' : 'Status Updated',
         description: `${language === 'ar' ? `تم إسناد الطلب إلى المندوب ${selectedCourier.name}` : `Order assigned to courier ${selectedCourier.name}`}.`,
       });
       
-      // Reset
       setIsCourierModalOpen(false);
       setNote("");
       setSelectedStatus(null);
@@ -204,6 +222,12 @@ export default function OrderDetailsPage() {
       });
     }
   }
+  
+  const isLoading = isLoadingOrder || isLoadingUsers || isLoadingRules;
+
+  if (isLoading) {
+    return <OrderDetailsSkeleton />;
+  }
 
   if (!order) {
     return (
@@ -215,6 +239,8 @@ export default function OrderDetailsPage() {
   }
 
   const availableStatuses = allowedTransitions[order.status] || [];
+  const orderItems = order.items ? (Array.isArray(order.items) ? order.items : Object.values(order.items)) : [];
+
 
   return (
     <>
@@ -243,7 +269,7 @@ export default function OrderDetailsPage() {
                               </TableRow>
                           </TableHeader>
                           <TableBody>
-                              {order.items.map((item, index) => (
+                              {orderItems.map((item, index) => (
                                   <TableRow key={index}>
                                       <TableCell className="font-medium text-start">{item.productName}</TableCell>
                                       <TableCell className="text-center">{item.quantity}</TableCell>
@@ -260,7 +286,7 @@ export default function OrderDetailsPage() {
                       </div>
                   </CardContent>
              </Card>
-             <StatusHistoryTimeline history={order.statusHistory} />
+             <StatusHistoryTimeline history={order.statusHistory ? Object.values(order.statusHistory) : []} />
           </div>
           <div className="space-y-8">
               <Card>

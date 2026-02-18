@@ -6,21 +6,72 @@ import { PageHeader } from "@/components/page-header";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useLanguage } from "@/components/language-provider";
-import { mockOrders, mockUsers } from "@/lib/data";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Progress } from "@/components/ui/progress";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { StaffPerformanceChart } from "../components/staff-performance-chart";
 import { DatePicker } from "@/components/ui/datepicker";
+import { useCollection, useDatabase, useMemoFirebase } from "@/firebase";
+import type { Order, User } from "@/lib/types";
+import { ref } from "firebase/database";
+import { Skeleton } from "@/components/ui/skeleton";
+
+
+function StaffReportSkeleton() {
+  return (
+    <div className="space-y-8">
+      <div className="flex items-center gap-4">
+        <Skeleton className="h-10 w-40" />
+        <Skeleton className="h-10 w-40" />
+      </div>
+      <Skeleton className="h-[350px] w-full" />
+      <Card>
+        <CardHeader>
+          <Skeleton className="h-6 w-48 mb-2" />
+          <Skeleton className="h-4 w-64" />
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            <Skeleton className="h-12 w-full" />
+            <Skeleton className="h-12 w-full" />
+            <Skeleton className="h-12 w-full" />
+          </div>
+        </CardContent>
+      </Card>
+       <Skeleton className="h-[350px] w-full" />
+      <Card>
+        <CardHeader>
+          <Skeleton className="h-6 w-48 mb-2" />
+          <Skeleton className="h-4 w-64" />
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            <Skeleton className="h-12 w-full" />
+            <Skeleton className="h-12 w-full" />
+            <Skeleton className="h-12 w-full" />
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  )
+}
 
 export default function StaffReportPage() {
   const { language } = useLanguage();
   const isMobile = useIsMobile();
+  const database = useDatabase();
   const [fromDate, setFromDate] = React.useState<Date | undefined>(undefined);
   const [toDate, setToDate] = React.useState<Date | undefined>(undefined);
+  
+  const ordersQuery = useMemoFirebase(() => database ? ref(database, "orders") : null, [database]);
+  const { data: ordersData, isLoading: isLoadingOrders } = useCollection<Order>(ordersQuery);
+
+  const usersQuery = useMemoFirebase(() => database ? ref(database, "users") : null, [database]);
+  const { data: usersData, isLoading: isLoadingUsers } = useCollection<User>(usersQuery);
 
   const filteredOrders = React.useMemo(() => {
-    return mockOrders.filter(order => {
+    if (!ordersData) return [];
+    return ordersData.filter(order => {
         const orderDate = new Date(order.createdAt);
         if (fromDate) {
             const fromDateStart = new Date(fromDate);
@@ -34,10 +85,11 @@ export default function StaffReportPage() {
         }
         return true;
     });
-  }, [fromDate, toDate]);
+  }, [ordersData, fromDate, toDate]);
 
   const moderatorsReport = React.useMemo(() => {
-    const moderators = mockUsers.filter(u => u.role === "Moderator");
+    if (!usersData) return [];
+    const moderators = usersData.filter(u => u.role === "Moderator");
     return moderators.map(mod => {
       const processedOrders = filteredOrders.filter(o => o.moderatorId === mod.id).length;
       return {
@@ -45,13 +97,14 @@ export default function StaffReportPage() {
         processedOrders,
       };
     });
-  }, [filteredOrders]);
+  }, [usersData, filteredOrders]);
 
   const couriersReport = React.useMemo(() => {
-    const couriers = mockUsers.filter(u => u.role === "Courier");
+    if (!usersData) return [];
+    const couriers = usersData.filter(u => u.role === "Courier");
     return couriers.map(cour => {
       const assignedOrders = filteredOrders.filter(o => o.courierId === cour.id);
-      const delivered = assignedOrders.filter(o => o.status === "تم التسليم").length;
+      const delivered = assignedOrders.filter(o => o.status === "تم التسليم" && o.courierId === cour.id).length;
       const cancelled = assignedOrders.filter(o => o.status === 'ملغي' && o.courierId === cour.id).length;
       const totalAttempted = delivered + cancelled;
       const completionRate = totalAttempted > 0 ? (delivered / totalAttempted) * 100 : 0;
@@ -64,11 +117,21 @@ export default function StaffReportPage() {
         completionRate,
       };
     });
-  }, [filteredOrders]);
+  }, [usersData, filteredOrders]);
   
   const moderatorsChartData = moderatorsReport.map(m => ({ name: m.name, value: m.processedOrders }));
   const couriersChartData = couriersReport.map(c => ({ name: c.name, value: c.completionRate }));
 
+  const isLoading = isLoadingOrders || isLoadingUsers;
+
+  if (isLoading) {
+    return (
+      <div>
+        <PageHeader title={language === 'ar' ? 'تقرير الموظفين' : 'Staff Report'} />
+        <StaffReportSkeleton />
+      </div>
+    )
+  }
 
   return (
     <div>

@@ -5,19 +5,57 @@ import { PageHeader } from "@/components/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useLanguage } from "@/components/language-provider";
-import { mockOrders } from "@/lib/data";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { StaffPerformanceChart } from "../components/staff-performance-chart";
 import { Progress } from "@/components/ui/progress";
+import { useCollection, useDatabase, useMemoFirebase } from "@/firebase";
+import { ref } from "firebase/database";
+import type { Order } from "@/lib/types";
+import { Skeleton } from "@/components/ui/skeleton";
+
+function ProductsReportSkeleton() {
+  return (
+    <div className="space-y-8">
+      <div className="grid lg:grid-cols-3 gap-8">
+        <div className="lg:col-span-3">
+          <Skeleton className="h-[350px] w-full" />
+        </div>
+        <div className="lg:col-span-3">
+          <Card>
+            <CardHeader>
+              <Skeleton className="h-6 w-72" />
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <Skeleton className="h-16 w-full" />
+                <Skeleton className="h-16 w-full" />
+                <Skeleton className="h-16 w-full" />
+                <Skeleton className="h-16 w-full" />
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 
 export default function ProductsReportPage() {
   const { language } = useLanguage();
   const isMobile = useIsMobile();
+  const database = useDatabase();
+
+  const ordersQuery = useMemoFirebase(() => database ? ref(database, 'orders') : null, [database]);
+  const { data: ordersData, isLoading } = useCollection<Order>(ordersQuery);
 
   const productsSales = React.useMemo(() => {
+    if (!ordersData) return [];
+    
     const sales: Record<string, number> = {};
-    mockOrders.forEach(order => {
-        order.items.forEach(item => {
+    ordersData.forEach(order => {
+        const items = order.items ? (Array.isArray(order.items) ? order.items : Object.values(order.items)) : [];
+        items.forEach(item => {
             sales[item.productName] = (sales[item.productName] || 0) + item.quantity;
         });
     });
@@ -32,9 +70,18 @@ export default function ProductsReportPage() {
         ...item, 
         percentage: totalSoldCount > 0 ? (item.count / totalSoldCount) * 100 : 0 
     }));
-  }, []);
+  }, [ordersData]);
 
   const topProductsChartData = productsSales.slice(0, 10).reverse().map(p => ({ name: p.name, value: p.count }));
+
+  if (isLoading) {
+    return (
+      <div className="space-y-8">
+        <PageHeader title={language === 'ar' ? 'تقرير المنتجات' : 'Products Report'} />
+        <ProductsReportSkeleton />
+      </div>
+    )
+  }
 
   return (
     <div className="space-y-8">
