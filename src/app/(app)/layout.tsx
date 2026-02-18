@@ -26,6 +26,7 @@ import {
   BadgePercent,
   Rocket,
   Users2,
+  CalendarDays,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
@@ -48,6 +49,7 @@ const navItems = [
       { href: "/reports", label: "Commissions", arLabel: "العمولات" },
       { href: "/reports/products", label: "Products", arLabel: "المنتجات" },
       { href: "/reports/staff", label: "Staff", arLabel: "الموظفون" },
+      { href: "/reports/daily", icon: CalendarDays, label: "Daily", arLabel: "اليومي" },
     ],
   },
 ];
