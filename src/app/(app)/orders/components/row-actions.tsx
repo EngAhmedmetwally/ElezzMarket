@@ -90,6 +90,16 @@ export function RowActions({ order, onUpdate }: RowActionsProps) {
         return;
     }
     
+    if (!order.path) {
+        console.error("Order path is missing, cannot update status.", order);
+        toast({
+            variant: "destructive",
+            title: language === 'ar' ? 'خطأ في التحديث' : "Update Error",
+            description: language === 'ar' ? 'مسار الطلب مفقود، لا يمكن تحديث الحالة.' : "Order path is missing, cannot update status.",
+        });
+        return;
+    }
+    
     if (selectedStatus === 'ملغي' && order.status !== 'ملغي') {
         const productSaleUpdatePromises = (order.items || []).map(item => {
             if (!item.productId) {
@@ -115,7 +125,7 @@ export function RowActions({ order, onUpdate }: RowActionsProps) {
         }
     }
 
-    const orderRef = ref(database, `orders/${order.id}`);
+    const orderRef = ref(database, `orders/${order.path}/${order.id}`);
 
     const selectedCourier = couriers.find(c => c.id === selectedCourierId);
 

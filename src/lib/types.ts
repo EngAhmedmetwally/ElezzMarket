@@ -38,6 +38,7 @@ export type StatusHistoryItem = {
 
 export type Order = {
   id: string;
+  path?: string;
   customerName: string;
   customerPhone: string;
   customerAddress: string;

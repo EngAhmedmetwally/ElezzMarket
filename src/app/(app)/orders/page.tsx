@@ -62,7 +62,8 @@ export default function OrdersPage() {
                 Object.keys(ordersByDay).forEach(day => {
                     const orders = ordersByDay[day];
                     Object.keys(orders).forEach(orderId => {
-                        fetchedOrders.push({ ...orders[orderId], id: orderId });
+                        const path = `${monthYear}/${day}`;
+                        fetchedOrders.push({ ...orders[orderId], id: orderId, path });
                     });
                 });
             });
