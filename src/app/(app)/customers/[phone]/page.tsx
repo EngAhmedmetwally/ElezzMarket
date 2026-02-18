@@ -5,8 +5,8 @@ import * as React from "react";
 import { useParams, useRouter } from "next/navigation";
 import { PageHeader } from "@/components/page-header";
 import { useLanguage } from "@/components/language-provider";
-import { useCollection, useFirestore, useMemoFirebase } from "@/firebase";
-import { collection, query, where } from "firebase/firestore";
+import { useCollection, useDatabase, useMemoFirebase } from "@/firebase";
+import { ref, query, orderByChild, equalTo } from "firebase/database";
 import type { Order } from "@/lib/types";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -19,13 +19,13 @@ export default function CustomerDetailsPage() {
   const router = useRouter();
   const phone = typeof params.phone === 'string' ? params.phone : '';
   const { language } = useLanguage();
-  const firestore = useFirestore();
+  const database = useDatabase();
 
   // Query for orders with the specific customer phone number
   const customerOrdersQuery = useMemoFirebase(() => {
-    if (!firestore || !phone) return null;
-    return query(collection(firestore, "orders"), where("customerPhone", "==", phone));
-  }, [firestore, phone]);
+    if (!database || !phone) return null;
+    return query(ref(database, "orders"), orderByChild("customerPhone"), equalTo(phone));
+  }, [database, phone]);
 
   const { data: ordersData, isLoading } = useCollection<any>(customerOrdersQuery);
   
@@ -34,8 +34,8 @@ export default function CustomerDetailsPage() {
     return ordersData.map((doc: any): Order => ({
       ...doc,
       id: doc.id,
-      createdAt: doc.createdAt?.toDate ? doc.createdAt.toDate().toISOString() : new Date().toISOString(),
-      updatedAt: doc.updatedAt?.toDate ? doc.updatedAt.toDate().toISOString() : new Date().toISOString(),
+      createdAt: doc.createdAt ? new Date(doc.createdAt).toISOString() : new Date().toISOString(),
+      updatedAt: doc.updatedAt ? new Date(doc.updatedAt).toISOString() : new Date().toISOString(),
     }));
   }, [ordersData]);
 
@@ -70,12 +70,10 @@ export default function CustomerDetailsPage() {
       </div>
     );
   }
-
-  // The request asked for delivery date and time.
-  // I will use `updatedAt` for "تم التسليم" status.
+  
   const getDeliveryTime = (order: Order) => {
-    if (order.status === 'تم التسليم') {
-      const deliveredHistory = order.statusHistory.find(h => h.status === 'تم التسليم');
+    if (order.status === 'تم التسليم' && order.statusHistory) {
+      const deliveredHistory = Object.values(order.statusHistory).find(h => h.status === 'تم التسليم');
       if (deliveredHistory) {
         return format(new Date(deliveredHistory.createdAt), "PPP p");
       }

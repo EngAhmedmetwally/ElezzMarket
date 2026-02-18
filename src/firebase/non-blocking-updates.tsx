@@ -1,89 +1,58 @@
 'use client';
     
 import {
-  setDoc,
-  addDoc,
-  updateDoc,
-  deleteDoc,
-  CollectionReference,
-  DocumentReference,
-  SetOptions,
-} from 'firebase/firestore';
-import { errorEmitter } from '@/firebase/error-emitter';
-import {FirestorePermissionError} from '@/firebase/errors';
+  set,
+  push,
+  update,
+  remove,
+  DatabaseReference,
+} from 'firebase/database';
 
 /**
- * Initiates a setDoc operation for a document reference.
+ * Initiates a set operation for a database reference.
  * Does NOT await the write operation internally.
  */
-export function setDocumentNonBlocking(docRef: DocumentReference, data: any, options: SetOptions) {
-  setDoc(docRef, data, options).catch(error => {
-    errorEmitter.emit(
-      'permission-error',
-      new FirestorePermissionError({
-        path: docRef.path,
-        operation: 'write', // or 'create'/'update' based on options
-        requestResourceData: data,
-      })
-    )
-  })
+export function setDocumentNonBlocking(dbRef: DatabaseReference, data: any) {
+  set(dbRef, data).catch(error => {
+    console.error("RTDB Set Error: ", error);
+    // Not using the custom error emitter here as it was Firestore-specific.
+    // A more robust RTDB error handler could be implemented.
+  });
   // Execution continues immediately
 }
 
-
 /**
- * Initiates an addDoc operation for a collection reference.
+ * Initiates a push operation to generate a new key, followed by a set.
  * Does NOT await the write operation internally.
- * Returns the Promise for the new doc ref, but typically not awaited by caller.
+ * Returns the new reference, which can be used to get the key.
  */
-export function addDocumentNonBlocking(colRef: CollectionReference, data: any) {
-  const promise = addDoc(colRef, data)
+export function addDocumentNonBlocking(colRef: DatabaseReference, data: any) {
+  const newDocRef = push(colRef);
+  set(newDocRef, data)
     .catch(error => {
-      errorEmitter.emit(
-        'permission-error',
-        new FirestorePermissionError({
-          path: colRef.path,
-          operation: 'create',
-          requestResourceData: data,
-        })
-      )
+      console.error("RTDB Add Error: ", error);
     });
-  return promise;
+  return newDocRef;
 }
 
-
 /**
- * Initiates an updateDoc operation for a document reference.
+ * Initiates an update operation for a database reference.
  * Does NOT await the write operation internally.
  */
-export function updateDocumentNonBlocking(docRef: DocumentReference, data: any) {
-  updateDoc(docRef, data)
+export function updateDocumentNonBlocking(dbRef: DatabaseReference, data: any) {
+  update(dbRef, data)
     .catch(error => {
-      errorEmitter.emit(
-        'permission-error',
-        new FirestorePermissionError({
-          path: docRef.path,
-          operation: 'update',
-          requestResourceData: data,
-        })
-      )
+      console.error("RTDB Update Error: ", error);
     });
 }
 
-
 /**
- * Initiates a deleteDoc operation for a document reference.
+ * Initiates a remove operation for a database reference.
  * Does NOT await the write operation internally.
  */
-export function deleteDocumentNonBlocking(docRef: DocumentReference) {
-  deleteDoc(docRef)
+export function deleteDocumentNonBlocking(dbRef: DatabaseReference) {
+  remove(dbRef)
     .catch(error => {
-      errorEmitter.emit(
-        'permission-error',
-        new FirestorePermissionError({
-          path: docRef.path,
-          operation: 'delete',
-        })
-      )
+       console.error("RTDB Delete Error: ", error);
     });
 }

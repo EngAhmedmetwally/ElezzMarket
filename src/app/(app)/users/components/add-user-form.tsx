@@ -28,6 +28,10 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 import { Checkbox } from "@/components/ui/checkbox";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import type { User } from "@/lib/types";
+import { useAuth, useDatabase } from "@/firebase";
+import { createUserWithEmailAndPassword } from "firebase/auth";
+import { ref, set, serverTimestamp } from "firebase/database";
+
 
 const permissionsSchema = z.object({
   view: z.boolean().default(false),
@@ -83,6 +87,8 @@ interface AddUserFormProps {
 export function AddUserForm({ onSuccess, userToEdit }: AddUserFormProps) {
   const { toast } = useToast();
   const { language } = useLanguage();
+  const auth = useAuth();
+  const database = useDatabase();
   const isEditMode = !!userToEdit;
 
   const form = useForm<UserFormValues>({
@@ -104,35 +110,66 @@ export function AddUserForm({ onSuccess, userToEdit }: AddUserFormProps) {
       }
     },
   });
+  
+  const [isSubmitting, setIsSubmitting] = React.useState(false);
 
-  function onSubmit(data: UserFormValues) {
-    if (isEditMode) {
+
+  async function onSubmit(data: UserFormValues) {
+    setIsSubmitting(true);
+    if (isEditMode && userToEdit) {
         // In a real app, you would handle the update logic.
         // The password should only be updated if a new one is provided.
-        const updatedData = { ...data };
-        if (!updatedData.password) {
-            delete (updatedData as Partial<UserFormValues>).password;
+        const userRef = ref(database, `users/${userToEdit.id}`);
+        const userDataToUpdate = {
+          fullName: data.fullName,
+          email: `${data.username}@elezz.com`,
+          role: data.role,
+          orderVisibility: data.orderVisibility,
+          permissions: data.permissions,
         }
-        console.log("User to update:", { id: userToEdit.id, ...updatedData });
+        await set(userRef, { ...userToEdit, ...userDataToUpdate });
+
+        // TODO: Need an admin SDK to update user email and password
+        
         toast({
             title: language === 'ar' ? 'تم تحديث المستخدم' : "User Updated",
             description: `${language === 'ar' ? 'تم تحديث المستخدم' : 'User'} ${data.fullName} ${language === 'ar' ? 'بنجاح.' : 'has been successfully updated.'}`,
         });
     } else {
-        const userToCreate = {
-          name: data.fullName,
-          email: `${data.username}@elezz.com`,
-          role: data.role,
-          permissions: data.permissions,
-        }
-        console.log("User to create:", userToCreate);
+        try {
+          const email = `${data.username}@elezz.com`;
+          const userCredential = await createUserWithEmailAndPassword(auth, email, data.password);
+          const user = userCredential.user;
 
-        toast({
-          title: language === 'ar' ? 'تم إنشاء المستخدم' : "User Created",
-          description: `${language === 'ar' ? 'تم إنشاء المستخدم' : 'User'} ${data.fullName} ${language === 'ar' ? 'بنجاح.' : 'has been successfully created.'}`,
-        });
+          const userRef = ref(database, `users/${user.uid}`);
+          await set(userRef, {
+            id: user.uid,
+            fullName: data.fullName,
+            email: email,
+            role: data.role,
+            orderVisibility: data.orderVisibility,
+            permissions: data.permissions,
+            createdAt: serverTimestamp(),
+            status: "نشط",
+            avatarUrl: `/avatars/0${(user.uid.charCodeAt(0) % 6) + 1}.png`
+          });
+          
+          toast({
+            title: language === 'ar' ? 'تم إنشاء المستخدم' : "User Created",
+            description: `${language === 'ar' ? 'تم إنشاء المستخدم' : 'User'} ${data.fullName} ${language === 'ar' ? 'بنجاح.' : 'has been successfully created.'}`,
+          });
+
+        } catch (error: any) {
+           console.error("User creation error: ", error);
+            toast({
+              variant: "destructive",
+              title: language === 'ar' ? 'فشل إنشاء المستخدم' : "User Creation Failed",
+              description: error.message,
+            });
+        }
     }
     
+    setIsSubmitting(false);
     onSuccess?.();
     form.reset();
   }
@@ -284,7 +321,12 @@ export function AddUserForm({ onSuccess, userToEdit }: AddUserFormProps) {
         </Accordion>
 
         <div className="flex justify-end">
-          <Button type="submit">{isEditMode ? (language === 'ar' ? 'حفظ التعديلات' : 'Save Changes') : (language === 'ar' ? 'إضافة مستخدم' : 'Add User')}</Button>
+          <Button type="submit" disabled={isSubmitting}>
+              {isSubmitting 
+                ? (language === 'ar' ? 'جاري الحفظ...' : 'Saving...') 
+                : (isEditMode ? (language === 'ar' ? 'حفظ التعديلات' : 'Save Changes') : (language === 'ar' ? 'إضافة مستخدم' : 'Add User'))
+              }
+          </Button>
         </div>
       </form>
     </Form>
