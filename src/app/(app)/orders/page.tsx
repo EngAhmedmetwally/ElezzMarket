@@ -58,14 +58,20 @@ export default function OrdersPage() {
       const years = snapshot.val();
       const loadedOrders: Order[] = [];
       if (years) {
-        Object.values(years).forEach((months: any) => {
-          Object.values(months).forEach((days: any) => {
-            Object.values(days).forEach((order: any) => {
-              loadedOrders.push({
-                ...order,
-                id: order.id,
-                createdAt: order.createdAt ? new Date(order.createdAt).toISOString() : new Date().toISOString(),
-                updatedAt: order.updatedAt ? new Date(order.updatedAt).toISOString() : new Date().toISOString(),
+        Object.keys(years).forEach((year) => {
+          const months = years[year];
+          Object.keys(months).forEach((month) => {
+            const days = months[month];
+            Object.keys(days).forEach((day) => {
+              const ordersByDay = days[day];
+              Object.keys(ordersByDay).forEach((orderId) => {
+                const orderData = ordersByDay[orderId];
+                loadedOrders.push({
+                  ...orderData,
+                  id: orderId,
+                  createdAt: orderData.createdAt ? new Date(orderData.createdAt).toISOString() : new Date().toISOString(),
+                  updatedAt: orderData.updatedAt ? new Date(orderData.updatedAt).toISOString() : new Date().toISOString(),
+                });
               });
             });
           });

@@ -58,10 +58,19 @@ export default function ProductsReportPage() {
       const years = snapshot.val();
       const loadedOrders: Order[] = [];
       if (years) {
-        Object.values(years).forEach((months: any) => {
-          Object.values(months).forEach((days: any) => {
-            Object.values(days).forEach((order: any) => {
-              loadedOrders.push(order);
+        Object.keys(years).forEach((year) => {
+          const months = years[year];
+          Object.keys(months).forEach((month) => {
+            const days = months[month];
+            Object.keys(days).forEach((day) => {
+              const ordersByDay = days[day];
+              Object.keys(ordersByDay).forEach((orderId) => {
+                const orderData = ordersByDay[orderId];
+                loadedOrders.push({
+                  ...orderData,
+                  id: orderId,
+                });
+              });
             });
           });
         });

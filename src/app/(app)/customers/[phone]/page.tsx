@@ -51,7 +51,15 @@ export default function CustomerDetailsPage() {
 
         const orderPromises = orderPaths.map(path => get(ref(database, path)));
         const orderSnapshots = await Promise.all(orderPromises);
-        const fetchedOrders = orderSnapshots.map(snap => snap.val() as Order).filter(Boolean);
+        const fetchedOrders: Order[] = [];
+        orderSnapshots.forEach((snap, i) => {
+            if (snap.exists()) {
+                const orderData = snap.val() as Order;
+                const orderId = orderIds[i];
+                fetchedOrders.push({ ...orderData, id: orderId });
+            }
+        });
+
 
         setOrders(fetchedOrders);
       } catch (error) {
