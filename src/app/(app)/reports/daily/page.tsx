@@ -19,6 +19,7 @@ type DailyReportData = {
   date: string;
   totalOrders: number;
   totalItems: number;
+  totalWeight: number;
 };
 
 // Skeleton component for loading state
@@ -104,17 +105,18 @@ export default function DailyReportPage() {
       return true;
     });
 
-    const dailyMap = new Map<string, { totalOrders: number; totalItems: number }>();
+    const dailyMap = new Map<string, { totalOrders: number; totalItems: number; totalWeight: number }>();
 
     filtered.forEach(order => {
       if (!order.createdAt) return;
       const dateStr = format(new Date(order.createdAt), "yyyy-MM-dd");
       
-      const dayData = dailyMap.get(dateStr) || { totalOrders: 0, totalItems: 0 };
+      const dayData = dailyMap.get(dateStr) || { totalOrders: 0, totalItems: 0, totalWeight: 0 };
       dayData.totalOrders += 1;
       
       const itemsArray = order.items ? (Array.isArray(order.items) ? order.items : Object.values(order.items)) : [];
       dayData.totalItems += itemsArray.reduce((acc, item) => acc + (item.quantity || 0), 0);
+      dayData.totalWeight += itemsArray.reduce((acc, item) => acc + ((item.weight || 0) * (item.quantity || 1)), 0);
       
       dailyMap.set(dateStr, dayData);
     });
@@ -166,6 +168,7 @@ export default function DailyReportPage() {
                 <TableHead>{language === 'ar' ? 'التاريخ' : 'Date'}</TableHead>
                 <TableHead className="text-end">{language === 'ar' ? 'إجمالي الطلبات' : 'Total Orders'}</TableHead>
                 <TableHead className="text-end">{language === 'ar' ? 'إجمالي الأصناف' : 'Total Items'}</TableHead>
+                <TableHead className="text-end">{language === 'ar' ? 'إجمالي الأوزان (كجم)' : 'Total Weight (kg)'}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -174,11 +177,12 @@ export default function DailyReportPage() {
                   <TableCell className="font-medium">{format(new Date(row.date), "PPP")}</TableCell>
                   <TableCell className="text-end">{row.totalOrders}</TableCell>
                   <TableCell className="text-end">{row.totalItems}</TableCell>
+                  <TableCell className="text-end">{row.totalWeight.toFixed(2)}</TableCell>
                 </TableRow>
               ))}
               {dailyReportData.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={3} className="h-24 text-center">
+                  <TableCell colSpan={4} className="h-24 text-center">
                     {language === 'ar' ? 'لا توجد بيانات للعرض.' : 'No data to display.'}
                   </TableCell>
                 </TableRow>
