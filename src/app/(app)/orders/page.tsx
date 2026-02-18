@@ -29,8 +29,8 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { useCollection, useDatabase, useMemoFirebase } from "@/firebase";
-import { ref, query, orderByChild } from "firebase/database";
+import { useDatabase } from "@/firebase";
+import { ref, onValue } from "firebase/database";
 import type { Order } from "@/lib/types";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -45,27 +45,46 @@ export default function OrdersPage() {
   const database = useDatabase();
 
   const columns = getOrderColumns(language, () => setVersion(v => v + 1));
+  
+  const [allOrders, setAllOrders] = React.useState<Order[]>([]);
+  const [isLoading, setIsLoading] = React.useState(true);
 
-  const ordersQuery = useMemoFirebase(() => {
-    if (!database) return null;
-    return query(ref(database, "orders"), orderByChild("createdAt"));
-  }, [database]);
+  React.useEffect(() => {
+    if (!database) return;
+    const ordersRootRef = ref(database, 'orders');
+    setIsLoading(true);
 
-  const { data: ordersData, isLoading } = useCollection<any>(ordersQuery);
+    const unsubscribe = onValue(ordersRootRef, (snapshot) => {
+      const years = snapshot.val();
+      const loadedOrders: Order[] = [];
+      if (years) {
+        Object.values(years).forEach((months: any) => {
+          Object.values(months).forEach((days: any) => {
+            Object.values(days).forEach((order: any) => {
+              loadedOrders.push({
+                ...order,
+                id: order.id,
+                createdAt: order.createdAt ? new Date(order.createdAt).toISOString() : new Date().toISOString(),
+                updatedAt: order.updatedAt ? new Date(order.updatedAt).toISOString() : new Date().toISOString(),
+              });
+            });
+          });
+        });
+      }
+      loadedOrders.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+      setAllOrders(loadedOrders);
+      setIsLoading(false);
+    }, (error) => {
+      console.error("Failed to load orders:", error);
+      setIsLoading(false);
+    });
 
-  const orders: Order[] = React.useMemo(() => {
-    if (!ordersData) return [];
-    // RTDB orderByChild sorts ascending, so we reverse for descending order by date.
-    return [...ordersData].reverse().map((doc: any): Order => ({
-      ...doc,
-      id: doc.id,
-      createdAt: doc.createdAt ? new Date(doc.createdAt).toISOString() : new Date().toISOString(),
-      updatedAt: doc.updatedAt ? new Date(doc.updatedAt).toISOString() : new Date().toISOString(),
-    }));
-  }, [ordersData]);
+    return () => unsubscribe();
+  }, [database, version]);
+
 
   const filteredOrders = React.useMemo(() => {
-    return orders.filter(order => {
+    return allOrders.filter(order => {
         const orderDate = new Date(order.createdAt);
         if (fromDate) {
             const fromDateStart = new Date(fromDate);
@@ -79,7 +98,7 @@ export default function OrdersPage() {
         }
         return true;
     });
-  }, [orders, fromDate, toDate, version]);
+  }, [allOrders, fromDate, toDate]);
   
   const ordersByStatus = React.useMemo(() => {
     const statusCounts = filteredOrders.reduce((acc, order) => {
@@ -122,7 +141,7 @@ export default function OrdersPage() {
   };
 
   const handleFileDownload = () => {
-    const sheetData = orders.map(order => ({
+    const sheetData = allOrders.map(order => ({
         'رقم الاوردر': order.id,
         'التاريخ': new Date(order.createdAt).toLocaleDateString('ar-EG'),
         'اسم العميل': order.customerName,

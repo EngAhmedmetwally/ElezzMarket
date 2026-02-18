@@ -16,8 +16,8 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useLanguage } from "@/components/language-provider";
 import { DatePicker } from "@/components/ui/datepicker";
-import { useCollection, useDatabase, useMemoFirebase } from "@/firebase";
-import { ref, query } from "firebase/database";
+import { useCollection, useDatabase } from "@/firebase";
+import { ref, onValue } from "firebase/database";
 import type { Order, User } from "@/lib/types";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -57,11 +57,38 @@ export default function DashboardPage() {
   const [toDate, setToDate] = React.useState<Date | undefined>(undefined);
   const database = useDatabase();
 
-  const ordersQuery = useMemoFirebase(() => database ? query(ref(database, "orders")) : null, [database]);
-  const { data: ordersData, isLoading: isLoadingOrders } = useCollection<Order>(ordersQuery);
+  const [ordersData, setOrdersData] = React.useState<Order[] | null>(null);
+  const [isLoadingOrders, setIsLoadingOrders] = React.useState(true);
 
-  const usersQuery = useMemoFirebase(() => database ? query(ref(database, "users")) : null, [database]);
-  const { data: usersData, isLoading: isLoadingUsers } = useCollection<User>(usersQuery);
+  React.useEffect(() => {
+    if (!database) return;
+    const ordersRootRef = ref(database, 'orders');
+    setIsLoadingOrders(true);
+
+    const unsubscribe = onValue(ordersRootRef, (snapshot) => {
+      const years = snapshot.val();
+      const loadedOrders: Order[] = [];
+      if (years) {
+        Object.values(years).forEach((months: any) => {
+          Object.values(months).forEach((days: any) => {
+            Object.values(days).forEach((order: any) => {
+              loadedOrders.push(order);
+            });
+          });
+        });
+      }
+      setOrdersData(loadedOrders);
+      setIsLoadingOrders(false);
+    }, (error) => {
+      console.error("Failed to load orders:", error);
+      setIsLoadingOrders(false);
+    });
+
+    return () => unsubscribe();
+  }, [database]);
+
+
+  const { data: usersData, isLoading: isLoadingUsers } = useCollection<User>(ref(database, "users"));
 
   const filteredOrders = React.useMemo(() => {
     if (!ordersData) return [];

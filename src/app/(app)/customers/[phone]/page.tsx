@@ -5,8 +5,8 @@ import * as React from "react";
 import { useParams, useRouter } from "next/navigation";
 import { PageHeader } from "@/components/page-header";
 import { useLanguage } from "@/components/language-provider";
-import { useCollection, useDatabase, useMemoFirebase } from "@/firebase";
-import { ref, query, orderByChild, equalTo } from "firebase/database";
+import { useDatabase } from "@/firebase";
+import { ref, get } from "firebase/database";
 import type { Order } from "@/lib/types";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -21,23 +21,49 @@ export default function CustomerDetailsPage() {
   const { language } = useLanguage();
   const database = useDatabase();
 
-  // Query for orders with the specific customer phone number
-  const customerOrdersQuery = useMemoFirebase(() => {
-    if (!database || !phone) return null;
-    return query(ref(database, "orders"), orderByChild("customerPhone"), equalTo(phone));
-  }, [database, phone]);
+  const [orders, setOrders] = React.useState<Order[]>([]);
+  const [isLoading, setIsLoading] = React.useState(true);
 
-  const { data: ordersData, isLoading } = useCollection<any>(customerOrdersQuery);
-  
-  const orders: Order[] = React.useMemo(() => {
-    if (!ordersData) return [];
-    return ordersData.map((doc: any): Order => ({
-      ...doc,
-      id: doc.id,
-      createdAt: doc.createdAt ? new Date(doc.createdAt).toISOString() : new Date().toISOString(),
-      updatedAt: doc.updatedAt ? new Date(doc.updatedAt).toISOString() : new Date().toISOString(),
-    }));
-  }, [ordersData]);
+  React.useEffect(() => {
+    if (!database || !phone) return;
+    setIsLoading(true);
+
+    const fetchOrders = async () => {
+      try {
+        const customerOrdersRef = ref(database, `customer-orders/${phone}`);
+        const orderIdsSnapshot = await get(customerOrdersRef);
+        if (!orderIdsSnapshot.exists()) {
+          setOrders([]);
+          setIsLoading(false);
+          return;
+        }
+        const orderIds = Object.keys(orderIdsSnapshot.val());
+
+        const pathPromises = orderIds.map(orderId => get(ref(database, `order-lookup/${orderId}`)));
+        const pathSnapshots = await Promise.all(pathPromises);
+        const orderPaths = pathSnapshots.map((snap, i) => {
+            if(snap.exists()) {
+                const { path } = snap.val();
+                return `orders/${path}/${orderIds[i]}`;
+            }
+            return null;
+        }).filter((p): p is string => p !== null);
+
+        const orderPromises = orderPaths.map(path => get(ref(database, path)));
+        const orderSnapshots = await Promise.all(orderPromises);
+        const fetchedOrders = orderSnapshots.map(snap => snap.val() as Order).filter(Boolean);
+
+        setOrders(fetchedOrders);
+      } catch (error) {
+        console.error("Error fetching customer orders:", error);
+        setOrders([]);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchOrders();
+  }, [database, phone]);
 
   const customer = React.useMemo(() => {
     if (!orders || orders.length === 0) return null;
@@ -66,7 +92,7 @@ export default function CustomerDetailsPage() {
     return (
       <div>
         <PageHeader title={language === 'ar' ? 'العميل غير موجود' : 'Customer Not Found'} />
-        <p>{language === 'ar' ? 'لم نتمكن من العثور على العميل المطلوب.' : 'The requested customer could not be found.'}</p>
+        <p>{language === 'ar' ? 'لم نتمكن من العثور على العميل المطلوب أو ليس لديه طلبات.' : 'The requested customer could not be found or has no orders.'}</p>
       </div>
     );
   }

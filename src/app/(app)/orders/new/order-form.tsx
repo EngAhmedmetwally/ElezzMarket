@@ -23,8 +23,8 @@ import { mockProducts, mockCustomers } from "@/lib/data";
 import type { Customer } from "@/lib/types";
 import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
-import { useDatabase, useUser, setDocumentNonBlocking } from "@/firebase";
-import { ref, get, serverTimestamp } from "firebase/database";
+import { useDatabase, useUser } from "@/firebase";
+import { ref, get, serverTimestamp, update } from "firebase/database";
 
 const orderFormSchema = z.object({
   id: z.string().min(1, "رقم الطلب مطلوب"),
@@ -108,8 +108,14 @@ export function OrderForm({ onSuccess }: OrderFormProps) {
       });
       return;
     }
-
-    const orderRef = ref(database, 'orders/' + data.id);
+    
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    const datePath = `${year}/${month}/${day}`;
+    const orderPath = `orders/${datePath}/${data.id}`;
+    const orderRef = ref(database, orderPath);
     
     const snapshot = await get(orderRef);
     if (snapshot.exists()) {
@@ -149,15 +155,28 @@ export function OrderForm({ onSuccess }: OrderFormProps) {
         deliveryCommission: 0,
     };
     
-    // Use non-blocking write
-    setDocumentNonBlocking(orderRef, newOrder);
+    const updates: { [key: string]: any } = {};
+    updates[orderPath] = newOrder;
+    updates[`order-lookup/${data.id}`] = { path: datePath };
+    updates[`customer-orders/${data.customerPhone}/${data.id}`] = true;
 
-    toast({
-        title: language === 'ar' ? "تم إنشاء الطلب" : "Order Created",
-        description: language === 'ar' ? "تم إنشاء طلب جديد بنجاح." : "A new order has been successfully created.",
-    });
-    onSuccess?.();
-    form.reset();
+    try {
+        await update(ref(database), updates);
+
+        toast({
+            title: language === 'ar' ? "تم إنشاء الطلب" : "Order Created",
+            description: language === 'ar' ? "تم إنشاء طلب جديد بنجاح." : "A new order has been successfully created.",
+        });
+        onSuccess?.();
+        form.reset();
+    } catch(e: any) {
+        console.error("Order creation failed:", e);
+        toast({
+            variant: "destructive",
+            title: language === 'ar' ? 'فشل إنشاء الطلب' : 'Order Creation Failed',
+            description: e.message,
+        });
+    }
   }
 
   return (

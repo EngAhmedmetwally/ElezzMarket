@@ -22,7 +22,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
 import { useDoc, useCollection, useDatabase, useMemoFirebase, useUser as useAuthUser } from "@/firebase";
-import { ref, update } from "firebase/database";
+import { ref, update, get } from "firebase/database";
 import { Skeleton } from "@/components/ui/skeleton";
 
 const allowedTransitions: Record<OrderStatus, OrderStatus[]> = {
@@ -99,7 +99,23 @@ export default function OrderDetailsPage() {
   const database = useDatabase();
   const { user: authUser } = useAuthUser();
   
-  const orderRef = useMemoFirebase(() => (database && id) ? ref(database, `orders/${id}`) : null, [database, id]);
+  const [orderPath, setOrderPath] = React.useState<string | null>(null);
+
+  React.useEffect(() => {
+      if (!database || !id) return;
+      const lookupRef = ref(database, `order-lookup/${id}`);
+      get(lookupRef).then((snapshot) => {
+          if (snapshot.exists()) {
+              const { path } = snapshot.val();
+              setOrderPath(`orders/${path}/${id}`);
+          } else {
+              console.error(`No path found for order ${id}`);
+              setOrderPath(null);
+          }
+      });
+  }, [database, id]);
+
+  const orderRef = useMemoFirebase(() => (database && orderPath) ? ref(database, orderPath) : null, [database, orderPath]);
   const { data: order, isLoading: isLoadingOrder } = useDoc<Order>(orderRef);
 
   const usersRef = useMemoFirebase(() => database ? ref(database, `users`) : null, [database]);
@@ -132,7 +148,7 @@ export default function OrderDetailsPage() {
   };
 
   const handleSaveStatusChange = async () => {
-    if (order && selectedStatus && database && authUser) {
+    if (order && selectedStatus && database && authUser && orderRef) {
       const newHistoryItem: StatusHistoryItem = {
         status: selectedStatus,
         notes: note,
@@ -176,7 +192,7 @@ export default function OrderDetailsPage() {
 
   const handleAssignCourierAndSave = async () => {
     const selectedCourier = couriers.find(c => c.id === selectedCourierId);
-    if (order && selectedStatus && selectedCourier && database && authUser) {
+    if (order && selectedStatus && selectedCourier && database && authUser && orderRef) {
       const newHistoryItem: StatusHistoryItem = {
         status: selectedStatus,
         notes: note,
@@ -223,9 +239,9 @@ export default function OrderDetailsPage() {
     }
   }
   
-  const isLoading = isLoadingOrder || isLoadingUsers || isLoadingRules;
+  const isLoading = isLoadingOrder || isLoadingUsers || isLoadingRules || !orderPath;
 
-  if (isLoading) {
+  if (isLoading && !order) {
     return <OrderDetailsSkeleton />;
   }
 

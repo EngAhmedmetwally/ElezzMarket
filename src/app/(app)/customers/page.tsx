@@ -4,8 +4,8 @@
 import * as React from "react";
 import { PageHeader } from "@/components/page-header";
 import { useLanguage } from "@/components/language-provider";
-import { useCollection, useDatabase, useMemoFirebase } from "@/firebase";
-import { ref, query, orderByChild } from "firebase/database";
+import { useDatabase } from "@/firebase";
+import { ref, onValue } from "firebase/database";
 import type { Order, Customer } from "@/lib/types";
 import { Skeleton } from "@/components/ui/skeleton";
 import { CustomersClient } from "./components/client";
@@ -22,17 +22,41 @@ export default function CustomersPage() {
   const { language } = useLanguage();
   const database = useDatabase();
 
-  const ordersQuery = useMemoFirebase(() => {
-    if (!database) return null;
-    return query(ref(database, "orders"), orderByChild("createdAt"));
+  const [ordersData, setOrdersData] = React.useState<Order[] | null>(null);
+  const [isLoading, setIsLoading] = React.useState(true);
+
+  React.useEffect(() => {
+    if (!database) return;
+    const ordersRootRef = ref(database, 'orders');
+    setIsLoading(true);
+
+    const unsubscribe = onValue(ordersRootRef, (snapshot) => {
+      const years = snapshot.val();
+      const loadedOrders: Order[] = [];
+      if (years) {
+        Object.values(years).forEach((months: any) => {
+          Object.values(months).forEach((days: any) => {
+            Object.values(days).forEach((order: any) => {
+              loadedOrders.push(order);
+            });
+          });
+        });
+      }
+      setOrdersData(loadedOrders);
+      setIsLoading(false);
+    }, (error) => {
+      console.error("Failed to load orders:", error);
+      setIsLoading(false);
+    });
+
+    return () => unsubscribe();
   }, [database]);
 
-  const { data: ordersData, isLoading } = useCollection<Order>(ordersQuery);
 
   const customers: CustomerWithOrderCount[] = React.useMemo(() => {
     if (!ordersData) return [];
-    // RTDB orderByChild sorts ascending, so we reverse for descending order by date.
-    const sortedOrders = [...ordersData].reverse(); 
+    
+    const sortedOrders = [...ordersData].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
     const customerMap = new Map<string, CustomerWithOrderCount>();
     
     sortedOrders.forEach((order: any) => {
@@ -44,7 +68,6 @@ export default function CustomersPage() {
       if (customerMap.has(phone)) {
         const existing = customerMap.get(phone)!;
         existing.orderCount += 1;
-        // Keep the latest order date
         if (new Date(orderDate) > new Date(existing.lastOrderDate)) {
            existing.lastOrderDate = orderDate;
         }

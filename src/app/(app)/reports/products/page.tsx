@@ -8,8 +8,8 @@ import { useLanguage } from "@/components/language-provider";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { StaffPerformanceChart } from "../components/staff-performance-chart";
 import { Progress } from "@/components/ui/progress";
-import { useCollection, useDatabase, useMemoFirebase } from "@/firebase";
-import { ref } from "firebase/database";
+import { useDatabase } from "@/firebase";
+import { ref, onValue } from "firebase/database";
 import type { Order } from "@/lib/types";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -46,8 +46,35 @@ export default function ProductsReportPage() {
   const isMobile = useIsMobile();
   const database = useDatabase();
 
-  const ordersQuery = useMemoFirebase(() => database ? ref(database, 'orders') : null, [database]);
-  const { data: ordersData, isLoading } = useCollection<Order>(ordersQuery);
+  const [ordersData, setOrdersData] = React.useState<Order[] | null>(null);
+  const [isLoading, setIsLoading] = React.useState(true);
+
+  React.useEffect(() => {
+    if (!database) return;
+    const ordersRootRef = ref(database, 'orders');
+    setIsLoading(true);
+
+    const unsubscribe = onValue(ordersRootRef, (snapshot) => {
+      const years = snapshot.val();
+      const loadedOrders: Order[] = [];
+      if (years) {
+        Object.values(years).forEach((months: any) => {
+          Object.values(months).forEach((days: any) => {
+            Object.values(days).forEach((order: any) => {
+              loadedOrders.push(order);
+            });
+          });
+        });
+      }
+      setOrdersData(loadedOrders);
+      setIsLoading(false);
+    }, (error) => {
+      console.error("Failed to load orders:", error);
+      setIsLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, [database]);
 
   const productsSales = React.useMemo(() => {
     if (!ordersData) return [];

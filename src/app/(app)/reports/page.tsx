@@ -12,10 +12,10 @@ import Link from "next/link";
 import { ArrowLeft, ArrowRight } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { CommissionChart } from "./components/commission-chart";
-import { useCollection, useDatabase, useMemoFirebase } from "@/firebase";
+import { useCollection, useDatabase } from "@/firebase";
 import type { Order, User } from "@/lib/types";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ref } from "firebase/database";
+import { ref, onValue } from "firebase/database";
 
 
 function ReportsSkeleton() {
@@ -71,11 +71,38 @@ export default function ReportsPage() {
     );
     const Arrow = isRTL ? ArrowLeft : ArrowRight;
 
-    const ordersQuery = useMemoFirebase(() => database ? ref(database, "orders") : null, [database]);
-    const { data: ordersData, isLoading: isLoadingOrders } = useCollection<Order>(ordersQuery);
+    const [ordersData, setOrdersData] = React.useState<Order[] | null>(null);
+    const [isLoadingOrders, setIsLoadingOrders] = React.useState(true);
 
-    const usersQuery = useMemoFirebase(() => database ? ref(database, "users") : null, [database]);
-    const { data: usersData, isLoading: isLoadingUsers } = useCollection<User>(usersQuery);
+    React.useEffect(() => {
+        if (!database) return;
+        const ordersRootRef = ref(database, 'orders');
+        setIsLoadingOrders(true);
+
+        const unsubscribe = onValue(ordersRootRef, (snapshot) => {
+        const years = snapshot.val();
+        const loadedOrders: Order[] = [];
+        if (years) {
+            Object.values(years).forEach((months: any) => {
+            Object.values(months).forEach((days: any) => {
+                Object.values(days).forEach((order: any) => {
+                loadedOrders.push(order);
+                });
+            });
+            });
+        }
+        setOrdersData(loadedOrders);
+        setIsLoadingOrders(false);
+        }, (error) => {
+        console.error("Failed to load orders:", error);
+        setIsLoadingOrders(false);
+        });
+
+        return () => unsubscribe();
+    }, [database]);
+
+
+    const { data: usersData, isLoading: isLoadingUsers } = useCollection<User>(ref(database, "users"));
 
 
     const commissionReportData = React.useMemo(() => {

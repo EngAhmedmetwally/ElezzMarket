@@ -1,20 +1,38 @@
+
 {
   "rules": {
-    ".read": true,
-    ".write": true,
     "orders": {
-      ".indexOn": [
-        "createdAt",
-        "customerPhone",
-        "status",
-        "moderatorId",
-        "courierId"
-      ]
+      "$y": {
+        "$m": {
+          "$d": {
+            ".read": "auth != null",
+            ".write": "auth != null"
+          }
+        }
+      }
+    },
+    "order-lookup": {
+        ".read": "auth != null",
+        "$orderId": {
+            ".write": "auth != null"
+        }
+    },
+    "customer-orders": {
+        ".read": "auth != null",
+        "$phone": {
+            "$orderId": {
+                ".write": "auth != null"
+            }
+        }
     },
     "users": {
-      ".indexOn": [
-        "role"
-      ]
+        ".read": "auth != null",
+        ".write": "auth != null",
+        ".indexOn": ["role", "username"]
+    },
+    "commission-rules": {
+      ".read": "auth != null",
+      ".write": "auth != null"
     }
   }
 }
