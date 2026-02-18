@@ -1,36 +1,26 @@
 
 {
   "rules": {
+    ".read": true,
+    ".write": true,
     "orders": {
-      ".read": true,
-      "$orderId": {
-        ".write": true
-      }
-    },
-    "customer-orders": {
-        ".read": true,
-        "$phone": {
-            "$orderId": {
-                ".write": true
-            }
-        }
+      ".indexOn": [
+        "createdAt",
+        "customerPhone",
+        "status",
+        "moderatorId",
+        "courierId"
+      ]
     },
     "users": {
-        ".read": true,
-        ".write": true,
-        ".indexOn": ["role", "username"]
-    },
-    "commission-rules": {
-      ".read": true,
-      ".write": true
-    },
-    "customers": {
-        ".read": true,
-        ".write": true
+      ".indexOn": [
+        "role"
+      ]
     },
     "products": {
-        ".read": true,
-        ".write": true
+      ".indexOn": [
+        "salesCount"
+      ]
     }
   }
 }

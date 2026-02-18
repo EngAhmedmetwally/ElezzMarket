@@ -19,11 +19,11 @@ import { Separator } from "@/components/ui/separator";
 import { PlusCircle, Trash2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useLanguage } from "@/components/language-provider";
-import type { Customer, Product } from "@/lib/types";
+import type { Customer, Product, OrderItem } from "@/lib/types";
 import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { useCollection, useDatabase, useUser, useMemoFirebase } from "@/firebase";
-import { ref, get, update, push, set } from "firebase/database";
+import { ref, get, update, push, set, runTransaction } from "firebase/database";
 
 const orderFormSchema = z.object({
   id: z.string().min(1, "رقم الطلب مطلوب"),
@@ -34,6 +34,7 @@ const orderFormSchema = z.object({
   items: z
     .array(
       z.object({
+        productId: z.string().optional(),
         productName: z.string().min(1, "اسم المنتج مطلوب"),
         quantity: z.coerce.number().int().min(1, "الكمية يجب أن تكون 1 على الأقل"),
         price: z.coerce.number().min(0, "السعر يجب أن يكون رقمًا موجبًا"),
@@ -68,7 +69,7 @@ export function OrderForm({ onSuccess }: OrderFormProps) {
       customerPhone: "",
       customerAddress: "",
       zoning: "",
-      items: [{ productName: "", quantity: 1, price: 0 }],
+      items: [{ productId: "", productName: "", quantity: 1, price: 0 }],
     },
   });
 
@@ -114,10 +115,8 @@ export function OrderForm({ onSuccess }: OrderFormProps) {
       });
       return;
     }
-    
-    const orderPath = `orders/${data.id}`;
-    
-    const orderIdRef = ref(database, orderPath);
+
+    const orderIdRef = ref(database, `orders/${data.id}`);
     const snapshot = await get(orderIdRef);
     if (snapshot.exists()) {
         form.setError("id", {
@@ -132,72 +131,85 @@ export function OrderForm({ onSuccess }: OrderFormProps) {
         return;
     }
     
-    // Using a single update object for atomic write
+    const allProducts: (Product & {id: string})[] = products || [];
     const updates: { [key: string]: any } = {};
 
-    // 1. Order Data
-    const newOrder = {
-        id: data.id,
-        customerName: data.customerName,
-        customerPhone: data.customerPhone,
-        customerAddress: data.customerAddress,
-        zoning: data.zoning,
-        items: data.items,
-        total: total,
-        status: "تم الحجز",
-        moderatorId: user.id,
-        moderatorName: user.name || user.email || 'Unknown',
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-        statusHistory: [
-            {
-                status: 'تم الحجز',
-                createdAt: new Date().toISOString(),
-                userName: user.name || user.email || 'Unknown',
+    try {
+        const resolvedItems: OrderItem[] = [];
+
+        await Promise.all(data.items.map(async (item) => {
+            let productId = item.productId;
+            const existingProduct = allProducts.find(p => p.id === productId || p.name.toLowerCase() === item.productName.toLowerCase());
+
+            if (existingProduct) {
+                productId = existingProduct.id;
+            } else {
+                const newProductRef = push(ref(database, 'products'));
+                productId = newProductRef.key!;
+                const newProduct: Omit<Product, 'id'> = {
+                    name: item.productName,
+                    price: item.price,
+                    isActive: true,
+                    createdAt: new Date().toISOString(),
+                    sku: `SKU-${Date.now()}-${Math.random().toString(36).substring(2, 7).toUpperCase()}`,
+                    salesCount: 0
+                };
+                updates[`products/${productId}`] = newProduct;
             }
-        ],
-        salesCommission: 0,
-        deliveryCommission: 0,
-    };
-    updates[orderPath] = newOrder;
+            
+            if (!productId) {
+                throw new Error(`Could not determine product ID for ${item.productName}`);
+            }
 
-    // 2. Add to customer's order list
-    updates[`customer-orders/${data.customerPhone}/${data.id}`] = true;
+            resolvedItems.push({ ...item, productId });
 
-    // 3. Check and save new customer (if they don't exist)
-    const customerRef = ref(database, `customers/${data.customerPhone}`);
-    const customerSnapshot = await get(customerRef);
-    if (!customerSnapshot.exists()) {
-        const newCustomer: Customer = {
+            const productSalesRef = ref(database, `products/${productId}/salesCount`);
+            await runTransaction(productSalesRef, (currentCount) => {
+                return (currentCount || 0) + item.quantity;
+            });
+        }));
+
+        const orderPath = `orders/${data.id}`;
+        
+        const newOrder = {
+            id: data.id,
             customerName: data.customerName,
             customerPhone: data.customerPhone,
             customerAddress: data.customerAddress,
             zoning: data.zoning,
+            items: resolvedItems,
+            total: total,
+            status: "تم الحجز",
+            moderatorId: user.id,
+            moderatorName: user.name || user.email || 'Unknown',
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+            statusHistory: [
+                {
+                    status: 'تم الحجز',
+                    createdAt: new Date().toISOString(),
+                    userName: user.name || user.email || 'Unknown',
+                }
+            ],
+            salesCommission: 0,
+            deliveryCommission: 0,
         };
-        updates[`customers/${data.customerPhone}`] = newCustomer; 
-    }
+        updates[orderPath] = newOrder;
 
-    // 4. Check and save new products
-    const allProducts = products || [];
-    const productPromises = data.items.map(async (item) => {
-        if (!item.productName) return;
-        const existingProduct = allProducts.find(p => p.name.toLowerCase() === item.productName.toLowerCase());
-        if (!existingProduct) {
-            const newProductRef = push(ref(database, 'products'));
-            const newProduct: Omit<Product, 'id'> = {
-                name: item.productName,
-                price: item.price,
-                isActive: true,
-                createdAt: new Date().toISOString(),
-                sku: `SKU-${Date.now()}-${Math.random().toString(36).substring(2, 7).toUpperCase()}`
+        updates[`customer-orders/${data.customerPhone}/${data.id}`] = true;
+
+        const customerRef = ref(database, `customers/${data.customerPhone}`);
+        const customerSnapshot = await get(customerRef);
+        if (!customerSnapshot.exists()) {
+            const newCustomer: Customer = {
+                customerName: data.customerName,
+                customerPhone: data.customerPhone,
+                customerAddress: data.customerAddress,
+                zoning: data.zoning,
             };
-            updates[`products/${newProductRef.key}`] = newProduct;
+            updates[`customers/${data.customerPhone}`] = newCustomer; 
         }
-    });
 
-    await Promise.all(productPromises);
-
-    try {
         await update(ref(database), updates);
 
         toast({
@@ -306,6 +318,9 @@ export function OrderForm({ onSuccess }: OrderFormProps) {
                             const product = products?.find(p => p.name === e.target.value);
                             if (product) {
                                 form.setValue(`items.${index}.price`, product.price);
+                                form.setValue(`items.${index}.productId`, product.id);
+                            } else {
+                                form.setValue(`items.${index}.productId`, '');
                             }
                           }}
                         />
@@ -337,7 +352,7 @@ export function OrderForm({ onSuccess }: OrderFormProps) {
             ))}
           </div>
 
-          <Button type="button" variant="outline" size="sm" className="mt-4" onClick={() => append({ productName: "", quantity: 1, price: 0 })}>
+          <Button type="button" variant="outline" size="sm" className="mt-4" onClick={() => append({ productId: "", productName: "", quantity: 1, price: 0 })}>
             <PlusCircle className="me-2 h-4 w-4" />
             {language === 'ar' ? 'إضافة عنصر' : 'Add Item'}
           </Button>

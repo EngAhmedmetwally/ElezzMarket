@@ -22,7 +22,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
 import { useDoc, useCollection, useDatabase, useMemoFirebase, useUser as useAuthUser } from "@/firebase";
-import { ref, update } from "firebase/database";
+import { ref, update, runTransaction } from "firebase/database";
 import { Skeleton } from "@/components/ui/skeleton";
 
 const allowedTransitions: Record<OrderStatus, OrderStatus[]> = {
@@ -137,6 +137,32 @@ export default function OrderDetailsPage() {
 
   const handleSaveStatusChange = async () => {
     if (order && selectedStatus && database && authUser && orderRef) {
+
+      if (selectedStatus === 'ملغي' && order.status !== 'ملغي') {
+          const productSaleUpdatePromises = (order.items || []).map(item => {
+              if (!item.productId) {
+                  console.warn(`Cannot update sales count for item without a productId: ${item.productName}`);
+                  return Promise.resolve();
+              }
+              const productSalesRef = ref(database, `products/${item.productId}/salesCount`);
+              return runTransaction(productSalesRef, (currentCount) => {
+                  const newCount = (currentCount || 0) - item.quantity;
+                  return newCount < 0 ? 0 : newCount; // Prevent negative counts
+              });
+          });
+
+          try {
+              await Promise.all(productSaleUpdatePromises);
+          } catch (error) {
+              console.error("Failed to decrement product sales counts", error);
+              toast({
+                  variant: "destructive",
+                  title: language === 'ar' ? 'خطأ في التحديث' : "Update Error",
+                  description: language === 'ar' ? 'فشل تحديث إحصائيات مبيعات المنتج أثناء الإلغاء.' : "Failed to update product sales counts during cancellation.",
+              });
+          }
+      }
+
       const newHistoryItem: StatusHistoryItem = {
         status: selectedStatus,
         notes: note,

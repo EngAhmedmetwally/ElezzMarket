@@ -9,8 +9,8 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { StaffPerformanceChart } from "../components/staff-performance-chart";
 import { Progress } from "@/components/ui/progress";
 import { useCollection, useDatabase, useMemoFirebase } from "@/firebase";
-import { ref } from "firebase/database";
-import type { Order } from "@/lib/types";
+import { ref, query, orderByChild } from "firebase/database";
+import type { Product } from "@/lib/types";
 import { Skeleton } from "@/components/ui/skeleton";
 
 function ProductsReportSkeleton() {
@@ -46,33 +46,34 @@ export default function ProductsReportPage() {
   const isMobile = useIsMobile();
   const database = useDatabase();
 
-  const ordersQuery = useMemoFirebase(() => database ? ref(database, 'orders') : null, [database]);
-  const { data: ordersData, isLoading } = useCollection<Order>(ordersQuery);
+  const productsQuery = useMemoFirebase(() => 
+    database 
+      ? query(ref(database, 'products'), orderByChild('salesCount')) 
+      : null, 
+    [database]
+  );
+  const { data: productsData, isLoading } = useCollection<Product>(productsQuery);
 
   const productsSales = React.useMemo(() => {
-    if (!ordersData) return [];
+    if (!productsData) return [];
     
-    const sales: Record<string, number> = {};
-    ordersData.forEach(order => {
-        const items = order.items ? (Array.isArray(order.items) ? order.items : Object.values(order.items)) : [];
-        items.forEach(item => {
-            sales[item.productName] = (sales[item.productName] || 0) + item.quantity;
-        });
-    });
+    const sales = productsData
+        .map(product => ({ 
+            name: product.name, 
+            count: product.salesCount || 0 
+        }))
+        .filter(p => p.count > 0)
+        .reverse(); // reverse because query is ascending
 
-    const sortedSales = Object.entries(sales)
-        .map(([name, count]) => ({ name, count }))
-        .sort((a, b) => b.count - a.count);
-    
-    const totalSoldCount = sortedSales.reduce((acc, item) => acc + item.count, 0);
+    const totalSoldCount = sales.reduce((acc, item) => acc + item.count, 0);
 
-    return sortedSales.map(item => ({
+    return sales.map(item => ({
         ...item, 
         percentage: totalSoldCount > 0 ? (item.count / totalSoldCount) * 100 : 0 
     }));
-  }, [ordersData]);
+  }, [productsData]);
 
-  const topProductsChartData = productsSales.slice(0, 10).reverse().map(p => ({ name: p.name, value: p.count }));
+  const topProductsChartData = productsSales.slice(0, 10).map(p => ({ name: p.name, value: p.count }));
 
   if (isLoading) {
     return (

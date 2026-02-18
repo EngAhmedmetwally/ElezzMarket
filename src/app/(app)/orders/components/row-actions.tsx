@@ -8,7 +8,7 @@ import { useLanguage } from "@/components/language-provider";
 import { useToast } from "@/hooks/use-toast";
 import type { Order, OrderStatus, User, StatusHistoryItem, CommissionRule } from "@/lib/types";
 import { cn } from "@/lib/utils";
-import { ref, update } from "firebase/database";
+import { ref, update, runTransaction } from "firebase/database";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -81,10 +81,6 @@ export function RowActions({ order, onUpdate }: RowActionsProps) {
         return;
     }
 
-    const orderRef = ref(database, `orders/${order.id}`);
-
-    const selectedCourier = couriers.find(c => c.id === selectedCourierId);
-
     if (!selectedStatus) {
         toast({
             variant: "destructive",
@@ -93,6 +89,35 @@ export function RowActions({ order, onUpdate }: RowActionsProps) {
         });
         return;
     }
+    
+    if (selectedStatus === 'ملغي' && order.status !== 'ملغي') {
+        const productSaleUpdatePromises = (order.items || []).map(item => {
+            if (!item.productId) {
+                console.warn(`Cannot update sales count for item without a productId: ${item.productName}`);
+                return Promise.resolve();
+            }
+            const productSalesRef = ref(database, `products/${item.productId}/salesCount`);
+            return runTransaction(productSalesRef, (currentCount) => {
+                const newCount = (currentCount || 0) - item.quantity;
+                return newCount < 0 ? 0 : newCount;
+            });
+        });
+
+        try {
+            await Promise.all(productSaleUpdatePromises);
+        } catch (error) {
+            console.error("Failed to decrement product sales counts", error);
+            toast({
+                variant: "destructive",
+                title: language === 'ar' ? 'خطأ في التحديث' : "Update Error",
+                description: language === 'ar' ? 'فشل تحديث إحصائيات مبيعات المنتج أثناء الإلغاء.' : "Failed to update product sales counts during cancellation.",
+            });
+        }
+    }
+
+    const orderRef = ref(database, `orders/${order.id}`);
+
+    const selectedCourier = couriers.find(c => c.id === selectedCourierId);
 
     if (selectedStatus === "تم الارسال" && !selectedCourier) {
       toast({

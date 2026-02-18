@@ -23,6 +23,7 @@ export type OrderStatus =
   | "ملغي";
 
 export type OrderItem = {
+  productId: string;
   productName: string;
   quantity: number;
   price: number;
@@ -70,6 +71,7 @@ export type Product = {
   sku: string;
   isActive: boolean;
   createdAt: string;
+  salesCount?: number;
 };
 
 export type Customer = {
