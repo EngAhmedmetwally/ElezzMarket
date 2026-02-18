@@ -8,7 +8,7 @@ import { useLanguage } from "@/components/language-provider";
 import { useToast } from "@/hooks/use-toast";
 import type { Order, OrderStatus, User, StatusHistoryItem, CommissionRule } from "@/lib/types";
 import { cn } from "@/lib/utils";
-import { ref, update } from "firebase/database";
+import { ref, update, get } from "firebase/database";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -72,9 +72,31 @@ export function RowActions({ order, onUpdate }: RowActionsProps) {
   };
   
   const handleSaveStatusChange = async () => {
-    if (!database || !authUser) return;
+    if (!database || !authUser || !order.id) {
+        toast({
+            variant: "destructive",
+            title: language === 'ar' ? 'خطأ' : 'Error',
+            description: language === 'ar' ? 'بيانات الطلب أو المستخدم غير مكتملة.' : 'Order or user data is incomplete.',
+        });
+        return;
+    }
 
-    const orderRef = ref(database, `orders/${order.id}`);
+    const lookupRef = ref(database, `order-lookup/${order.id}`);
+    const snapshot = await get(lookupRef);
+
+    if (!snapshot.exists()) {
+        toast({
+            variant: "destructive",
+            title: language === 'ar' ? 'خطأ' : 'Error',
+            description: language === 'ar' ? 'لم يتم العثور على مسار الطلب. لا يمكن التحديث.' : 'Order path not found. Cannot update.',
+        });
+        return;
+    }
+
+    const { path: datePath } = snapshot.val();
+    const orderPath = `orders/${datePath}/${order.id}`;
+    const orderRef = ref(database, orderPath);
+
     const selectedCourier = couriers.find(c => c.id === selectedCourierId);
 
     if (!selectedStatus) {
@@ -109,7 +131,7 @@ export function RowActions({ order, onUpdate }: RowActionsProps) {
         deliveryComm = 0;
     }
     
-    const currentHistory = order.statusHistory ? Object.values(order.statusHistory) : [];
+    const currentHistory = Array.isArray(order.statusHistory) ? order.statusHistory : (order.statusHistory ? Object.values(order.statusHistory) : []);
 
     const newHistoryItem: StatusHistoryItem = {
         status: selectedStatus,
@@ -143,7 +165,7 @@ export function RowActions({ order, onUpdate }: RowActionsProps) {
     <>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button variant="ghost" className="h-8 w-8 p-0">
+          <Button variant="ghost" className="h-8 w-8 p-0" disabled={!order.id}>
             <span className="sr-only">Open menu</span>
             <MoreHorizontal className="h-4 w-4" />
           </Button>

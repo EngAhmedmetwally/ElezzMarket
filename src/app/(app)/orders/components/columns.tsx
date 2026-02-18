@@ -35,22 +35,23 @@ export const getOrderColumns = (language: 'ar' | 'en', onUpdate: () => void): Co
   {
     accessorKey: "id",
     header: language === 'ar' ? "رقم الاوردر" : "Order ID",
+    cell: ({ row }) => row.original.id || '-',
   },
   {
     id: "customer",
-    accessorFn: (row) => `${row.customerName} ${row.customerPhone}`,
+    accessorFn: (row) => `${row.customerName || ''} ${row.customerPhone || ''}`,
     header: language === 'ar' ? "العميل" : "Customer",
     cell: ({ row }) => (
       <div>
-        <div className="font-medium">{row.original.customerName}</div>
-        <div className="text-sm text-muted-foreground">{row.original.customerPhone}</div>
+        <div className="font-medium">{row.original.customerName || '-'}</div>
+        <div className="text-sm text-muted-foreground">{row.original.customerPhone || ''}</div>
       </div>
     )
   },
   {
     accessorKey: "status",
     header: () => <div className="text-center">{language === 'ar' ? "الحالة" : "Status"}</div>,
-    cell: ({ row }) => <div className="text-center"><StatusBadge status={row.getValue("status")} /></div>,
+    cell: ({ row }) => <div className="text-center">{row.getValue("status") ? <StatusBadge status={row.getValue("status")} /> : '-'}</div>,
   },
   {
     accessorKey: "total",
@@ -69,6 +70,9 @@ export const getOrderColumns = (language: 'ar' | 'en', onUpdate: () => void): Co
     },
     cell: ({ row }) => {
       const amount = parseFloat(row.getValue("total"));
+      if (isNaN(amount)) {
+          return <div className="text-end font-medium">-</div>;
+      }
       const formatted = new Intl.NumberFormat(language === 'ar' ? 'ar-EG' : 'en-US', {
         style: "currency",
         currency: "EGP",
@@ -94,10 +98,16 @@ export const getOrderColumns = (language: 'ar' | 'en', onUpdate: () => void): Co
        )
     },
     cell: ({ row }) => {
-      const totalCommission = (row.original.salesCommission || 0) + (row.original.deliveryCommission || 0);
+      const salesComm = row.original.salesCommission;
+      const deliveryComm = row.original.deliveryCommission;
+      const totalCommission = (typeof salesComm === 'number' ? salesComm : 0) + (typeof deliveryComm === 'number' ? deliveryComm : 0);
 
       if (row.original.status === 'ملغي') {
         return <div className="hidden lg:table-cell text-end font-medium">-</div>;
+      }
+      
+      if (totalCommission === 0 && (salesComm === undefined || deliveryComm === undefined)) {
+         return <div className="hidden lg:table-cell text-end font-medium">-</div>;
       }
 
       const formatted = new Intl.NumberFormat(language === 'ar' ? 'ar-EG' : 'en-US', {
@@ -111,7 +121,7 @@ export const getOrderColumns = (language: 'ar' | 'en', onUpdate: () => void): Co
   {
     accessorKey: "moderatorName",
     header: () => <div className="hidden lg:table-cell text-start">{language === 'ar' ? "المودريتور" : "Moderator"}</div>,
-    cell: ({ row }) => <div className="hidden lg:table-cell">{row.original.moderatorName}</div>,
+    cell: ({ row }) => <div className="hidden lg:table-cell">{row.original.moderatorName || '-'}</div>,
   },
   {
     accessorKey: "createdAt",
@@ -126,7 +136,10 @@ export const getOrderColumns = (language: 'ar' | 'en', onUpdate: () => void): Co
           </Button>
       </div>
     ),
-    cell: ({ row }) => <div className="hidden md:table-cell">{new Date(row.getValue("createdAt")).toLocaleDateString(language === 'ar' ? 'ar-EG' : 'en-US')}</div>,
+    cell: ({ row }) => {
+      const date = row.getValue("createdAt");
+      return <div className="hidden md:table-cell">{date ? new Date(date as string).toLocaleDateString(language === 'ar' ? 'ar-EG' : 'en-US') : '-'}</div>
+    },
   },
   {
     id: "actions",
