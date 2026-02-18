@@ -1,20 +1,11 @@
+
 {
   "rules": {
     "orders": {
-      "$y": {
-        "$m": {
-          "$d": {
-            ".read": true,
-            ".write": true
-          }
-        }
+      ".read": true,
+      "$orderId": {
+        ".write": true
       }
-    },
-    "order-lookup": {
-        ".read": true,
-        "$orderId": {
-            ".write": true
-        }
     },
     "customer-orders": {
         ".read": true,

@@ -23,7 +23,7 @@ import type { Customer, Product } from "@/lib/types";
 import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { useCollection, useDatabase, useUser, useMemoFirebase } from "@/firebase";
-import { ref, get, update, push } from "firebase/database";
+import { ref, get, update, push, set } from "firebase/database";
 
 const orderFormSchema = z.object({
   id: z.string().min(1, "رقم الطلب مطلوب"),
@@ -83,8 +83,8 @@ export function OrderForm({ onSuccess }: OrderFormProps) {
   const filteredCustomers = React.useMemo(() => {
     if (!customerSearch) return [];
     return allCustomers.filter(
-      c => c.customerName.toLowerCase().includes(customerSearch.toLowerCase()) ||
-           c.customerPhone.toLowerCase().includes(customerSearch.toLowerCase())
+      c => (c.customerName && c.customerName.toLowerCase().includes(customerSearch.toLowerCase())) ||
+           (c.customerPhone && c.customerPhone.toLowerCase().includes(customerSearch.toLowerCase()))
     );
   }, [customerSearch, allCustomers]);
 
@@ -115,12 +115,7 @@ export function OrderForm({ onSuccess }: OrderFormProps) {
       return;
     }
     
-    const now = new Date();
-    const year = now.getFullYear();
-    const month = String(now.getMonth() + 1).padStart(2, '0');
-    const day = String(now.getDate()).padStart(2, '0');
-    const datePath = `${year}/${month}/${day}`;
-    const orderPath = `orders/${datePath}/${data.id}`;
+    const orderPath = `orders/${data.id}`;
     
     const orderIdRef = ref(database, orderPath);
     const snapshot = await get(orderIdRef);
@@ -137,6 +132,7 @@ export function OrderForm({ onSuccess }: OrderFormProps) {
         return;
     }
     
+    // Using a single update object for atomic write
     const updates: { [key: string]: any } = {};
 
     // 1. Order Data
@@ -164,12 +160,14 @@ export function OrderForm({ onSuccess }: OrderFormProps) {
         deliveryCommission: 0,
     };
     updates[orderPath] = newOrder;
-    updates[`order-lookup/${data.id}`] = { path: datePath };
+
+    // 2. Add to customer's order list
     updates[`customer-orders/${data.customerPhone}/${data.id}`] = true;
 
-    // 2. Check and save new customer
-    const customerExists = allCustomers.some(c => c.id === data.customerPhone);
-    if (!customerExists) {
+    // 3. Check and save new customer (if they don't exist)
+    const customerRef = ref(database, `customers/${data.customerPhone}`);
+    const customerSnapshot = await get(customerRef);
+    if (!customerSnapshot.exists()) {
         const newCustomer: Customer = {
             customerName: data.customerName,
             customerPhone: data.customerPhone,
@@ -179,11 +177,12 @@ export function OrderForm({ onSuccess }: OrderFormProps) {
         updates[`customers/${data.customerPhone}`] = newCustomer; 
     }
 
-    // 3. Check and save new products
+    // 4. Check and save new products
     const allProducts = products || [];
-    data.items.forEach(item => {
-        const productExists = allProducts.some(p => p.name.toLowerCase() === item.productName.toLowerCase());
-        if (!productExists && item.productName) {
+    const productPromises = data.items.map(async (item) => {
+        if (!item.productName) return;
+        const existingProduct = allProducts.find(p => p.name.toLowerCase() === item.productName.toLowerCase());
+        if (!existingProduct) {
             const newProductRef = push(ref(database, 'products'));
             const newProduct: Omit<Product, 'id'> = {
                 name: item.productName,
@@ -195,6 +194,8 @@ export function OrderForm({ onSuccess }: OrderFormProps) {
             updates[`products/${newProductRef.key}`] = newProduct;
         }
     });
+
+    await Promise.all(productPromises);
 
     try {
         await update(ref(database), updates);

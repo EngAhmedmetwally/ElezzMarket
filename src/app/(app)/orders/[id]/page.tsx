@@ -22,7 +22,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
 import { useDoc, useCollection, useDatabase, useMemoFirebase, useUser as useAuthUser } from "@/firebase";
-import { ref, update, get } from "firebase/database";
+import { ref, update } from "firebase/database";
 import { Skeleton } from "@/components/ui/skeleton";
 
 const allowedTransitions: Record<OrderStatus, OrderStatus[]> = {
@@ -34,7 +34,11 @@ const allowedTransitions: Record<OrderStatus, OrderStatus[]> = {
 
 function StatusHistoryTimeline({ history }: { history?: StatusHistoryItem[] }) {
     const { language } = useLanguage();
-    const sortedHistory = React.useMemo(() => history ? [...history].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()) : [], [history]);
+    const sortedHistory = React.useMemo(() => {
+        if (!history) return [];
+        const historyArray = Array.isArray(history) ? history : Object.values(history);
+        return historyArray.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    }, [history]);
     
     return (
         <Card>
@@ -55,7 +59,7 @@ function StatusHistoryTimeline({ history }: { history?: StatusHistoryItem[] }) {
                                         <StatusBadge status={item.status} />
                                         <span className="font-medium">{item.userName}</span>
                                         <span className="text-xs text-muted-foreground">
-                                            {format(new Date(item.createdAt), "PPP p")}
+                                            {item.createdAt ? format(new Date(item.createdAt), "PPP p") : ''}
                                         </span>
                                     </div>
                                     {item.notes && <p className="text-sm text-muted-foreground mt-1">{item.notes}</p>}
@@ -99,23 +103,7 @@ export default function OrderDetailsPage() {
   const database = useDatabase();
   const { user: authUser } = useAuthUser();
   
-  const [orderPath, setOrderPath] = React.useState<string | null>(null);
-
-  React.useEffect(() => {
-      if (!database || !id) return;
-      const lookupRef = ref(database, `order-lookup/${id}`);
-      get(lookupRef).then((snapshot) => {
-          if (snapshot.exists()) {
-              const { path } = snapshot.val();
-              setOrderPath(`orders/${path}/${id}`);
-          } else {
-              console.error(`No path found for order ${id}`);
-              setOrderPath(null);
-          }
-      });
-  }, [database, id]);
-
-  const orderRef = useMemoFirebase(() => (database && orderPath) ? ref(database, orderPath) : null, [database, orderPath]);
+  const orderRef = useMemoFirebase(() => (database && id) ? ref(database, `orders/${id}`) : null, [database, id]);
   const { data: order, isLoading: isLoadingOrder } = useDoc<Order>(orderRef);
 
   const usersRef = useMemoFirebase(() => database ? ref(database, `users`) : null, [database]);
@@ -167,7 +155,7 @@ export default function OrderDetailsPage() {
           deliveryComm = 0;
       }
       
-      const currentHistory = order.statusHistory ? Object.values(order.statusHistory) : [];
+      const currentHistory = order.statusHistory ? (Array.isArray(order.statusHistory) ? order.statusHistory : Object.values(order.statusHistory)) : [];
 
       const updates: Partial<Order> = {
         status: selectedStatus,
@@ -207,7 +195,7 @@ export default function OrderDetailsPage() {
         salesComm = salesCommissionRule?.amount || 0;
       }
       
-      const currentHistory = order.statusHistory ? Object.values(order.statusHistory) : [];
+      const currentHistory = order.statusHistory ? (Array.isArray(order.statusHistory) ? order.statusHistory : Object.values(order.statusHistory)) : [];
 
       const updates: Partial<Order> = {
         status: selectedStatus,
@@ -239,7 +227,7 @@ export default function OrderDetailsPage() {
     }
   }
   
-  const isLoading = isLoadingOrder || isLoadingUsers || isLoadingRules || !orderPath;
+  const isLoading = isLoadingOrder || isLoadingUsers || isLoadingRules;
 
   if (isLoading && !order) {
     return <OrderDetailsSkeleton />;
@@ -302,7 +290,7 @@ export default function OrderDetailsPage() {
                       </div>
                   </CardContent>
              </Card>
-             <StatusHistoryTimeline history={order.statusHistory ? Object.values(order.statusHistory) : []} />
+             <StatusHistoryTimeline history={order.statusHistory} />
           </div>
           <div className="space-y-8">
               <Card>

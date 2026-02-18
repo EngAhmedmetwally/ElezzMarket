@@ -16,8 +16,8 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useLanguage } from "@/components/language-provider";
 import { DatePicker } from "@/components/ui/datepicker";
-import { useCollection, useDatabase } from "@/firebase";
-import { ref, onValue } from "firebase/database";
+import { useCollection, useDatabase, useMemoFirebase } from "@/firebase";
+import { ref } from "firebase/database";
 import type { Order, User } from "@/lib/types";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -57,51 +57,16 @@ export default function DashboardPage() {
   const [toDate, setToDate] = React.useState<Date | undefined>(undefined);
   const database = useDatabase();
 
-  const [ordersData, setOrdersData] = React.useState<Order[] | null>(null);
-  const [isLoadingOrders, setIsLoadingOrders] = React.useState(true);
-
-  React.useEffect(() => {
-    if (!database) return;
-    const ordersRootRef = ref(database, 'orders');
-    setIsLoadingOrders(true);
-
-    const unsubscribe = onValue(ordersRootRef, (snapshot) => {
-      const years = snapshot.val();
-      const loadedOrders: Order[] = [];
-      if (years) {
-        Object.keys(years).forEach((year) => {
-          const months = years[year];
-          Object.keys(months).forEach((month) => {
-            const days = months[month];
-            Object.keys(days).forEach((day) => {
-              const ordersByDay = days[day];
-              Object.keys(ordersByDay).forEach((orderId) => {
-                const orderData = ordersByDay[orderId];
-                loadedOrders.push({
-                  ...orderData,
-                  id: orderId,
-                });
-              });
-            });
-          });
-        });
-      }
-      setOrdersData(loadedOrders);
-      setIsLoadingOrders(false);
-    }, (error) => {
-      console.error("Failed to load orders:", error);
-      setIsLoadingOrders(false);
-    });
-
-    return () => unsubscribe();
-  }, [database]);
-
-
-  const { data: usersData, isLoading: isLoadingUsers } = useCollection<User>(ref(database, "users"));
+  const ordersQuery = useMemoFirebase(() => database ? ref(database, 'orders') : null, [database]);
+  const { data: ordersData, isLoading: isLoadingOrders } = useCollection<Order>(ordersQuery);
+  
+  const usersQuery = useMemoFirebase(() => database ? ref(database, "users") : null, [database]);
+  const { data: usersData, isLoading: isLoadingUsers } = useCollection<User>(usersQuery);
 
   const filteredOrders = React.useMemo(() => {
     if (!ordersData) return [];
     return ordersData.filter(order => {
+        if (!order.createdAt) return false;
         const orderDate = new Date(order.createdAt);
         if (fromDate) {
             const fromDateStart = new Date(fromDate);
@@ -117,14 +82,16 @@ export default function DashboardPage() {
     });
   }, [ordersData, fromDate, toDate]);
 
-  const totalSales = filteredOrders.reduce((acc, order) => acc + order.total, 0);
+  const totalSales = filteredOrders.reduce((acc, order) => acc + (order.total || 0), 0);
   const totalOrders = filteredOrders.length;
   const avgOrderValue = totalOrders > 0 ? totalSales / totalOrders : 0;
   const activeUsersCount = usersData ? usersData.filter(u => u.status === 'نشط').length : 0;
 
   const ordersByStatus = React.useMemo(() => {
     const statusCounts = filteredOrders.reduce((acc, order) => {
-        acc[order.status] = (acc[order.status] || 0) + 1;
+        if(order.status) {
+          acc[order.status] = (acc[order.status] || 0) + 1;
+        }
         return acc;
     }, {} as Record<string, number>);
 
@@ -133,8 +100,9 @@ export default function DashboardPage() {
 
   const salesByMonth = React.useMemo(() => {
       const salesMap = filteredOrders.reduce((acc, order) => {
+          if (!order.createdAt) return acc;
           const month = new Date(order.createdAt).toLocaleString(language === 'ar' ? 'ar-EG' : 'en-US', { month: 'long', year: 'numeric' });
-          acc.set(month, (acc.get(month) || 0) + order.total);
+          acc.set(month, (acc.get(month) || 0) + (order.total || 0));
           return acc;
       }, new Map<string, number>());
 
@@ -149,7 +117,7 @@ export default function DashboardPage() {
     return moderators.map(moderator => {
       const moderatorSales = filteredOrders
         .filter(o => o.moderatorId === moderator.id)
-        .reduce((acc, order) => acc + order.total, 0);
+        .reduce((acc, order) => acc + (order.total || 0), 0);
       
       return {
         ...moderator,

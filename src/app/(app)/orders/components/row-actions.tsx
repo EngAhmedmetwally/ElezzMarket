@@ -8,7 +8,7 @@ import { useLanguage } from "@/components/language-provider";
 import { useToast } from "@/hooks/use-toast";
 import type { Order, OrderStatus, User, StatusHistoryItem, CommissionRule } from "@/lib/types";
 import { cn } from "@/lib/utils";
-import { ref, update, get } from "firebase/database";
+import { ref, update } from "firebase/database";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -61,7 +61,7 @@ export function RowActions({ order, onUpdate }: RowActionsProps) {
   const couriers = React.useMemo(() => users?.filter(u => u.role === 'Courier') || [], [users]);
   const filteredCouriers = couriers.filter(c => c.name.toLowerCase().includes(courierSearch.toLowerCase()));
   
-  const availableStatuses = allowedTransitions[order.status] || [];
+  const availableStatuses = (order && order.status && allowedTransitions[order.status]) ? allowedTransitions[order.status] : [];
 
   const handleOpenModal = () => {
     setSelectedStatus(undefined);
@@ -81,21 +81,7 @@ export function RowActions({ order, onUpdate }: RowActionsProps) {
         return;
     }
 
-    const lookupRef = ref(database, `order-lookup/${order.id}`);
-    const snapshot = await get(lookupRef);
-
-    if (!snapshot.exists()) {
-        toast({
-            variant: "destructive",
-            title: language === 'ar' ? 'خطأ' : 'Error',
-            description: language === 'ar' ? 'لم يتم العثور على مسار الطلب. لا يمكن التحديث.' : 'Order path not found. Cannot update.',
-        });
-        return;
-    }
-
-    const { path: datePath } = snapshot.val();
-    const orderPath = `orders/${datePath}/${order.id}`;
-    const orderRef = ref(database, orderPath);
+    const orderRef = ref(database, `orders/${order.id}`);
 
     const selectedCourier = couriers.find(c => c.id === selectedCourierId);
 
@@ -131,7 +117,7 @@ export function RowActions({ order, onUpdate }: RowActionsProps) {
         deliveryComm = 0;
     }
     
-    const currentHistory = Array.isArray(order.statusHistory) ? order.statusHistory : (order.statusHistory ? Object.values(order.statusHistory) : []);
+    const currentHistory = (order.statusHistory && (Array.isArray(order.statusHistory) ? order.statusHistory : Object.values(order.statusHistory))) || [];
 
     const newHistoryItem: StatusHistoryItem = {
         status: selectedStatus,

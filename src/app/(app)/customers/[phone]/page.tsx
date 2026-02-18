@@ -5,8 +5,8 @@ import * as React from "react";
 import { useParams, useRouter } from "next/navigation";
 import { PageHeader } from "@/components/page-header";
 import { useLanguage } from "@/components/language-provider";
-import { useDatabase } from "@/firebase";
-import { ref, get } from "firebase/database";
+import { useDatabase, useCollection, useMemoFirebase } from "@/firebase";
+import { ref, get, query, orderByChild, equalTo } from "firebase/database";
 import type { Order } from "@/lib/types";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -30,38 +30,20 @@ export default function CustomerDetailsPage() {
 
     const fetchOrders = async () => {
       try {
-        const customerOrdersRef = ref(database, `customer-orders/${phone}`);
-        const orderIdsSnapshot = await get(customerOrdersRef);
-        if (!orderIdsSnapshot.exists()) {
-          setOrders([]);
-          setIsLoading(false);
-          return;
+        const ordersRef = ref(database, 'orders');
+        const customerOrdersQuery = query(ordersRef, orderByChild('customerPhone'), equalTo(phone));
+        const snapshot = await get(customerOrdersQuery);
+
+        if (snapshot.exists()) {
+            const ordersData = snapshot.val();
+            const fetchedOrders: Order[] = Object.keys(ordersData).map(key => ({
+                id: key,
+                ...ordersData[key]
+            }));
+            setOrders(fetchedOrders.sort((a,b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
+        } else {
+             setOrders([]);
         }
-        const orderIds = Object.keys(orderIdsSnapshot.val());
-
-        const pathPromises = orderIds.map(orderId => get(ref(database, `order-lookup/${orderId}`)));
-        const pathSnapshots = await Promise.all(pathPromises);
-        const orderPaths = pathSnapshots.map((snap, i) => {
-            if(snap.exists()) {
-                const { path } = snap.val();
-                return `orders/${path}/${orderIds[i]}`;
-            }
-            return null;
-        }).filter((p): p is string => p !== null);
-
-        const orderPromises = orderPaths.map(path => get(ref(database, path)));
-        const orderSnapshots = await Promise.all(orderPromises);
-        const fetchedOrders: Order[] = [];
-        orderSnapshots.forEach((snap, i) => {
-            if (snap.exists()) {
-                const orderData = snap.val() as Order;
-                const orderId = orderIds[i];
-                fetchedOrders.push({ ...orderData, id: orderId });
-            }
-        });
-
-
-        setOrders(fetchedOrders);
       } catch (error) {
         console.error("Error fetching customer orders:", error);
         setOrders([]);
@@ -107,8 +89,9 @@ export default function CustomerDetailsPage() {
   
   const getDeliveryTime = (order: Order) => {
     if (order.status === 'تم التسليم' && order.statusHistory) {
-      const deliveredHistory = Object.values(order.statusHistory).find(h => h.status === 'تم التسليم');
-      if (deliveredHistory) {
+      const historyArray = Array.isArray(order.statusHistory) ? order.statusHistory : Object.values(order.statusHistory);
+      const deliveredHistory = historyArray.find(h => h.status === 'تم التسليم');
+      if (deliveredHistory && deliveredHistory.createdAt) {
         return format(new Date(deliveredHistory.createdAt), "PPP p");
       }
     }

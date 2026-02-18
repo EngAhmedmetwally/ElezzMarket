@@ -4,14 +4,13 @@
 import * as React from "react";
 import { PageHeader } from "@/components/page-header";
 import { useLanguage } from "@/components/language-provider";
-import { useDatabase } from "@/firebase";
-import { ref, onValue } from "firebase/database";
+import { useCollection, useDatabase, useMemoFirebase } from "@/firebase";
+import { ref } from "firebase/database";
 import type { Order, Customer } from "@/lib/types";
 import { Skeleton } from "@/components/ui/skeleton";
 import { CustomersClient } from "./components/client";
 import { getCustomerColumns } from "./components/columns";
 
-// Let's define a Customer with an ID and orders count
 export type CustomerWithOrderCount = Customer & {
   id: string; // using phone as id
   orderCount: number;
@@ -22,50 +21,17 @@ export default function CustomersPage() {
   const { language } = useLanguage();
   const database = useDatabase();
 
-  const [ordersData, setOrdersData] = React.useState<Order[] | null>(null);
-  const [isLoading, setIsLoading] = React.useState(true);
-
-  React.useEffect(() => {
-    if (!database) return;
-    const ordersRootRef = ref(database, 'orders');
-    setIsLoading(true);
-
-    const unsubscribe = onValue(ordersRootRef, (snapshot) => {
-      const years = snapshot.val();
-      const loadedOrders: Order[] = [];
-      if (years) {
-        Object.keys(years).forEach((year) => {
-          const months = years[year];
-          Object.keys(months).forEach((month) => {
-            const days = months[month];
-            Object.keys(days).forEach((day) => {
-              const ordersByDay = days[day];
-              Object.keys(ordersByDay).forEach((orderId) => {
-                const orderData = ordersByDay[orderId];
-                loadedOrders.push({
-                  ...orderData,
-                  id: orderId,
-                });
-              });
-            });
-          });
-        });
-      }
-      setOrdersData(loadedOrders);
-      setIsLoading(false);
-    }, (error) => {
-      console.error("Failed to load orders:", error);
-      setIsLoading(false);
-    });
-
-    return () => unsubscribe();
-  }, [database]);
-
+  const ordersQuery = useMemoFirebase(() => database ? ref(database, 'orders') : null, [database]);
+  const { data: ordersData, isLoading } = useCollection<Order>(ordersQuery);
 
   const customers: CustomerWithOrderCount[] = React.useMemo(() => {
     if (!ordersData) return [];
     
-    const sortedOrders = [...ordersData].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    const sortedOrders = [...ordersData].sort((a, b) => {
+        if (!a.createdAt || !b.createdAt) return 0;
+        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+    });
+
     const customerMap = new Map<string, CustomerWithOrderCount>();
     
     sortedOrders.forEach((order: any) => {

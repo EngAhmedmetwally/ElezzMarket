@@ -12,10 +12,10 @@ import Link from "next/link";
 import { ArrowLeft, ArrowRight } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { CommissionChart } from "./components/commission-chart";
-import { useCollection, useDatabase } from "@/firebase";
+import { useCollection, useDatabase, useMemoFirebase } from "@/firebase";
 import type { Order, User } from "@/lib/types";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ref, onValue } from "firebase/database";
+import { ref } from "firebase/database";
 
 
 function ReportsSkeleton() {
@@ -71,91 +71,55 @@ export default function ReportsPage() {
     );
     const Arrow = isRTL ? ArrowLeft : ArrowRight;
 
-    const [ordersData, setOrdersData] = React.useState<Order[] | null>(null);
-    const [isLoadingOrders, setIsLoadingOrders] = React.useState(true);
+    const ordersQuery = useMemoFirebase(() => database ? ref(database, 'orders') : null, [database]);
+    const { data: ordersData, isLoading: isLoadingOrders } = useCollection<Order>(ordersQuery);
 
-    React.useEffect(() => {
-        if (!database) return;
-        const ordersRootRef = ref(database, 'orders');
-        setIsLoadingOrders(true);
-
-        const unsubscribe = onValue(ordersRootRef, (snapshot) => {
-        const years = snapshot.val();
-        const loadedOrders: Order[] = [];
-        if (years) {
-            Object.keys(years).forEach((year) => {
-                const months = years[year];
-                Object.keys(months).forEach((month) => {
-                    const days = months[month];
-                    Object.keys(days).forEach((day) => {
-                        const ordersByDay = days[day];
-                        Object.keys(ordersByDay).forEach((orderId) => {
-                            const orderData = ordersByDay[orderId];
-                            loadedOrders.push({
-                                ...orderData,
-                                id: orderId,
-                            });
-                        });
-                    });
-                });
-            });
-        }
-        setOrdersData(loadedOrders);
-        setIsLoadingOrders(false);
-        }, (error) => {
-        console.error("Failed to load orders:", error);
-        setIsLoadingOrders(false);
-        });
-
-        return () => unsubscribe();
-    }, [database]);
-
-
-    const { data: usersData, isLoading: isLoadingUsers } = useCollection<User>(ref(database, "users"));
-
+    const usersQuery = useMemoFirebase(() => database ? ref(database, "users") : null, [database]);
+    const { data: usersData, isLoading: isLoadingUsers } = useCollection<User>(usersQuery);
 
     const commissionReportData = React.useMemo(() => {
-    if (!ordersData || !usersData) return [];
+        if (!ordersData || !usersData) return [];
 
-    const filteredOrders = ordersData.filter(order => {
-        const orderDate = new Date(order.createdAt);
-        if (fromDate) {
-            const fromDateStart = new Date(fromDate);
-            fromDateStart.setHours(0, 0, 0, 0);
-            if (orderDate < fromDateStart) return false;
-        }
-        if (toDate) {
-            const toDateEnd = new Date(toDate);
-            toDateEnd.setHours(23, 59, 59, 999);
-            if (orderDate > toDateEnd) return false;
-        }
-        return true;
-    });
+        const filteredOrders = ordersData.filter(order => {
+            if (!order.createdAt) return false;
+            const orderDate = new Date(order.createdAt);
+            if (fromDate) {
+                const fromDateStart = new Date(fromDate);
+                fromDateStart.setHours(0, 0, 0, 0);
+                if (orderDate < fromDateStart) return false;
+            }
+            if (toDate) {
+                const toDateEnd = new Date(toDate);
+                toDateEnd.setHours(23, 59, 59, 999);
+                if (orderDate > toDateEnd) return false;
+            }
+            return true;
+        });
 
-    const moderators = usersData.filter(u => u.role === 'Moderator');
-    
-    return moderators.map(moderator => {
-      const moderatorOrders = filteredOrders.filter(o => o.moderatorId === moderator.id);
-      
-      const sales = moderatorOrders.reduce((acc, order) => acc + order.total, 0);
-      const salesCommission = moderatorOrders.reduce((acc, order) => acc + (order.salesCommission || 0), 0);
-      
-      const deliveredOrders = moderatorOrders.filter(o => o.status === 'تم التسليم');
-      const deliveries = deliveredOrders.length;
-      const deliveryCommission = deliveredOrders.reduce((acc, order) => acc + (order.deliveryCommission || 0), 0);
+        const moderators = usersData.filter(u => u.role === 'Moderator');
+        
+        return moderators.map(moderator => {
+        const moderatorOrders = filteredOrders.filter(o => o.moderatorId === moderator.id);
+        
+        const sales = moderatorOrders.reduce((acc, order) => acc + (order.total || 0), 0);
+        const salesCommission = moderatorOrders.reduce((acc, order) => acc + (order.salesCommission || 0), 0);
+        
+        const deliveredOrders = moderatorOrders.filter(o => o.status === 'تم التسليم');
+        const deliveries = deliveredOrders.length;
+        const deliveryCommission = deliveredOrders.reduce((acc, order) => acc + (order.deliveryCommission || 0), 0);
 
-      const totalCommission = salesCommission + deliveryCommission;
-      
-      return {
-        moderator: moderator.name,
-        sales,
-        salesCommission,
-        deliveries,
-        deliveryCommission,
-        totalCommission,
-      };
-    }).filter(d => d.totalCommission > 0 || d.sales > 0);
-  }, [ordersData, usersData, fromDate, toDate]);
+        const totalCommission = salesCommission + deliveryCommission;
+        
+        return {
+            moderator: moderator.name,
+            sales,
+            salesCommission,
+            deliveries,
+            deliveryCommission,
+            totalCommission,
+        };
+        }).filter(d => d.totalCommission > 0 || d.sales > 0);
+    }, [ordersData, usersData, fromDate, toDate]);
 
 
     const chartData = commissionReportData.map(d => ({ moderator: d.moderator, totalCommission: d.totalCommission }));

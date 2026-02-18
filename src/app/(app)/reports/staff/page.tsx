@@ -11,9 +11,9 @@ import { Progress } from "@/components/ui/progress";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { StaffPerformanceChart } from "../components/staff-performance-chart";
 import { DatePicker } from "@/components/ui/datepicker";
-import { useCollection, useDatabase } from "@/firebase";
+import { useCollection, useDatabase, useMemoFirebase } from "@/firebase";
 import type { Order, User } from "@/lib/types";
-import { ref, onValue } from "firebase/database";
+import { ref } from "firebase/database";
 import { Skeleton } from "@/components/ui/skeleton";
 
 
@@ -63,50 +63,16 @@ export default function StaffReportPage() {
   const [fromDate, setFromDate] = React.useState<Date | undefined>(undefined);
   const [toDate, setToDate] = React.useState<Date | undefined>(undefined);
   
-  const [ordersData, setOrdersData] = React.useState<Order[] | null>(null);
-  const [isLoadingOrders, setIsLoadingOrders] = React.useState(true);
-  
-  React.useEffect(() => {
-    if (!database) return;
-    const ordersRootRef = ref(database, 'orders');
-    setIsLoadingOrders(true);
+  const ordersQuery = useMemoFirebase(() => database ? ref(database, 'orders') : null, [database]);
+  const { data: ordersData, isLoading: isLoadingOrders } = useCollection<Order>(ordersQuery);
 
-    const unsubscribe = onValue(ordersRootRef, (snapshot) => {
-      const years = snapshot.val();
-      const loadedOrders: Order[] = [];
-      if (years) {
-        Object.keys(years).forEach((year) => {
-          const months = years[year];
-          Object.keys(months).forEach((month) => {
-            const days = months[month];
-            Object.keys(days).forEach((day) => {
-              const ordersByDay = days[day];
-              Object.keys(ordersByDay).forEach((orderId) => {
-                const orderData = ordersByDay[orderId];
-                loadedOrders.push({
-                  ...orderData,
-                  id: orderId,
-                });
-              });
-            });
-          });
-        });
-      }
-      setOrdersData(loadedOrders);
-      setIsLoadingOrders(false);
-    }, (error) => {
-      console.error("Failed to load orders:", error);
-      setIsLoadingOrders(false);
-    });
-
-    return () => unsubscribe();
-  }, [database]);
-
-  const { data: usersData, isLoading: isLoadingUsers } = useCollection<User>(ref(database, "users"));
+  const usersQuery = useMemoFirebase(() => database ? ref(database, "users") : null, [database]);
+  const { data: usersData, isLoading: isLoadingUsers } = useCollection<User>(usersQuery);
 
   const filteredOrders = React.useMemo(() => {
     if (!ordersData) return [];
     return ordersData.filter(order => {
+        if (!order.createdAt) return false;
         const orderDate = new Date(order.createdAt);
         if (fromDate) {
             const fromDateStart = new Date(fromDate);

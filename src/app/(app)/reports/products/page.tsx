@@ -8,8 +8,8 @@ import { useLanguage } from "@/components/language-provider";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { StaffPerformanceChart } from "../components/staff-performance-chart";
 import { Progress } from "@/components/ui/progress";
-import { useDatabase } from "@/firebase";
-import { ref, onValue } from "firebase/database";
+import { useCollection, useDatabase, useMemoFirebase } from "@/firebase";
+import { ref } from "firebase/database";
 import type { Order } from "@/lib/types";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -46,44 +46,8 @@ export default function ProductsReportPage() {
   const isMobile = useIsMobile();
   const database = useDatabase();
 
-  const [ordersData, setOrdersData] = React.useState<Order[] | null>(null);
-  const [isLoading, setIsLoading] = React.useState(true);
-
-  React.useEffect(() => {
-    if (!database) return;
-    const ordersRootRef = ref(database, 'orders');
-    setIsLoading(true);
-
-    const unsubscribe = onValue(ordersRootRef, (snapshot) => {
-      const years = snapshot.val();
-      const loadedOrders: Order[] = [];
-      if (years) {
-        Object.keys(years).forEach((year) => {
-          const months = years[year];
-          Object.keys(months).forEach((month) => {
-            const days = months[month];
-            Object.keys(days).forEach((day) => {
-              const ordersByDay = days[day];
-              Object.keys(ordersByDay).forEach((orderId) => {
-                const orderData = ordersByDay[orderId];
-                loadedOrders.push({
-                  ...orderData,
-                  id: orderId,
-                });
-              });
-            });
-          });
-        });
-      }
-      setOrdersData(loadedOrders);
-      setIsLoading(false);
-    }, (error) => {
-      console.error("Failed to load orders:", error);
-      setIsLoading(false);
-    });
-
-    return () => unsubscribe();
-  }, [database]);
+  const ordersQuery = useMemoFirebase(() => database ? ref(database, 'orders') : null, [database]);
+  const { data: ordersData, isLoading } = useCollection<Order>(ordersQuery);
 
   const productsSales = React.useMemo(() => {
     if (!ordersData) return [];

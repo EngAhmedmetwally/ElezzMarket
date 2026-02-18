@@ -29,10 +29,10 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { useDatabase } from "@/firebase";
-import { ref, onValue } from "firebase/database";
+import { useCollection, useDatabase, useMemoFirebase } from "@/firebase";
 import type { Order } from "@/lib/types";
 import { Skeleton } from "@/components/ui/skeleton";
+import { ref } from "firebase/database";
 
 
 export default function OrdersPage() {
@@ -46,51 +46,16 @@ export default function OrdersPage() {
 
   const columns = getOrderColumns(language, () => setVersion(v => v + 1));
   
-  const [allOrders, setAllOrders] = React.useState<Order[]>([]);
-  const [isLoading, setIsLoading] = React.useState(true);
-
-  React.useEffect(() => {
-    if (!database) return;
-    const ordersRootRef = ref(database, 'orders');
-    setIsLoading(true);
-
-    const unsubscribe = onValue(ordersRootRef, (snapshot) => {
-      const years = snapshot.val();
-      const loadedOrders: Order[] = [];
-      if (years) {
-        Object.keys(years).forEach((year) => {
-          const months = years[year];
-          Object.keys(months).forEach((month) => {
-            const days = months[month];
-            Object.keys(days).forEach((day) => {
-              const ordersByDay = days[day];
-              Object.keys(ordersByDay).forEach((orderId) => {
-                const orderData = ordersByDay[orderId];
-                loadedOrders.push({
-                  ...orderData,
-                  id: orderId,
-                  createdAt: orderData.createdAt ? new Date(orderData.createdAt).toISOString() : new Date().toISOString(),
-                  updatedAt: orderData.updatedAt ? new Date(orderData.updatedAt).toISOString() : new Date().toISOString(),
-                });
-              });
-            });
-          });
-        });
-      }
-      loadedOrders.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-      setAllOrders(loadedOrders);
-      setIsLoading(false);
-    }, (error) => {
-      console.error("Failed to load orders:", error);
-      setIsLoading(false);
-    });
-
-    return () => unsubscribe();
-  }, [database, version]);
-
+  const ordersQuery = useMemoFirebase(() => database ? ref(database, 'orders') : null, [database, version]);
+  const { data: allOrders, isLoading } = useCollection<Order>(ordersQuery);
 
   const filteredOrders = React.useMemo(() => {
-    return allOrders.filter(order => {
+    if (!allOrders) return [];
+    
+    const sorted = [...allOrders].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+
+    return sorted.filter(order => {
+        if (!order.createdAt) return true;
         const orderDate = new Date(order.createdAt);
         if (fromDate) {
             const fromDateStart = new Date(fromDate);
@@ -107,8 +72,11 @@ export default function OrdersPage() {
   }, [allOrders, fromDate, toDate]);
   
   const ordersByStatus = React.useMemo(() => {
+    if (!filteredOrders) return [];
     const statusCounts = filteredOrders.reduce((acc, order) => {
-        acc[order.status] = (acc[order.status] || 0) + 1;
+        if (order.status) {
+          acc[order.status] = (acc[order.status] || 0) + 1;
+        }
         return acc;
     }, {} as Record<string, number>);
 
@@ -147,14 +115,15 @@ export default function OrdersPage() {
   };
 
   const handleFileDownload = () => {
+    if (!allOrders) return;
     const sheetData = allOrders.map(order => ({
         'رقم الاوردر': order.id,
-        'التاريخ': new Date(order.createdAt).toLocaleDateString('ar-EG'),
+        'التاريخ': order.createdAt ? new Date(order.createdAt).toLocaleDateString('ar-EG') : '',
         'اسم العميل': order.customerName,
         'رقم التليفون': order.customerPhone,
         'المنطقة': order.zoning,
         'العنوان بالتفصيل': order.customerAddress,
-        'الطلبات': order.items.map(i => `${i.productName} (x${i.quantity})`).join(', '),
+        'الطلبات': (order.items || []).map(i => `${i.productName} (x${i.quantity})`).join(', '),
         'الاجمالي': order.total,
         'المودريتور': order.moderatorName,
         'حالة الاوردر': order.status,
