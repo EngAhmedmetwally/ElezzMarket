@@ -29,7 +29,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import type { User } from "@/lib/types";
 import { useDatabase } from "@/firebase";
-import { ref, set, push } from "firebase/database";
+import { ref, set, push, update } from "firebase/database";
 
 
 const permissionsSchema = z.object({
@@ -110,9 +110,28 @@ export function AddUserForm({ onSuccess, userToEdit }: AddUserFormProps) {
   
   const [isSubmitting, setIsSubmitting] = React.useState(false);
 
+  React.useEffect(() => {
+    if (userToEdit) {
+      form.reset({
+        fullName: userToEdit.name,
+        username: userToEdit.username,
+        password: '',
+        role: userToEdit.role,
+        orderVisibility: userToEdit.orderVisibility,
+        permissions: userToEdit.permissions
+      })
+    }
+  }, [userToEdit, form])
+
 
   async function onSubmit(data: UserFormValues) {
     setIsSubmitting(true);
+    if (!database) {
+        toast({ variant: "destructive", title: "Database error" });
+        setIsSubmitting(false);
+        return;
+    }
+    
     if (isEditMode && userToEdit) {
         const userRef = ref(database, `users/${userToEdit.id}`);
         const userDataToUpdate: Partial<User> = {
@@ -128,10 +147,7 @@ export function AddUserForm({ onSuccess, userToEdit }: AddUserFormProps) {
             userDataToUpdate.password = data.password;
         }
 
-        await set(userRef, {
-            ...userToEdit,
-            ...userDataToUpdate
-        });
+        await update(userRef, userDataToUpdate);
 
         toast({
             title: language === 'ar' ? 'تم تحديث المستخدم' : "User Updated",
@@ -182,7 +198,9 @@ export function AddUserForm({ onSuccess, userToEdit }: AddUserFormProps) {
     
     setIsSubmitting(false);
     onSuccess?.();
-    form.reset();
+    if (!isEditMode) {
+      form.reset();
+    }
   }
 
   const roles = {

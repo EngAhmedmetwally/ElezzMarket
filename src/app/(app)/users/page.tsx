@@ -56,6 +56,7 @@ export default function UsersPage() {
       const username = userDoc.username || userDoc.email?.split('@')[0] || '';
 
       return {
+        ...userDoc, // Pass through all original data
         id: userDoc.id,
         name,
         username,
@@ -64,8 +65,6 @@ export default function UsersPage() {
         avatarUrl,
         status,
         createdAt,
-        orderVisibility: userDoc.orderVisibility || 'own',
-        permissions: userDoc.permissions
       };
     });
   }, [usersData]);
@@ -106,7 +105,7 @@ export default function UsersPage() {
             </div>
         </div>
       ) : (
-        <UsersClient data={users} columns={columns} />
+        <UsersClient data={users} columns={columns} onUpdate={handleSuccess} />
       )}
     </div>
   );

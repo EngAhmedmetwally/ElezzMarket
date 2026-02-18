@@ -1,3 +1,4 @@
+
 "use client";
 
 import * as React from "react";
@@ -36,11 +37,13 @@ import type { User } from "@/lib/types";
 interface DataTableProps<TData extends User, TValue> {
   columns: ColumnDef<TData, TValue>[];
   data: TData[];
+  onUpdate: () => void;
 }
 
 export function UsersClient<TData extends User, TValue>({
   columns,
   data,
+  onUpdate,
 }: DataTableProps<TData, TValue>) {
   const [sorting, setSorting] = React.useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>(
@@ -126,9 +129,9 @@ export function UsersClient<TData extends User, TValue>({
                     </Avatar>
                     <div className="flex-1">
                       <div className="font-bold">{user.name}</div>
-                      <div className="text-sm text-muted-foreground">{user.email}</div>
+                      <div className="text-sm text-muted-foreground">{user.username}</div>
                     </div>
-                    <RowActions userId={user.id} />
+                    <RowActions user={user} onUpdate={onUpdate} />
                   </CardHeader>
                   <CardContent className="p-4 pt-0 flex justify-between items-center">
                     <Badge variant="secondary">{user.role}</Badge>

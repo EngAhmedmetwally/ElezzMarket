@@ -47,7 +47,7 @@ export const getUserColumns = (language: 'ar' | 'en', onUpdate: () => void): Col
                 </Avatar>
                 <div className="flex flex-col">
                     <span className="font-medium">{user.name}</span>
-                    <span className="text-xs text-muted-foreground">{user.email}</span>
+                    <span className="text-xs text-muted-foreground">@{user.username}</span>
                 </div>
             </div>
         )
