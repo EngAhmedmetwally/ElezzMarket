@@ -29,8 +29,8 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { useCollection, useFirestore, useMemoFirebase } from "@/firebase";
-import { collection, query, orderBy } from "firebase/firestore";
+import { useCollection, useDatabase, useMemoFirebase } from "@/firebase";
+import { ref, query, orderByChild } from "firebase/database";
 import type { Order } from "@/lib/types";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -42,24 +42,25 @@ export default function OrdersPage() {
   const [version, setVersion] = React.useState(0);
   const [fromDate, setFromDate] = React.useState<Date | undefined>(undefined);
   const [toDate, setToDate] = React.useState<Date | undefined>(undefined);
-  const firestore = useFirestore();
+  const database = useDatabase();
 
   const columns = getOrderColumns(language, () => setVersion(v => v + 1));
 
   const ordersQuery = useMemoFirebase(() => {
-    if (!firestore) return null;
-    return query(collection(firestore, "orders"), orderBy("createdAt", "desc"));
-  }, [firestore]);
+    if (!database) return null;
+    return query(ref(database, "orders"), orderByChild("createdAt"));
+  }, [database]);
 
   const { data: ordersData, isLoading } = useCollection<any>(ordersQuery);
 
   const orders: Order[] = React.useMemo(() => {
     if (!ordersData) return [];
-    return ordersData.map((doc: any): Order => ({
+    // RTDB orderByChild sorts ascending, so we reverse for descending order by date.
+    return [...ordersData].reverse().map((doc: any): Order => ({
       ...doc,
       id: doc.id,
-      createdAt: doc.createdAt?.toDate ? doc.createdAt.toDate().toISOString() : new Date().toISOString(),
-      updatedAt: doc.updatedAt?.toDate ? doc.updatedAt.toDate().toISOString() : new Date().toISOString(),
+      createdAt: doc.createdAt ? new Date(doc.createdAt).toISOString() : new Date().toISOString(),
+      updatedAt: doc.updatedAt ? new Date(doc.updatedAt).toISOString() : new Date().toISOString(),
     }));
   }, [ordersData]);
 
