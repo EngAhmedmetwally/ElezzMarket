@@ -6,7 +6,7 @@ import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
 import * as z from "zod"
 import { format } from "date-fns"
-import { ref } from "firebase/database"
+import { ref, set } from "firebase/database"
 
 import { Button } from "@/components/ui/button"
 import { PageHeader } from "@/components/page-header";
@@ -18,7 +18,7 @@ import { useLanguage } from "@/components/language-provider"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { DatePicker } from "@/components/ui/datepicker"
 import { useIsMobile } from "@/hooks/use-mobile"
-import { useCollection, useDatabase, useMemoFirebase, setDocumentNonBlocking } from "@/firebase"
+import { useCollection, useDatabase, useMemoFirebase } from "@/firebase"
 import type { CommissionRule } from "@/lib/types"
 
 const commissionFormSchema = z.object({
@@ -104,44 +104,53 @@ export default function CommissionsPage() {
       form.reset({
         sale: {
           amount: saleRule?.amount || 0,
-          fromDate: saleRule ? new Date(saleRule.fromDate) : new Date(),
-          toDate: saleRule ? new Date(saleRule.toDate) : new Date(),
+          fromDate: saleRule?.fromDate ? new Date(saleRule.fromDate) : new Date(),
+          toDate: saleRule?.toDate ? new Date(saleRule.toDate) : new Date(),
         },
         delivery: {
           amount: deliveryRule?.amount || 0,
-          fromDate: deliveryRule ? new Date(deliveryRule.fromDate) : new Date(),
-          toDate: deliveryRule ? new Date(deliveryRule.toDate) : new Date(),
+          fromDate: deliveryRule?.fromDate ? new Date(deliveryRule.fromDate) : new Date(),
+          toDate: deliveryRule?.toDate ? new Date(deliveryRule.toDate) : new Date(),
         },
       });
     }
   }, [commissionRules, form]);
 
-  function onSubmit(data: CommissionFormValues) {
+  async function onSubmit(data: CommissionFormValues) {
     if (!database) return;
 
-    const saleRuleRef = ref(database, 'commission-rules/sale');
-    const deliveryRuleRef = ref(database, 'commission-rules/delivery');
+    try {
+        const saleRuleRef = ref(database, 'commission-rules/sale');
+        const deliveryRuleRef = ref(database, 'commission-rules/delivery');
 
-    const newSaleRule: Omit<CommissionRule, 'id'> = {
-      type: 'بيع',
-      amount: data.sale.amount,
-      fromDate: data.sale.fromDate.toISOString(),
-      toDate: data.sale.toDate.toISOString(),
-    };
-    const newDeliveryRule: Omit<CommissionRule, 'id'> = {
-      type: 'تسليم',
-      amount: data.delivery.amount,
-      fromDate: data.delivery.fromDate.toISOString(),
-      toDate: data.delivery.toDate.toISOString(),
-    };
-
-    setDocumentNonBlocking(saleRuleRef, newSaleRule);
-    setDocumentNonBlocking(deliveryRuleRef, newDeliveryRule);
-    
-    toast({
-      title: language === 'ar' ? 'تم تحديث العمولات' : "Commissions Updated",
-      description: language === 'ar' ? 'تم حفظ قواعد العمولات بنجاح.' : "Commission rules have been saved successfully.",
-    })
+        const newSaleRule: Omit<CommissionRule, 'id'> = {
+          type: 'بيع',
+          amount: data.sale.amount,
+          fromDate: data.sale.fromDate.toISOString(),
+          toDate: data.sale.toDate.toISOString(),
+        };
+        const newDeliveryRule: Omit<CommissionRule, 'id'> = {
+          type: 'تسليم',
+          amount: data.delivery.amount,
+          fromDate: data.delivery.fromDate.toISOString(),
+          toDate: data.delivery.toDate.toISOString(),
+        };
+        
+        await set(saleRuleRef, newSaleRule);
+        await set(deliveryRuleRef, newDeliveryRule);
+        
+        toast({
+          title: language === 'ar' ? 'تم تحديث العمولات' : "Commissions Updated",
+          description: language === 'ar' ? 'تم حفظ قواعد العمولات بنجاح.' : "Commission rules have been saved successfully.",
+        })
+    } catch (e: any) {
+        toast({
+            variant: "destructive",
+            title: language === 'ar' ? 'خطأ' : "Error",
+            description: language === 'ar' ? 'فشل حفظ العمولات.' : "Failed to save commissions.",
+        });
+        console.error("Commission save error:", e);
+    }
   }
 
   const formatCurrency = (value: number) => new Intl.NumberFormat(language === 'ar' ? 'ar-EG' : 'en-US', { style: 'currency', currency: 'EGP' }).format(value);
@@ -187,11 +196,11 @@ export default function CommissionsPage() {
                         <CardContent className="p-4 pt-0 text-sm space-y-1">
                             <div className="flex justify-between">
                                 <span className="text-muted-foreground">{language === 'ar' ? 'من تاريخ:' : 'From:'}</span>
-                                <span>{format(new Date(rule.fromDate), "PPP")}</span>
+                                <span>{rule.fromDate ? format(new Date(rule.fromDate), "PPP") : '-'}</span>
                             </div>
                             <div className="flex justify-between">
                                 <span className="text-muted-foreground">{language === 'ar' ? 'إلى تاريخ:' : 'To:'}</span>
-                                <span>{format(new Date(rule.toDate), "PPP")}</span>
+                                <span>{rule.toDate ? format(new Date(rule.toDate), "PPP") : '-'}</span>
                             </div>
                         </CardContent>
                     </Card>
@@ -212,8 +221,8 @@ export default function CommissionsPage() {
                   <TableRow key={rule.id}>
                     <TableCell className="font-medium text-start">{rule.type}</TableCell>
                     <TableCell className="text-end">{formatCurrency(rule.amount)}</TableCell>
-                    <TableCell className="text-center">{format(new Date(rule.fromDate), "PPP")}</TableCell>
-                    <TableCell className="text-center">{format(new Date(rule.toDate), "PPP")}</TableCell>
+                    <TableCell className="text-center">{rule.fromDate ? format(new Date(rule.fromDate), "PPP") : '-'}</TableCell>
+                    <TableCell className="text-center">{rule.toDate ? format(new Date(rule.toDate), "PPP") : '-'}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>

@@ -4,7 +4,6 @@
 import * as React from "react";
 import { MoreHorizontal } from "lucide-react";
 import { useLanguage } from "@/components/language-provider";
-import { mockUsers } from "@/lib/data";
 import type { User } from "@/lib/types";
 
 import { Button } from "@/components/ui/button";
@@ -21,14 +20,18 @@ import { AddUserForm } from "./add-user-form";
 
 
 interface RowActionsProps {
-  userId: string;
+  user: User;
+  onUpdate: () => void;
 }
 
-export function RowActions({ userId }: RowActionsProps) {
+export function RowActions({ user, onUpdate }: RowActionsProps) {
   const { language } = useLanguage();
   const [isEditDialogOpen, setIsEditDialogOpen] = React.useState(false);
-  
-  const user = mockUsers.find(u => u.id === userId);
+
+  const handleEditSuccess = () => {
+    setIsEditDialogOpen(false);
+    onUpdate();
+  }
 
   return (
     <>
@@ -41,7 +44,7 @@ export function RowActions({ userId }: RowActionsProps) {
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
           <DropdownMenuLabel>{language === 'ar' ? 'الإجراءات' : 'Actions'}</DropdownMenuLabel>
-          <DropdownMenuItem onClick={() => navigator.clipboard.writeText(userId)}>
+          <DropdownMenuItem onClick={() => navigator.clipboard.writeText(user.id)}>
             {language === 'ar' ? 'نسخ معرف المستخدم' : 'Copy User ID'}
           </DropdownMenuItem>
           <DropdownMenuSeparator />
@@ -64,7 +67,7 @@ export function RowActions({ userId }: RowActionsProps) {
             <DialogTitle>{language === 'ar' ? 'تعديل المستخدم' : 'Edit User'}</DialogTitle>
           </DialogHeader>
           <div className="py-4">
-            {user && <AddUserForm userToEdit={user} onSuccess={() => setIsEditDialogOpen(false)} />}
+            {user && <AddUserForm userToEdit={user} onSuccess={handleEditSuccess} />}
           </div>
         </DialogContent>
       </Dialog>

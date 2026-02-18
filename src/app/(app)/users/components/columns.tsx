@@ -1,3 +1,4 @@
+
 "use client";
 
 import type { ColumnDef } from "@tanstack/react-table";
@@ -10,7 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 
-export const getUserColumns = (language: 'ar' | 'en'): ColumnDef<User>[] => [
+export const getUserColumns = (language: 'ar' | 'en', onUpdate: () => void): ColumnDef<User>[] => [
   {
     id: "select",
     header: ({ table }) => (
@@ -79,7 +80,7 @@ export const getUserColumns = (language: 'ar' | 'en'): ColumnDef<User>[] => [
     id: "actions",
     header: () => <div className="text-center">{language === 'ar' ? "الإجراءات" : "Actions"}</div>,
     cell: ({ row }) => {
-      return <div className="flex justify-center"><RowActions userId={row.original.id} /></div>;
+      return <div className="flex justify-center"><RowActions user={row.original} onUpdate={onUpdate} /></div>;
     },
   },
 ];

@@ -24,9 +24,15 @@ import { Skeleton } from "@/components/ui/skeleton";
 export default function UsersPage() {
   const [isAddUserOpen, setIsAddUserOpen] = React.useState(false);
   const { language } = useLanguage();
-  const columns = getUserColumns(language);
   const database = useDatabase();
   const [version, setVersion] = React.useState(0); // To force re-render
+
+  const handleSuccess = () => {
+    setIsAddUserOpen(false);
+    setVersion(v => v + 1); // Trigger a refetch
+  }
+  
+  const columns = getUserColumns(language, handleSuccess);
 
   const usersQuery = useMemoFirebase(() => {
     if (!database) return null;
@@ -64,10 +70,6 @@ export default function UsersPage() {
     });
   }, [usersData]);
 
-  const handleSuccess = () => {
-    setIsAddUserOpen(false);
-    setVersion(v => v + 1); // Trigger a refetch
-  }
 
   return (
     <div>
