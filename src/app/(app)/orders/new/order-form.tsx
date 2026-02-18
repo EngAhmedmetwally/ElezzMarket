@@ -38,6 +38,7 @@ const orderFormSchema = z.object({
         productName: z.string().min(1, "اسم المنتج مطلوب"),
         quantity: z.coerce.number().int().min(1, "الكمية يجب أن تكون 1 على الأقل"),
         price: z.coerce.number().min(0, "السعر يجب أن يكون رقمًا موجبًا"),
+        weight: z.coerce.number().optional(),
       })
     )
     .min(1, "يجب أن يحتوي الطلب على عنصر واحد على الأقل."),
@@ -69,7 +70,7 @@ export function OrderForm({ onSuccess }: OrderFormProps) {
       customerPhone: "",
       customerAddress: "",
       zoning: "",
-      items: [{ productId: "", productName: "", quantity: 1, price: 0 }],
+      items: [{ productId: "", productName: "", quantity: 1, price: 0, weight: undefined }],
     },
   });
 
@@ -161,7 +162,7 @@ export function OrderForm({ onSuccess }: OrderFormProps) {
                 // Product is new, create it with the initial salesCount
                 const newProductRef = push(ref(database, 'products'));
                 productId = newProductRef.key!;
-                const newProduct: Omit<Product, 'id'> = {
+                const newProduct: Omit<Product, 'id' | 'salesCount'> & { salesCount: number, name: string} = {
                     name: item.productName,
                     price: item.price,
                     isActive: true,
@@ -317,7 +318,7 @@ export function OrderForm({ onSuccess }: OrderFormProps) {
             {fields.map((field, index) => (
               <div key={field.id} className="flex flex-wrap gap-4 items-start">
                 <FormField control={form.control} name={`items.${index}.productName`} render={({ field }) => (
-                    <FormItem className="flex-1 min-w-[200px]">
+                    <FormItem className="flex-1 min-w-[150px]">
                       <FormLabel className={cn(index > 0 && 'sr-only')}>{language === 'ar' ? 'المنتج' : 'Product'}</FormLabel>
                       <FormControl>
                         <Input 
@@ -339,6 +340,27 @@ export function OrderForm({ onSuccess }: OrderFormProps) {
                       <FormMessage />
                     </FormItem>
                 )}/>
+                 <FormField
+                    control={form.control}
+                    name={`items.${index}.weight`}
+                    render={({ field }) => (
+                    <FormItem className="w-24">
+                        <FormLabel className={cn(index > 0 && "sr-only")}>
+                        {language === "ar" ? "الوزن" : "Weight"}
+                        </FormLabel>
+                        <FormControl>
+                        <Input
+                            type="number"
+                            placeholder={language === "ar" ? "الوزن" : "Weight"}
+                            {...field}
+                            value={field.value ?? ''}
+                            step="any"
+                        />
+                        </FormControl>
+                        <FormMessage />
+                    </FormItem>
+                    )}
+                />
                 <FormField control={form.control} name={`items.${index}.quantity`} render={({ field }) => (
                     <FormItem className="w-24">
                        <FormLabel className={cn(index > 0 && 'sr-only')}>{language === 'ar' ? 'الكمية' : 'Quantity'}</FormLabel>
@@ -363,7 +385,7 @@ export function OrderForm({ onSuccess }: OrderFormProps) {
             ))}
           </div>
 
-          <Button type="button" variant="outline" size="sm" className="mt-4" onClick={() => append({ productId: "", productName: "", quantity: 1, price: 0 })}>
+          <Button type="button" variant="outline" size="sm" className="mt-4" onClick={() => append({ productId: "", productName: "", quantity: 1, price: 0, weight: undefined })}>
             <PlusCircle className="me-2 h-4 w-4" />
             {language === 'ar' ? 'إضافة عنصر' : 'Add Item'}
           </Button>

@@ -27,6 +27,7 @@ export type OrderItem = {
   productName: string;
   quantity: number;
   price: number;
+  weight?: number;
 };
 
 export type StatusHistoryItem = {

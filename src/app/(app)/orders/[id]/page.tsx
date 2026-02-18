@@ -309,6 +309,7 @@ export default function OrderDetailsPage() {
                           <TableHeader>
                               <TableRow>
                                   <TableHead className="text-start">{language === 'ar' ? 'المنتج' : 'Product'}</TableHead>
+                                  <TableHead className="text-center">{language === 'ar' ? 'الوزن' : 'Weight'}</TableHead>
                                   <TableHead className="text-center">{language === 'ar' ? 'الكمية' : 'Quantity'}</TableHead>
                                   <TableHead className="text-end">{language === 'ar' ? 'سعر الوحدة' : 'Unit Price'}</TableHead>
                                   <TableHead className="text-end">{language === 'ar' ? 'المجموع الفرعي' : 'Subtotal'}</TableHead>
@@ -318,6 +319,7 @@ export default function OrderDetailsPage() {
                               {orderItems.map((item, index) => (
                                   <TableRow key={index}>
                                       <TableCell className="font-medium text-start">{item.productName}</TableCell>
+                                      <TableCell className="text-center">{item.weight || '-'}</TableCell>
                                       <TableCell className="text-center">{item.quantity}</TableCell>
                                       <TableCell className="text-end">EGP {item.price.toLocaleString()}</TableCell>
                                       <TableCell className="text-end">EGP {(item.price * item.quantity).toLocaleString()}</TableCell>
