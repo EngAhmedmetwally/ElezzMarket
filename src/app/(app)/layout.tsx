@@ -1,3 +1,4 @@
+
 "use client";
 
 import {
@@ -58,6 +59,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
   const side = isRTL ? 'right' : 'left';
   
   const { user, isUserLoading } = useUser();
+  const isHomePage = pathname === '/home';
 
   React.useEffect(() => {
     if (!isUserLoading && !user) {
@@ -80,58 +82,60 @@ export default function AppLayout({ children }: { children: ReactNode }) {
 
   return (
     <SidebarProvider side={side}>
-      <Sidebar side={side} collapsible="icon">
-        <SidebarHeader className="p-4">
-          <Link href="/" className="flex items-center gap-2">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-              <Rocket className="h-6 w-6" />
-            </div>
-            <span className="font-bold text-lg">{language === 'ar' ? 'سوق العز' : 'ElEzz Market'}</span>
-          </Link>
-        </SidebarHeader>
-        <SidebarContent>
-          <SidebarMenu>
-            {navItems.map((item) => (
-              <SidebarMenuItem key={item.href || item.label}>
-                {item.children ? (
-                  <>
-                     <SidebarMenuButton
+      {!isHomePage && (
+        <Sidebar side={side} collapsible="icon">
+          <SidebarHeader className="p-4">
+            <Link href="/home" className="flex items-center gap-2">
+              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary text-primary-foreground">
+                <Rocket className="h-6 w-6" />
+              </div>
+              <span className="font-bold text-lg">{language === 'ar' ? 'سوق العز' : 'ElEzz Market'}</span>
+            </Link>
+          </SidebarHeader>
+          <SidebarContent>
+            <SidebarMenu>
+              {navItems.map((item) => (
+                <SidebarMenuItem key={item.href || item.label}>
+                  {item.children ? (
+                    <>
+                      <SidebarMenuButton
+                        asChild
+                        isActive={pathname.startsWith(item.href) && !item.children.some(child => pathname === child.href && child.href !== item.href)}
+                        tooltip={language === 'ar' ? item.arLabel : item.label}
+                      >
+                        <Link href={item.href!}>
+                          <item.icon />
+                          <span>{language === 'ar' ? item.arLabel : item.label}</span>
+                        </Link>
+                      </SidebarMenuButton>
+                      <SidebarMenuSub>
+                        {item.children.map((child) => (
+                          <SidebarMenuSubItem key={child.href}>
+                            <SidebarMenuSubButton asChild isActive={pathname === child.href}>
+                                <Link href={child.href}>{language === 'ar' ? child.arLabel : child.label}</Link>
+                            </SidebarMenuSubButton>
+                          </SidebarMenuSubItem>
+                        ))}
+                      </SidebarMenuSub>
+                    </>
+                  ) : (
+                    <SidebarMenuButton
                       asChild
-                      isActive={pathname.startsWith(item.href) && !item.children.some(child => pathname === child.href && child.href !== item.href)}
+                      isActive={pathname.startsWith(item.href!)}
                       tooltip={language === 'ar' ? item.arLabel : item.label}
                     >
-                       <Link href={item.href!}>
+                      <Link href={item.href!}>
                         <item.icon />
                         <span>{language === 'ar' ? item.arLabel : item.label}</span>
                       </Link>
                     </SidebarMenuButton>
-                    <SidebarMenuSub>
-                      {item.children.map((child) => (
-                         <SidebarMenuSubItem key={child.href}>
-                           <SidebarMenuSubButton asChild isActive={pathname === child.href}>
-                              <Link href={child.href}>{language === 'ar' ? child.arLabel : child.label}</Link>
-                           </SidebarMenuSubButton>
-                        </SidebarMenuSubItem>
-                      ))}
-                    </SidebarMenuSub>
-                  </>
-                ) : (
-                  <SidebarMenuButton
-                    asChild
-                    isActive={pathname.startsWith(item.href!)}
-                    tooltip={language === 'ar' ? item.arLabel : item.label}
-                  >
-                    <Link href={item.href!}>
-                      <item.icon />
-                      <span>{language === 'ar' ? item.arLabel : item.label}</span>
-                    </Link>
-                  </SidebarMenuButton>
-                )}
-              </SidebarMenuItem>
-            ))}
-          </SidebarMenu>
-        </SidebarContent>
-      </Sidebar>
+                  )}
+                </SidebarMenuItem>
+              ))}
+            </SidebarMenu>
+          </SidebarContent>
+        </Sidebar>
+      )}
       <SidebarInset>
         <div className="flex h-full flex-col">
           <AppHeader />

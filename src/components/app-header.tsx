@@ -1,5 +1,7 @@
+
 "use client";
 
+import { usePathname } from "next/navigation";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { UserNav } from "@/components/user-nav";
 import { ThemeToggle } from "@/components/theme-toggle";
@@ -8,11 +10,14 @@ import { useLanguage } from "./language-provider";
 
 export default function AppHeader() {
   const { language } = useLanguage();
+  const pathname = usePathname();
+  const isHomePage = pathname === '/home';
+
   return (
     <header className="sticky top-0 z-10 w-full bg-background/95 backdrop-blur-sm">
       <div className="flex h-16 items-center px-4 md:px-8">
         <div className="flex items-center gap-2">
-            <SidebarTrigger className="md:hidden" />
+            {!isHomePage && <SidebarTrigger className="md:hidden" />}
             <div className="hidden md:block font-bold text-lg">{language === 'ar' ? 'سوق العز' : 'ElEzz Market'}</div>
         </div>
         <div className="ml-auto flex items-center space-x-2">

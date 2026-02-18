@@ -25,7 +25,7 @@ import { useLanguage } from "@/components/language-provider";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
 const formSchema = z.object({
-  username: z.string().min(1, "اسم المستخدم (الكود الرقمي) مطلوب"),
+  username: z.string().min(1, "اسم المستخدم مطلوب"),
   password: z.string().min(1, "كلمة المرور مطلوبة"),
 });
 
@@ -49,20 +49,36 @@ export default function LoginPage() {
   // Redirect if user is already logged in
   React.useEffect(() => {
     if (!isUserLoading && user) {
-      router.replace("/dashboard");
+      if (user.email === 'emergency.admin@elezz.com') {
+        router.replace("/dashboard");
+      } else {
+        router.replace("/home");
+      }
     }
   }, [user, isUserLoading, router]);
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setIsSubmitting(true);
     try {
-      const email = `${values.username}@elezz.com`;
-      await signInWithEmailAndPassword(auth, email, values.password);
+      let email;
+      let password = values.password;
+
+      // Special case for emergency admin
+      if (values.username.toLowerCase() === 'admin' && values.password === 'admin304050') {
+        email = 'emergency.admin@elezz.com';
+        // Note: The password for this special email must be 'admin304050' in Firebase Auth.
+      } else {
+        // Regular user login
+        email = `${values.username}@elezz.com`;
+      }
+      
+      await signInWithEmailAndPassword(auth, email, password);
+
       toast({
         title: language === 'ar' ? "تم تسجيل الدخول" : "Logged In",
         description: language === 'ar' ? "تم تسجيل دخولك بنجاح." : "You have been successfully logged in.",
       });
-      router.replace('/dashboard');
+      // Redirection is handled by the useEffect hook
     } catch (error) {
       console.error("Login failed:", error);
       toast({
@@ -108,9 +124,9 @@ export default function LoginPage() {
                 name="username"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>{language === 'ar' ? 'اسم المستخدم (الكود الرقمي)' : 'Username (Numeric Code)'}</FormLabel>
+                    <FormLabel>{language === 'ar' ? 'اسم المستخدم' : 'Username'}</FormLabel>
                     <FormControl>
-                      <Input placeholder="12345" {...field} />
+                      <Input placeholder={language === 'ar' ? 'ادخل اسم المستخدم' : 'Enter username'} {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
