@@ -28,11 +28,6 @@ export default function RootPage() {
               </Button>
           </Link>
       </div>
-       <Link href="/dashboard" passHref>
-        <Button variant="link">
-          الذهاب إلى لوحة التحكم
-        </Button>
-      </Link>
     </div>
   );
 }
