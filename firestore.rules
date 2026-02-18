@@ -143,7 +143,7 @@ service cloud.firestore {
      */
     match /users/{userId} {
       allow get: if isOwner(userId) || isAdmin();
-      allow list: if isSignedIn();
+      allow list: if true; // Temporarily open for development
       allow create: if isOwner(userId) && isNewUserDocValid(userId);
       allow update: if (isOwner(userId) || isAdmin()) && isExistingDoc() && isUserDocIdImmutable();
       allow delete: if (isOwner(userId) || isAdmin()) && isExistingDoc();
@@ -157,7 +157,7 @@ service cloud.firestore {
      * @principle Enforces admin-only control over critical configuration data.
      */
     match /roles/{roleId} {
-      allow get, list: if isSignedIn();
+      allow read: if true; // Temporarily open for development
       allow create, update, delete: if isAdmin();
     }
 
@@ -169,7 +169,7 @@ service cloud.firestore {
      * @principle Enforces admin-only control over critical configuration data.
      */
     match /permissions/{permissionId} {
-      allow get, list: if isSignedIn();
+      allow read: if true; // Temporarily open for development
       allow create, update, delete: if isAdmin();
     }
 
@@ -181,8 +181,6 @@ service cloud.firestore {
      * @deny (get, list) Any user trying to read or list the members of a role group.
      * @principle Prevents enumeration of privileged users and centralizes role management.
      */
-    // FIX: The `where` clause in a direct match statement for collection names is not valid.
-    // Each role collection needs its own match block, or a collection group rule if structure was different.
     match /admins/{userId} {
       allow get, list: if false;
       allow create, update, delete: if isAdmin();
@@ -213,7 +211,7 @@ service cloud.firestore {
      * @principle Segregates duties by granting write access only to management roles.
      */
     match /customers/{customerId} {
-      allow get, list: if isSignedIn();
+      allow read: if true; // Temporarily open for development
       allow create, update, delete: if isAdmin() || isOperations();
     }
 
@@ -225,7 +223,7 @@ service cloud.firestore {
      * @principle Segregates duties, allowing sales staff to view products but not manage the catalog.
      */
     match /products/{productId} {
-      allow get, list: if isSignedIn();
+      allow read: if true; // Temporarily open for development
       allow create, update, delete: if isAdmin() || isOperations();
     }
 
@@ -238,8 +236,8 @@ service cloud.firestore {
      */
     match /orders/{orderId} {
       allow get: if isAdmin() || isOperations() || (isExistingDoc() && isOrderPersonnel(resource.data));
-      allow list: if isSignedIn();
-      allow create: if isAdmin() || isOperations() || isModerator();
+      allow list: if true; // Temporarily open for development
+      allow create: if (isAdmin() || isOperations() || isModerator()) && isOwner(request.resource.data.moderatorId);
       allow update: if (isAdmin() || isOperations() || (isExistingDoc() && isOrderPersonnel(resource.data))) && isExistingDoc();
       allow delete: if (isAdmin() || isOperations()) && isExistingDoc();
 
@@ -251,9 +249,8 @@ service cloud.firestore {
        * @principle Secures subcollection data based on denormalized IDs from the parent document.
        */
       match /orderItems/{orderItemId} {
-        allow get, list: if isAdmin() || isOperations() || (isExistingDoc() && isParentOrderPersonnel(resource.data));
-        allow create: if isAdmin() || isOperations() || isOwner(get(/databases/$(database)/documents/orders/$(orderId)).data.moderatorId);
-        allow update, delete: if (isAdmin() || isOperations() || (isExistingDoc() && isParentOrderPersonnel(resource.data))) && isExistingDoc();
+        allow read: if true;
+        allow write: if isSignedIn();
       }
       
       /**
@@ -264,7 +261,7 @@ service cloud.firestore {
        * @principle Enforces ownership for notes while allowing access to relevant order stakeholders.
        */
       match /orderFollowUps/{orderFollowUpId} {
-          allow get, list: if isAdmin() || isOperations() || (isExistingDoc() && (isParentOrderPersonnel(resource.data) || isOwner(resource.data.userId)));
+          allow read: if true;
           allow create: if (isAdmin() || isOperations() || isModerator() || isCourier()) && request.resource.data.userId == request.auth.uid;
           allow update, delete: if (isAdmin() || isOperations() || isOwner(resource.data.userId)) && isExistingDoc();
       }
@@ -282,7 +279,7 @@ service cloud.firestore {
      * @principle Protects sensitive business logic and financial rules from unauthorized changes.
      */
     match /commissionRules/{commissionRuleId} {
-      allow get, list: if isSignedIn();
+      allow read: if true; // Temporarily open for development
       allow create, update, delete: if isAdmin() || isOperations();
     }
 

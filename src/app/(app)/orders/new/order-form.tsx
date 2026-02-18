@@ -23,8 +23,8 @@ import { mockProducts, mockCustomers } from "@/lib/data";
 import type { Customer } from "@/lib/types";
 import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
-import { useFirestore, useUser } from "@/firebase";
-import { doc, getDoc, setDoc, serverTimestamp } from "firebase/firestore";
+import { useFirestore, useUser, setDocumentNonBlocking } from "@/firebase";
+import { doc, getDoc, serverTimestamp } from "firebase/firestore";
 
 const orderFormSchema = z.object({
   id: z.string().min(1, "رقم الطلب مطلوب"),
@@ -148,24 +148,16 @@ export function OrderForm({ onSuccess }: OrderFormProps) {
         salesCommission: 0,
         deliveryCommission: 0,
     };
+    
+    // Use non-blocking write
+    setDocumentNonBlocking(orderRef, newOrder, {});
 
-    setDoc(orderRef, newOrder as any)
-      .then(() => {
-        toast({
-          title: language === 'ar' ? "تم إنشاء الطلب" : "Order Created",
-          description: language === 'ar' ? "تم إنشاء طلب جديد بنجاح." : "A new order has been successfully created.",
-        });
-        onSuccess?.();
-        form.reset();
-      })
-      .catch((error) => {
-        console.error("Error creating order: ", error);
-        toast({
-            variant: "destructive",
-            title: language === 'ar' ? 'خطأ' : 'Error',
-            description: language === 'ar' ? 'حدث خطأ أثناء إنشاء الطلب.' : 'An error occurred while creating the order.',
-        });
-      });
+    toast({
+        title: language === 'ar' ? "تم إنشاء الطلب" : "Order Created",
+        description: language === 'ar' ? "تم إنشاء طلب جديد بنجاح." : "A new order has been successfully created.",
+    });
+    onSuccess?.();
+    form.reset();
   }
 
   return (
