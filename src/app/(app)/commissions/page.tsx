@@ -17,6 +17,7 @@ import { useLanguage } from "@/components/language-provider"
 import { mockCommissionRules } from "@/lib/data"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { DatePicker } from "@/components/ui/datepicker"
+import { useIsMobile } from "@/hooks/use-mobile"
 
 const commissionFormSchema = z.object({
   sale: z.object({
@@ -84,6 +85,7 @@ function CommissionSection({ form, type, title, titleAr }: { form: any, type: "s
 export default function CommissionsPage() {
   const { toast } = useToast()
   const { language } = useLanguage();
+  const isMobile = useIsMobile();
   const form = useForm<CommissionFormValues>({
     resolver: zodResolver(commissionFormSchema),
   });
@@ -95,6 +97,8 @@ export default function CommissionsPage() {
       description: language === 'ar' ? 'تم حفظ قواعد العمولات بنجاح.' : "Commission rules have been saved successfully.",
     })
   }
+
+  const formatCurrency = (value: number) => new Intl.NumberFormat(language === 'ar' ? 'ar-EG' : 'en-US', { style: 'currency', currency: 'EGP' }).format(value);
 
   return (
     <div className="space-y-8">
@@ -126,26 +130,49 @@ export default function CommissionsPage() {
           <CardDescription>{language === 'ar' ? 'قائمة بقواعد العمولات الحالية.' : 'List of current commission rules.'}</CardDescription>
         </CardHeader>
         <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="text-center">{language === 'ar' ? 'النوع' : 'Type'}</TableHead>
-                <TableHead className="text-end">{language === 'ar' ? 'المبلغ' : 'Amount'}</TableHead>
-                <TableHead className="text-center">{language === 'ar' ? 'من تاريخ' : 'From Date'}</TableHead>
-                <TableHead className="text-center">{language === 'ar' ? 'إلى تاريخ' : 'To Date'}</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {mockCommissionRules.map((rule) => (
-                <TableRow key={rule.id}>
-                  <TableCell className="text-center">{rule.type}</TableCell>
-                  <TableCell className="text-end">{rule.amount}</TableCell>
-                  <TableCell className="text-center">{format(new Date(rule.fromDate), "PPP")}</TableCell>
-                  <TableCell className="text-center">{format(new Date(rule.toDate), "PPP")}</TableCell>
+          {isMobile ? (
+             <div className="space-y-4">
+                {mockCommissionRules.map((rule) => (
+                    <Card key={rule.id}>
+                        <CardHeader className="p-4">
+                            <CardTitle className="text-lg">{rule.type}</CardTitle>
+                            <CardDescription>{language === 'ar' ? 'المبلغ:' : 'Amount:'} <span className="font-bold text-primary">{formatCurrency(rule.amount)}</span></CardDescription>
+                        </CardHeader>
+                        <CardContent className="p-4 pt-0 text-sm space-y-1">
+                            <div className="flex justify-between">
+                                <span className="text-muted-foreground">{language === 'ar' ? 'من تاريخ:' : 'From:'}</span>
+                                <span>{format(new Date(rule.fromDate), "PPP")}</span>
+                            </div>
+                            <div className="flex justify-between">
+                                <span className="text-muted-foreground">{language === 'ar' ? 'إلى تاريخ:' : 'To:'}</span>
+                                <span>{format(new Date(rule.toDate), "PPP")}</span>
+                            </div>
+                        </CardContent>
+                    </Card>
+                ))}
+             </div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="text-start">{language === 'ar' ? 'النوع' : 'Type'}</TableHead>
+                  <TableHead className="text-end">{language === 'ar' ? 'المبلغ' : 'Amount'}</TableHead>
+                  <TableHead className="text-center">{language === 'ar' ? 'من تاريخ' : 'From Date'}</TableHead>
+                  <TableHead className="text-center">{language === 'ar' ? 'إلى تاريخ' : 'To Date'}</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {mockCommissionRules.map((rule) => (
+                  <TableRow key={rule.id}>
+                    <TableCell className="font-medium text-start">{rule.type}</TableCell>
+                    <TableCell className="text-end">{formatCurrency(rule.amount)}</TableCell>
+                    <TableCell className="text-center">{format(new Date(rule.fromDate), "PPP")}</TableCell>
+                    <TableCell className="text-center">{format(new Date(rule.toDate), "PPP")}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
         </CardContent>
       </Card>
     </div>
