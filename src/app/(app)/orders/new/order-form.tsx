@@ -19,12 +19,11 @@ import { Separator } from "@/components/ui/separator";
 import { PlusCircle, Trash2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useLanguage } from "@/components/language-provider";
-import { mockProducts, mockCustomers } from "@/lib/data";
-import type { Customer } from "@/lib/types";
+import type { Customer, Product } from "@/lib/types";
 import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
-import { useDatabase, useUser } from "@/firebase";
-import { ref, get, serverTimestamp, update } from "firebase/database";
+import { useCollection, useDatabase, useUser, useMemoFirebase } from "@/firebase";
+import { ref, get, update, push } from "firebase/database";
 
 const orderFormSchema = z.object({
   id: z.string().min(1, "رقم الطلب مطلوب"),
@@ -55,6 +54,12 @@ export function OrderForm({ onSuccess }: OrderFormProps) {
   const database = useDatabase();
   const { user } = useUser();
 
+  const customersQuery = useMemoFirebase(() => database ? ref(database, 'customers') : null, [database]);
+  const { data: customers } = useCollection<Customer>(customersQuery);
+
+  const productsQuery = useMemoFirebase(() => database ? ref(database, 'products') : null, [database]);
+  const { data: products } = useCollection<Product>(productsQuery);
+
   const form = useForm<OrderFormValues>({
     resolver: zodResolver(orderFormSchema),
     defaultValues: {
@@ -73,16 +78,17 @@ export function OrderForm({ onSuccess }: OrderFormProps) {
   });
 
   const [customerSearch, setCustomerSearch] = React.useState("");
+  const allCustomers = customers || [];
   
   const filteredCustomers = React.useMemo(() => {
     if (!customerSearch) return [];
-    return mockCustomers.filter(
+    return allCustomers.filter(
       c => c.customerName.toLowerCase().includes(customerSearch.toLowerCase()) ||
-           c.customerPhone.includes(customerSearch)
+           c.customerPhone.toLowerCase().includes(customerSearch.toLowerCase())
     );
-  }, [customerSearch]);
+  }, [customerSearch, allCustomers]);
 
-  const handleCustomerSelect = (customer: Customer) => {
+  const handleCustomerSelect = (customer: Customer & {id: string}) => {
     form.setValue("customerName", customer.customerName);
     form.setValue("customerPhone", customer.customerPhone);
     form.setValue("customerAddress", customer.customerAddress);
@@ -115,9 +121,9 @@ export function OrderForm({ onSuccess }: OrderFormProps) {
     const day = String(now.getDate()).padStart(2, '0');
     const datePath = `${year}/${month}/${day}`;
     const orderPath = `orders/${datePath}/${data.id}`;
-    const orderRef = ref(database, orderPath);
     
-    const snapshot = await get(orderRef);
+    const orderIdRef = ref(database, orderPath);
+    const snapshot = await get(orderIdRef);
     if (snapshot.exists()) {
         form.setError("id", {
             type: "manual",
@@ -131,6 +137,9 @@ export function OrderForm({ onSuccess }: OrderFormProps) {
         return;
     }
     
+    const updates: { [key: string]: any } = {};
+
+    // 1. Order Data
     const newOrder = {
         id: data.id,
         customerName: data.customerName,
@@ -142,8 +151,8 @@ export function OrderForm({ onSuccess }: OrderFormProps) {
         status: "تم الحجز",
         moderatorId: user.id,
         moderatorName: user.name || user.email || 'Unknown',
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
         statusHistory: [
             {
                 status: 'تم الحجز',
@@ -154,11 +163,38 @@ export function OrderForm({ onSuccess }: OrderFormProps) {
         salesCommission: 0,
         deliveryCommission: 0,
     };
-    
-    const updates: { [key: string]: any } = {};
     updates[orderPath] = newOrder;
     updates[`order-lookup/${data.id}`] = { path: datePath };
     updates[`customer-orders/${data.customerPhone}/${data.id}`] = true;
+
+    // 2. Check and save new customer
+    const customerExists = allCustomers.some(c => c.id === data.customerPhone);
+    if (!customerExists) {
+        const newCustomer: Customer = {
+            customerName: data.customerName,
+            customerPhone: data.customerPhone,
+            customerAddress: data.customerAddress,
+            zoning: data.zoning,
+        };
+        updates[`customers/${data.customerPhone}`] = newCustomer; 
+    }
+
+    // 3. Check and save new products
+    const allProducts = products || [];
+    data.items.forEach(item => {
+        const productExists = allProducts.some(p => p.name.toLowerCase() === item.productName.toLowerCase());
+        if (!productExists && item.productName) {
+            const newProductRef = push(ref(database, 'products'));
+            const newProduct: Omit<Product, 'id'> = {
+                name: item.productName,
+                price: item.price,
+                isActive: true,
+                createdAt: new Date().toISOString(),
+                sku: `SKU-${Date.now()}-${Math.random().toString(36).substring(2, 7).toUpperCase()}`
+            };
+            updates[`products/${newProductRef.key}`] = newProduct;
+        }
+    });
 
     try {
         await update(ref(database), updates);
@@ -212,9 +248,9 @@ export function OrderForm({ onSuccess }: OrderFormProps) {
                     {filteredCustomers.length > 0 && customerSearch && (
                         <Card className="absolute z-10 w-full mt-1 shadow-lg">
                             <CardContent className="p-2 max-h-60 overflow-y-auto">
-                                {filteredCustomers.map((customer, index) => (
+                                {filteredCustomers.map((customer) => (
                                     <div 
-                                        key={index} 
+                                        key={customer.id} 
                                         className="p-2 hover:bg-muted rounded-md cursor-pointer text-sm"
                                         onClick={() => handleCustomerSelect(customer)}
                                     >
@@ -266,7 +302,7 @@ export function OrderForm({ onSuccess }: OrderFormProps) {
                           list="product-list"
                           onChange={(e) => {
                             field.onChange(e);
-                            const product = mockProducts.find(p => p.name === e.target.value);
+                            const product = products?.find(p => p.name === e.target.value);
                             if (product) {
                                 form.setValue(`items.${index}.price`, product.price);
                             }
@@ -318,7 +354,7 @@ export function OrderForm({ onSuccess }: OrderFormProps) {
         </div>
       </form>
       <datalist id="product-list">
-        {mockProducts.map((product) => (
+        {(products || []).map((product) => (
             <option key={product.id} value={product.name} />
         ))}
       </datalist>

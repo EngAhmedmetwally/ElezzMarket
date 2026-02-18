@@ -33,6 +33,14 @@
     "commission-rules": {
       ".read": "auth != null",
       ".write": "auth != null"
+    },
+    "customers": {
+        ".read": "auth != null",
+        ".write": "auth != null"
+    },
+    "products": {
+        ".read": "auth != null",
+        ".write": "auth != null"
     }
   }
 }
