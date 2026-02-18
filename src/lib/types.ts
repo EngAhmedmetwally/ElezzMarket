@@ -4,6 +4,8 @@ export type UserRole = "Admin" | "Moderator" | "Courier";
 
 export type User = {
   id: string;
+  username: string;
+  password?: string;
   name: string;
   email: string;
   role: UserRole;
@@ -11,6 +13,7 @@ export type User = {
   status: "نشط" | "معطل";
   createdAt: string;
   orderVisibility?: "all" | "own";
+  permissions?: any; // Keeping this flexible for now
 };
 
 export type OrderStatus =

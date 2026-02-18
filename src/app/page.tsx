@@ -7,8 +7,9 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { Rocket } from "lucide-react";
-import { useAuth, useUser } from "@/firebase";
-import { signInWithEmailAndPassword, createUserWithEmailAndPassword } from "firebase/auth";
+import { useUser, useAuthActions, useDatabase } from "@/firebase";
+import { ref, query, orderByChild, equalTo, get } from "firebase/database";
+import type { User } from "@/lib/types";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -31,8 +32,9 @@ const formSchema = z.object({
 
 export default function LoginPage() {
   const router = useRouter();
-  const auth = useAuth();
   const { user, isUserLoading } = useUser();
+  const { login } = useAuthActions();
+  const database = useDatabase();
   const { toast } = useToast();
   const { language } = useLanguage();
 
@@ -59,58 +61,68 @@ export default function LoginPage() {
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setIsSubmitting(true);
-    try {
-      const isEmergencyAdmin = values.username.toLowerCase() === 'admin' && values.password === 'admin304050';
-      const email = isEmergencyAdmin ? 'emergency.admin@elezz.com' : `${values.username}@elezz.com`;
-      const password = values.password;
-      
-      await signInWithEmailAndPassword(auth, email, password);
+    // 1. Handle emergency admin
+    if (values.username.toLowerCase() === 'admin' && values.password === 'admin304050') {
+        const adminUser: User = {
+            id: 'emergency-admin',
+            username: 'admin',
+            name: 'Emergency Admin',
+            email: 'emergency.admin@elezz.com',
+            role: 'Admin',
+            avatarUrl: '/avatars/01.png',
+            status: 'نشط',
+            createdAt: new Date().toISOString(),
+            orderVisibility: 'all'
+        };
+        login(adminUser);
+        toast({
+            title: language === 'ar' ? "تم تسجيل الدخول" : "Logged In",
+            description: language === 'ar' ? "تم تسجيل الدخول كمسؤول طوارئ." : "Logged in as emergency admin.",
+        });
+        setIsSubmitting(false);
+        return;
+    }
 
-      toast({
-        title: language === 'ar' ? "تم تسجيل الدخول" : "Logged In",
-        description: language === 'ar' ? "تم تسجيل دخولك بنجاح." : "You have been successfully logged in.",
-      });
-      // Redirection is handled by the useEffect hook
-    } catch (error: any) {
-      const isEmergencyAdmin = values.username.toLowerCase() === 'admin' && values.password === 'admin304050';
-      
-      // If sign-in fails for the emergency admin, try creating the account.
-      // This is a one-time setup for the emergency user.
-      if (isEmergencyAdmin && (error.code === 'auth/invalid-credential' || error.code === 'auth/user-not-found')) {
-        try {
-          await createUserWithEmailAndPassword(auth, 'emergency.admin@elezz.com', 'admin304050');
-          toast({
-            title: language === 'ar' ? "تم إعداد حساب المسؤول" : "Admin Account Set Up",
-            description: language === 'ar' ? "تم إنشاء حساب الطوارئ بنجاح. يتم الآن تسجيل دخولك." : "Emergency account created. Signing you in.",
-          });
-          // After creation, Firebase automatically signs the user in, so the useEffect will handle redirection.
-        } catch (creationError: any) {
-          // This might happen if the email exists but password was wrong initially during sign-in attempt
-          if (creationError.code === 'auth/email-already-in-use') {
-             toast({
-                variant: "destructive",
-                title: language === 'ar' ? "فشل تسجيل الدخول" : "Login Failed",
-                description: language === 'ar' ? "كلمة المرور لحساب المسؤول غير صحيحة." : "Incorrect password for admin account.",
-            });
-          } else {
-            console.error("Emergency admin creation failed:", creationError);
+    // 2. Handle regular user login
+    try {
+        const usersRef = ref(database, 'users');
+        const userQuery = query(usersRef, orderByChild('username'), equalTo(values.username));
+        const snapshot = await get(userQuery);
+
+        if (snapshot.exists()) {
+            const usersData = snapshot.val();
+            const userId = Object.keys(usersData)[0];
+            const userFromDb: User = usersData[userId];
+
+            if (userFromDb.password === values.password) {
+                login(userFromDb);
+                toast({
+                    title: language === 'ar' ? "تم تسجيل الدخول" : "Logged In",
+                    description: language === 'ar' ? "تم تسجيل دخولك بنجاح." : "You have been successfully logged in.",
+                });
+            } else {
+                 toast({
+                    variant: "destructive",
+                    title: language === 'ar' ? "فشل تسجيل الدخول" : "Login Failed",
+                    description: language === 'ar' ? "كلمة المرور غير صحيحة." : "Incorrect password.",
+                });
+            }
+        } else {
             toast({
                 variant: "destructive",
-                title: language === 'ar' ? "فشل إنشاء المسؤول" : "Admin Creation Failed",
-                description: language === 'ar' ? "لم نتمكن من إعداد حساب الطوارئ. يرجى مراجعة وحدة التحكم." : "Could not set up the emergency account. Please check the console.",
+                title: language === 'ar' ? "فشل تسجيل الدخول" : "Login Failed",
+                description: language === 'ar' ? "اسم المستخدم غير موجود." : "Username does not exist.",
             });
-          }
         }
-      } else {
+    } catch (error: any) {
         console.error("Login failed:", error);
         toast({
             variant: "destructive",
             title: language === 'ar' ? "فشل تسجيل الدخول" : "Login Failed",
-            description: language === 'ar' ? "اسم المستخدم أو كلمة المرور غير صحيحة." : "Incorrect username or password.",
+            description: language === 'ar' ? "حدث خطأ أثناء تسجيل الدخول." : "An error occurred during login.",
         });
-      }
     } finally {
-      setIsSubmitting(false);
+        setIsSubmitting(false);
     }
   }
   

@@ -1,9 +1,9 @@
+
 "use client";
 
-import { CreditCard, LogOut, Settings, User } from "lucide-react";
+import { CreditCard, LogOut, Settings, User as UserIcon } from "lucide-react";
 import { useLanguage } from "./language-provider";
-import { useAuth } from "@/firebase";
-import { signOut } from "firebase/auth";
+import { useUser, useAuthActions } from "@/firebase";
 import { useRouter } from "next/navigation";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -21,12 +21,13 @@ import {
 
 export function UserNav() {
   const { language } = useLanguage();
-  const auth = useAuth();
+  const { logout } = useAuthActions();
+  const { user } = useUser();
   const router = useRouter();
 
-  const handleLogout = async () => {
-    await signOut(auth);
-    router.push('/');
+  const handleLogout = () => {
+    logout();
+    router.replace('/');
   }
 
   return (
@@ -34,24 +35,24 @@ export function UserNav() {
       <DropdownMenuTrigger asChild>
         <Button variant="ghost" className="relative h-8 w-8 rounded-full">
           <Avatar className="h-9 w-9">
-            <AvatarImage src="/avatars/01.png" alt="@admin" data-ai-hint="male avatar" />
-            <AvatarFallback>AU</AvatarFallback>
+            <AvatarImage src={user?.avatarUrl || "/avatars/01.png"} alt={user?.name || ''} data-ai-hint="male avatar" />
+            <AvatarFallback>{user?.name?.charAt(0) || 'U'}</AvatarFallback>
           </Avatar>
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent className="w-56" align="end" forceMount>
         <DropdownMenuLabel className="font-normal">
           <div className="flex flex-col space-y-1">
-            <p className="text-sm font-medium leading-none">{language === 'ar' ? 'مستخدم مسؤول' : 'Admin User'}</p>
+            <p className="text-sm font-medium leading-none">{user?.name || (language === 'ar' ? 'مستخدم' : 'User')}</p>
             <p className="text-xs leading-none text-muted-foreground">
-              admin@elezz.com
+              {user?.email || ''}
             </p>
           </div>
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
         <DropdownMenuGroup>
           <DropdownMenuItem>
-            <User className="me-2 h-4 w-4" />
+            <UserIcon className="me-2 h-4 w-4" />
             <span>{language === 'ar' ? 'الملف الشخصي' : 'Profile'}</span>
             <DropdownMenuShortcut>⇧⌘P</DropdownMenuShortcut>
           </DropdownMenuItem>

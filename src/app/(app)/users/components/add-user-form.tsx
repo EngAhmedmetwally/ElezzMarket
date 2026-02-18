@@ -28,9 +28,8 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 import { Checkbox } from "@/components/ui/checkbox";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import type { User } from "@/lib/types";
-import { useAuth, useDatabase } from "@/firebase";
-import { createUserWithEmailAndPassword } from "firebase/auth";
-import { ref, set, serverTimestamp } from "firebase/database";
+import { useDatabase } from "@/firebase";
+import { ref, set, push } from "firebase/database";
 
 
 const permissionsSchema = z.object({
@@ -87,7 +86,6 @@ interface AddUserFormProps {
 export function AddUserForm({ onSuccess, userToEdit }: AddUserFormProps) {
   const { toast } = useToast();
   const { language } = useLanguage();
-  const auth = useAuth();
   const database = useDatabase();
   const isEditMode = !!userToEdit;
 
@@ -95,12 +93,11 @@ export function AddUserForm({ onSuccess, userToEdit }: AddUserFormProps) {
     resolver: zodResolver(isEditMode ? editUserFormSchema : userFormSchema),
     defaultValues: {
       fullName: userToEdit?.name || "",
-      username: (isEditMode && userToEdit) ? userToEdit.email.split('@')[0] : "",
+      username: userToEdit?.username || "",
       password: "",
       role: userToEdit?.role || "Moderator",
       orderVisibility: userToEdit?.orderVisibility || "own",
-      // TODO: Map permissions if they are part of the user model. For now, using defaults.
-      permissions: {
+      permissions: userToEdit?.permissions || {
         dashboard: { view: true },
         orders: { view: true, add: true, edit: false, delete: false },
         users: { view: false, add: false, edit: false, delete: false },
@@ -117,42 +114,56 @@ export function AddUserForm({ onSuccess, userToEdit }: AddUserFormProps) {
   async function onSubmit(data: UserFormValues) {
     setIsSubmitting(true);
     if (isEditMode && userToEdit) {
-        // In a real app, you would handle the update logic.
-        // The password should only be updated if a new one is provided.
         const userRef = ref(database, `users/${userToEdit.id}`);
-        const userDataToUpdate = {
-          fullName: data.fullName,
+        const userDataToUpdate: Partial<User> = {
+          name: data.fullName,
+          username: data.username,
           email: `${data.username}@elezz.com`,
           role: data.role,
           orderVisibility: data.orderVisibility,
           permissions: data.permissions,
-        }
-        await set(userRef, { ...userToEdit, ...userDataToUpdate });
+        };
 
-        // TODO: Need an admin SDK to update user email and password
-        
+        if(data.password) {
+            userDataToUpdate.password = data.password;
+        }
+
+        await set(userRef, {
+            ...userToEdit,
+            ...userDataToUpdate
+        });
+
         toast({
             title: language === 'ar' ? 'تم تحديث المستخدم' : "User Updated",
             description: `${language === 'ar' ? 'تم تحديث المستخدم' : 'User'} ${data.fullName} ${language === 'ar' ? 'بنجاح.' : 'has been successfully updated.'}`,
         });
     } else {
         try {
-          const email = `${data.username}@elezz.com`;
-          const userCredential = await createUserWithEmailAndPassword(auth, email, data.password);
-          const user = userCredential.user;
+          const newUserRef = push(ref(database, 'users'));
+          const newUserId = newUserRef.key;
 
-          const userRef = ref(database, `users/${user.uid}`);
-          await set(userRef, {
-            id: user.uid,
-            fullName: data.fullName,
-            email: email,
+          if (!newUserId) {
+            throw new Error("Could not generate a new user ID.");
+          }
+          if (!data.password) {
+            throw new Error("Password is required for new user.");
+          }
+
+          const newUser: User = {
+            id: newUserId,
+            name: data.fullName,
+            username: data.username,
+            email: `${data.username}@elezz.com`,
+            password: data.password,
             role: data.role,
-            orderVisibility: data.orderVisibility,
+            orderVisibility: data.orderVisibility || 'own',
             permissions: data.permissions,
-            createdAt: serverTimestamp(),
+            createdAt: new Date().toISOString(),
             status: "نشط",
-            avatarUrl: `/avatars/0${(user.uid.charCodeAt(0) % 6) + 1}.png`
-          });
+            avatarUrl: `/avatars/0${(newUserId.charCodeAt(0) % 6) + 1}.png`
+          };
+
+          await set(newUserRef, newUser);
           
           toast({
             title: language === 'ar' ? 'تم إنشاء المستخدم' : "User Created",

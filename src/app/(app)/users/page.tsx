@@ -40,23 +40,26 @@ export default function UsersPage() {
       return [];
     }
     return usersData.map((userDoc: any): User => {
-      const name = userDoc.fullName || userDoc.name || "Unknown User";
+      const name = userDoc.name || userDoc.fullName || "Unknown User";
       const status: "نشط" | "معطل" = typeof userDoc.isActive === 'boolean' 
         ? (userDoc.isActive ? 'نشط' : 'معطل') 
         : (userDoc.status || 'معطل');
       const role: UserRole = userDoc.role || 'Moderator';
       const avatarUrl = userDoc.avatarUrl || `/avatars/0${(userDoc.id.charCodeAt(0) % 6) + 1}.png`;
       const createdAt = userDoc.createdAt ? new Date(userDoc.createdAt).toISOString() : new Date().toISOString();
+      const username = userDoc.username || userDoc.email?.split('@')[0] || '';
 
       return {
         id: userDoc.id,
         name,
+        username,
         email: userDoc.email || '',
         role,
         avatarUrl,
         status,
         createdAt,
         orderVisibility: userDoc.orderVisibility || 'own',
+        permissions: userDoc.permissions
       };
     });
   }, [usersData]);
