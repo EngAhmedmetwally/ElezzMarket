@@ -60,6 +60,8 @@ export default function AppLayout({ children }: { children: ReactNode }) {
   
   const { user, isUserLoading } = useUser();
   const isHomePage = pathname === '/home';
+  const isAdmin = user?.email === 'emergency.admin@elezz.com';
+  const showSidebar = isAdmin || !isHomePage;
 
   React.useEffect(() => {
     if (!isUserLoading && !user) {
@@ -82,7 +84,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
 
   return (
     <SidebarProvider side={side}>
-      {!isHomePage && (
+      {showSidebar && (
         <Sidebar side={side} collapsible="icon">
           <SidebarHeader className="p-4">
             <Link href="/home" className="flex items-center gap-2">
