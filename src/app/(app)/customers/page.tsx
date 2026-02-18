@@ -4,8 +4,8 @@
 import * as React from "react";
 import { PageHeader } from "@/components/page-header";
 import { useLanguage } from "@/components/language-provider";
-import { useCollection, useDatabase, useMemoFirebase } from "@/firebase";
-import { ref } from "firebase/database";
+import { useDatabase } from "@/firebase";
+import { ref, get } from "firebase/database";
 import type { Order, Customer } from "@/lib/types";
 import { Skeleton } from "@/components/ui/skeleton";
 import { CustomersClient } from "./components/client";
@@ -20,46 +20,70 @@ export type CustomerWithOrderCount = Customer & {
 export default function CustomersPage() {
   const { language } = useLanguage();
   const database = useDatabase();
+  const [version] = React.useState(0);
 
-  const ordersQuery = useMemoFirebase(() => database ? ref(database, 'orders') : null, [database]);
-  const { data: ordersData, isLoading } = useCollection<Order>(ordersQuery);
+  const [customers, setCustomers] = React.useState<CustomerWithOrderCount[]>([]);
+  const [isLoading, setIsLoading] = React.useState(true);
 
-  const customers: CustomerWithOrderCount[] = React.useMemo(() => {
-    if (!ordersData) return [];
-    
-    const sortedOrders = [...ordersData].sort((a, b) => {
-        if (!a.createdAt || !b.createdAt) return 0;
-        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
-    });
 
-    const customerMap = new Map<string, CustomerWithOrderCount>();
-    
-    sortedOrders.forEach((order: any) => {
-      const phone = order.customerPhone;
-      if (!phone) return;
-
-      const orderDate = order.createdAt ? new Date(order.createdAt).toISOString() : new Date().toISOString();
-
-      if (customerMap.has(phone)) {
-        const existing = customerMap.get(phone)!;
-        existing.orderCount += 1;
-        if (new Date(orderDate) > new Date(existing.lastOrderDate)) {
-           existing.lastOrderDate = orderDate;
+  React.useEffect(() => {
+    if (!database) return;
+    setIsLoading(true);
+    const ordersRef = ref(database, 'orders');
+    get(ordersRef).then(snapshot => {
+        const allOrders: Order[] = [];
+        if (snapshot.exists()) {
+            const ordersByMonthYear = snapshot.val();
+            Object.keys(ordersByMonthYear).forEach(monthYear => {
+                const ordersByDay = ordersByMonthYear[monthYear];
+                Object.keys(ordersByDay).forEach(day => {
+                    const orders = ordersByDay[day];
+                    Object.keys(orders).forEach(orderId => {
+                        allOrders.push({ ...orders[orderId], id: orderId });
+                    });
+                });
+            });
         }
-      } else {
-        customerMap.set(phone, {
-          id: phone,
-          customerName: order.customerName,
-          customerPhone: order.customerPhone,
-          customerAddress: order.customerAddress,
-          zoning: order.zoning,
-          orderCount: 1,
-          lastOrderDate: orderDate,
+        
+        const sortedOrders = allOrders.sort((a, b) => {
+            if (!a.createdAt || !b.createdAt) return 0;
+            return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
         });
-      }
+
+        const customerMap = new Map<string, CustomerWithOrderCount>();
+        
+        sortedOrders.forEach((order: any) => {
+          const phone = order.customerPhone;
+          if (!phone) return;
+
+          const orderDate = order.createdAt ? new Date(order.createdAt).toISOString() : new Date().toISOString();
+
+          if (customerMap.has(phone)) {
+            const existing = customerMap.get(phone)!;
+            existing.orderCount += 1;
+            if (new Date(orderDate) > new Date(existing.lastOrderDate)) {
+               existing.lastOrderDate = orderDate;
+            }
+          } else {
+            customerMap.set(phone, {
+              id: phone,
+              customerName: order.customerName,
+              customerPhone: order.customerPhone,
+              customerAddress: order.customerAddress,
+              zoning: order.zoning,
+              orderCount: 1,
+              lastOrderDate: orderDate,
+            });
+          }
+        });
+        setCustomers(Array.from(customerMap.values()));
+        setIsLoading(false);
+    }).catch(error => {
+        console.error("Error fetching all orders for customers page:", error);
+        setIsLoading(false);
     });
-    return Array.from(customerMap.values());
-  }, [ordersData]);
+  }, [database, version]);
+
 
   const columns = getCustomerColumns(language);
 

@@ -13,7 +13,7 @@ import { StaffPerformanceChart } from "../components/staff-performance-chart";
 import { DatePicker } from "@/components/ui/datepicker";
 import { useCollection, useDatabase, useMemoFirebase } from "@/firebase";
 import type { Order, User } from "@/lib/types";
-import { ref } from "firebase/database";
+import { ref, get } from "firebase/database";
 import { Skeleton } from "@/components/ui/skeleton";
 
 
@@ -60,18 +60,45 @@ export default function StaffReportPage() {
   const { language } = useLanguage();
   const isMobile = useIsMobile();
   const database = useDatabase();
+  const [version] = React.useState(0);
   const [fromDate, setFromDate] = React.useState<Date | undefined>(undefined);
   const [toDate, setToDate] = React.useState<Date | undefined>(undefined);
   
-  const ordersQuery = useMemoFirebase(() => database ? ref(database, 'orders') : null, [database]);
-  const { data: ordersData, isLoading: isLoadingOrders } = useCollection<Order>(ordersQuery);
+    const [allOrders, setAllOrders] = React.useState<Order[]>([]);
+    const [isLoadingOrders, setIsLoadingOrders] = React.useState(true);
+
+    React.useEffect(() => {
+        if (!database) return;
+        setIsLoadingOrders(true);
+        const ordersRef = ref(database, 'orders');
+        get(ordersRef).then(snapshot => {
+            const fetchedOrders: Order[] = [];
+            if (snapshot.exists()) {
+                const ordersByMonthYear = snapshot.val();
+                Object.keys(ordersByMonthYear).forEach(monthYear => {
+                    const ordersByDay = ordersByMonthYear[monthYear];
+                    Object.keys(ordersByDay).forEach(day => {
+                        const orders = ordersByDay[day];
+                        Object.keys(orders).forEach(orderId => {
+                            fetchedOrders.push({ ...orders[orderId], id: orderId });
+                        });
+                    });
+                });
+            }
+            setAllOrders(fetchedOrders);
+            setIsLoadingOrders(false);
+        }).catch(error => {
+            console.error("Error fetching all orders for staff report:", error);
+            setIsLoadingOrders(false);
+        });
+    }, [database, version]);
 
   const usersQuery = useMemoFirebase(() => database ? ref(database, "users") : null, [database]);
   const { data: usersData, isLoading: isLoadingUsers } = useCollection<User>(usersQuery);
 
   const filteredOrders = React.useMemo(() => {
-    if (!ordersData) return [];
-    return ordersData.filter(order => {
+    if (!allOrders) return [];
+    return allOrders.filter(order => {
         if (!order.createdAt) return false;
         const orderDate = new Date(order.createdAt);
         if (fromDate) {
@@ -86,7 +113,7 @@ export default function StaffReportPage() {
         }
         return true;
     });
-  }, [ordersData, fromDate, toDate]);
+  }, [allOrders, fromDate, toDate]);
 
   const moderatorsReport = React.useMemo(() => {
     if (!usersData) return [];

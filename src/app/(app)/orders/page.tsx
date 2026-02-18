@@ -29,10 +29,10 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { useCollection, useDatabase, useMemoFirebase } from "@/firebase";
+import { useDatabase } from "@/firebase";
 import type { Order } from "@/lib/types";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ref } from "firebase/database";
+import { ref, get } from "firebase/database";
 
 
 export default function OrdersPage() {
@@ -46,8 +46,35 @@ export default function OrdersPage() {
 
   const columns = getOrderColumns(language, () => setVersion(v => v + 1));
   
-  const ordersQuery = useMemoFirebase(() => database ? ref(database, 'orders') : null, [database, version]);
-  const { data: allOrders, isLoading } = useCollection<Order>(ordersQuery);
+  const [allOrders, setAllOrders] = React.useState<Order[]>([]);
+  const [isLoading, setIsLoading] = React.useState(true);
+
+  React.useEffect(() => {
+    if (!database) return;
+    setIsLoading(true);
+    const ordersRef = ref(database, 'orders');
+    get(ordersRef).then(snapshot => {
+        const fetchedOrders: Order[] = [];
+        if (snapshot.exists()) {
+            const ordersByMonthYear = snapshot.val();
+            Object.keys(ordersByMonthYear).forEach(monthYear => {
+                const ordersByDay = ordersByMonthYear[monthYear];
+                Object.keys(ordersByDay).forEach(day => {
+                    const orders = ordersByDay[day];
+                    Object.keys(orders).forEach(orderId => {
+                        fetchedOrders.push({ ...orders[orderId], id: orderId });
+                    });
+                });
+            });
+        }
+        setAllOrders(fetchedOrders);
+        setIsLoading(false);
+    }).catch(error => {
+        console.error("Error fetching all orders:", error);
+        setIsLoading(false);
+    });
+  }, [database, version]);
+
 
   const filteredOrders = React.useMemo(() => {
     if (!allOrders) return [];

@@ -9,7 +9,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { StaffPerformanceChart } from "../components/staff-performance-chart";
 import { Progress } from "@/components/ui/progress";
 import { useCollection, useDatabase, useMemoFirebase } from "@/firebase";
-import { ref, query, orderByChild } from "firebase/database";
+import { ref } from "firebase/database";
 import type { Product } from "@/lib/types";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -48,7 +48,7 @@ export default function ProductsReportPage() {
 
   const productsQuery = useMemoFirebase(() => 
     database 
-      ? query(ref(database, 'products'), orderByChild('salesCount')) 
+      ? ref(database, 'products')
       : null, 
     [database]
   );
@@ -63,7 +63,7 @@ export default function ProductsReportPage() {
             count: product.salesCount || 0 
         }))
         .filter(p => p.count > 0)
-        .reverse(); // reverse because query is ascending
+        .sort((a, b) => b.count - a.count);
 
     const totalSoldCount = sales.reduce((acc, item) => acc + item.count, 0);
 

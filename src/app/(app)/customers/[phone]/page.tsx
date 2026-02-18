@@ -5,8 +5,8 @@ import * as React from "react";
 import { useParams, useRouter } from "next/navigation";
 import { PageHeader } from "@/components/page-header";
 import { useLanguage } from "@/components/language-provider";
-import { useDatabase, useCollection, useMemoFirebase } from "@/firebase";
-import { ref, get, query, orderByChild, equalTo } from "firebase/database";
+import { useDatabase } from "@/firebase";
+import { ref, get } from "firebase/database";
 import type { Order } from "@/lib/types";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -30,20 +30,40 @@ export default function CustomerDetailsPage() {
 
     const fetchOrders = async () => {
       try {
-        const ordersRef = ref(database, 'orders');
-        const customerOrdersQuery = query(ordersRef, orderByChild('customerPhone'), equalTo(phone));
-        const snapshot = await get(customerOrdersQuery);
+        const customerOrdersIndexRef = ref(database, `customer-orders/${phone}`);
+        const indexSnapshot = await get(customerOrdersIndexRef);
 
-        if (snapshot.exists()) {
-            const ordersData = snapshot.val();
-            const fetchedOrders: Order[] = Object.keys(ordersData).map(key => ({
-                id: key,
-                ...ordersData[key]
-            }));
-            setOrders(fetchedOrders.sort((a,b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
-        } else {
-             setOrders([]);
+        if (!indexSnapshot.exists()) {
+          setOrders([]);
+          setIsLoading(false);
+          return;
         }
+
+        const orderIds = Object.keys(indexSnapshot.val());
+        const orderPromises = orderIds.map(async (orderId) => {
+          const lookupRef = ref(database, `order-lookup/${orderId}`);
+          const lookupSnapshot = await get(lookupRef);
+          if (lookupSnapshot.exists()) {
+            const { path } = lookupSnapshot.val();
+            const orderRef = ref(database, `orders/${path}/${orderId}`);
+            const orderSnapshot = await get(orderRef);
+            if (orderSnapshot.exists()) {
+              return { ...orderSnapshot.val(), id: orderId };
+            }
+          }
+          return null;
+        });
+
+        const fetchedOrders = (await Promise.all(orderPromises)).filter(
+          (o): o is Order => o !== null
+        );
+
+        setOrders(
+          fetchedOrders.sort(
+            (a, b) =>
+              new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+          )
+        );
       } catch (error) {
         console.error("Error fetching customer orders:", error);
         setOrders([]);

@@ -22,7 +22,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
 import { useDoc, useCollection, useDatabase, useMemoFirebase, useUser as useAuthUser } from "@/firebase";
-import { ref, update, runTransaction } from "firebase/database";
+import { ref, update, runTransaction, get } from "firebase/database";
 import { Skeleton } from "@/components/ui/skeleton";
 
 const allowedTransitions: Record<OrderStatus, OrderStatus[]> = {
@@ -102,8 +102,24 @@ export default function OrderDetailsPage() {
   const { toast } = useToast();
   const database = useDatabase();
   const { user: authUser } = useAuthUser();
+
+  const [orderPath, setOrderPath] = React.useState<string | null>(null);
+
+  React.useEffect(() => {
+      if (!database || !id) return;
+      const lookupRef = ref(database, `order-lookup/${id}`);
+      get(lookupRef).then(snapshot => {
+          if (snapshot.exists()) {
+              const { path } = snapshot.val();
+              setOrderPath(`orders/${path}/${id}`);
+          } else {
+              console.error(`No path found for order ${id}`);
+              setOrderPath(null);
+          }
+      });
+  }, [database, id]);
   
-  const orderRef = useMemoFirebase(() => (database && id) ? ref(database, `orders/${id}`) : null, [database, id]);
+  const orderRef = useMemoFirebase(() => (database && orderPath) ? ref(database, orderPath) : null, [database, orderPath]);
   const { data: order, isLoading: isLoadingOrder } = useDoc<Order>(orderRef);
 
   const usersRef = useMemoFirebase(() => database ? ref(database, `users`) : null, [database]);

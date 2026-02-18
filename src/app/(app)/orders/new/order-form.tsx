@@ -116,17 +116,26 @@ export function OrderForm({ onSuccess }: OrderFormProps) {
       return;
     }
 
-    const orderIdRef = ref(database, `orders/${data.id}`);
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = (now.getMonth() + 1).toString().padStart(2, '0');
+    const day = now.getDate().toString().padStart(2, '0');
+    const monthYear = `${month}-${year}`;
+    const datePath = `${monthYear}/${day}`;
+
+    const orderPath = `orders/${datePath}/${data.id}`;
+    const orderIdRef = ref(database, orderPath);
     const snapshot = await get(orderIdRef);
+    
     if (snapshot.exists()) {
         form.setError("id", {
             type: "manual",
-            message: language === 'ar' ? "رقم الطلب هذا موجود بالفعل." : "This Order ID already exists.",
+            message: language === 'ar' ? "رقم الطلب هذا موجود بالفعل في هذا اليوم." : "This Order ID already exists for this day.",
         });
         toast({
             variant: "destructive",
             title: language === 'ar' ? 'خطأ في الإدخال' : "Input Error",
-            description: language === 'ar' ? "رقم الطلب هذا موجود بالفعل. يرجى إدخال رقم مختلف." : "This Order ID already exists. Please enter a different one.",
+            description: language === 'ar' ? "رقم الطلب هذا موجود بالفعل في هذا اليوم. يرجى إدخال رقم مختلف." : "This Order ID already exists for this day. Please enter a different one.",
         });
         return;
     }
@@ -168,8 +177,6 @@ export function OrderForm({ onSuccess }: OrderFormProps) {
                 return (currentCount || 0) + item.quantity;
             });
         }));
-
-        const orderPath = `orders/${data.id}`;
         
         const newOrder = {
             id: data.id,
@@ -195,7 +202,9 @@ export function OrderForm({ onSuccess }: OrderFormProps) {
             deliveryCommission: 0,
         };
         updates[orderPath] = newOrder;
-
+        
+        // Add to lookup tables
+        updates[`order-lookup/${data.id}`] = { path: datePath };
         updates[`customer-orders/${data.customerPhone}/${data.id}`] = true;
 
         const customerRef = ref(database, `customers/${data.customerPhone}`);

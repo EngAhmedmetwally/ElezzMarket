@@ -17,7 +17,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useLanguage } from "@/components/language-provider";
 import { DatePicker } from "@/components/ui/datepicker";
 import { useCollection, useDatabase, useMemoFirebase } from "@/firebase";
-import { ref } from "firebase/database";
+import { ref, get } from "firebase/database";
 import type { Order, User } from "@/lib/types";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -56,16 +56,43 @@ export default function DashboardPage() {
   const [fromDate, setFromDate] = React.useState<Date | undefined>(undefined);
   const [toDate, setToDate] = React.useState<Date | undefined>(undefined);
   const database = useDatabase();
+  const [version] = React.useState(0);
 
-  const ordersQuery = useMemoFirebase(() => database ? ref(database, 'orders') : null, [database]);
-  const { data: ordersData, isLoading: isLoadingOrders } = useCollection<Order>(ordersQuery);
+  const [allOrders, setAllOrders] = React.useState<Order[]>([]);
+  const [isLoadingOrders, setIsLoadingOrders] = React.useState(true);
+
+  React.useEffect(() => {
+    if (!database) return;
+    setIsLoadingOrders(true);
+    const ordersRef = ref(database, 'orders');
+    get(ordersRef).then(snapshot => {
+        const fetchedOrders: Order[] = [];
+        if (snapshot.exists()) {
+            const ordersByMonthYear = snapshot.val();
+            Object.keys(ordersByMonthYear).forEach(monthYear => {
+                const ordersByDay = ordersByMonthYear[monthYear];
+                Object.keys(ordersByDay).forEach(day => {
+                    const orders = ordersByDay[day];
+                    Object.keys(orders).forEach(orderId => {
+                        fetchedOrders.push({ ...orders[orderId], id: orderId });
+                    });
+                });
+            });
+        }
+        setAllOrders(fetchedOrders);
+        setIsLoadingOrders(false);
+    }).catch(error => {
+        console.error("Error fetching all orders for dashboard:", error);
+        setIsLoadingOrders(false);
+    });
+  }, [database, version]);
   
   const usersQuery = useMemoFirebase(() => database ? ref(database, "users") : null, [database]);
   const { data: usersData, isLoading: isLoadingUsers } = useCollection<User>(usersQuery);
 
   const filteredOrders = React.useMemo(() => {
-    if (!ordersData) return [];
-    return ordersData.filter(order => {
+    if (!allOrders) return [];
+    return allOrders.filter(order => {
         if (!order.createdAt) return false;
         const orderDate = new Date(order.createdAt);
         if (fromDate) {
@@ -80,7 +107,7 @@ export default function DashboardPage() {
         }
         return true;
     });
-  }, [ordersData, fromDate, toDate]);
+  }, [allOrders, fromDate, toDate]);
 
   const totalSales = filteredOrders.reduce((acc, order) => acc + (order.total || 0), 0);
   const totalOrders = filteredOrders.length;
@@ -110,7 +137,7 @@ export default function DashboardPage() {
   }, [filteredOrders, language]);
 
   const topModerators = React.useMemo(() => {
-    if (!usersData || !ordersData) return [];
+    if (!usersData || !allOrders) return [];
     
     const moderators = usersData.filter(u => u.role === 'Moderator');
     
