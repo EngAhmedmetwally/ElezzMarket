@@ -38,6 +38,7 @@ import { initiateAnonymousSignIn } from "@/firebase/non-blocking-login";
 const navItems = [
   { href: "/dashboard", icon: LayoutDashboard, label: "Dashboard", arLabel: "لوحة التحكم" },
   { href: "/orders", icon: Package, label: "Orders", arLabel: "الطلبات" },
+  { href: "/customers", icon: Users2, label: "Customers", arLabel: "العملاء" },
   { href: "/users", icon: Users, label: "Users", arLabel: "المستخدمون" },
   { href: "/commissions", icon: BadgePercent, label: "Commissions", arLabel: "العمولات" },
   {
