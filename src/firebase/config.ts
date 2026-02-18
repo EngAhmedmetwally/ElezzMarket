@@ -15,10 +15,11 @@ import { FirebaseOptions } from 'firebase/app';
 // This is a public configuration and is safe to be exposed to the client.
 // All security is enforced by Firebase Security Rules and Firebase App Check.
 export const firebaseConfig: FirebaseOptions = {
-  apiKey: "AIzaSyCYf-3eryKkFDvgz1vUgJT0tFHcc7vXPNU",
-  appId: "1:65746504685:web:fdcf8299af8d48f69c35e4",
-  authDomain: "studio-8951677946-67675.firebaseapp.com",
-  databaseURL: "https://studio-8951677946-67675-default-rtdb.firebaseio.com",
-  messagingSenderId: "65746504685",
-  projectId: "studio-8951677946-67675",
+  apiKey: "AIzaSyCXZudXhxAzIJ-Q-A884Z3Yu-qp-lIascg",
+  authDomain: "studio-6623168497-8369f.firebaseapp.com",
+  databaseURL: "https://studio-6623168497-8369f-default-rtdb.firebaseio.com",
+  projectId: "studio-6623168497-8369f",
+  storageBucket: "studio-6623168497-8369f.firebasestorage.app",
+  messagingSenderId: "529757501340",
+  appId: "1:529757501340:web:2f01a44b55b0c62a6f3a59"
 };
