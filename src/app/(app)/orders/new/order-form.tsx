@@ -162,6 +162,7 @@ export function OrderForm({ onSuccess }: OrderFormProps) {
                 const newProductData = {
                     name: item.productName,
                     price: item.price,
+                    weight: item.weight,
                     isActive: true,
                     createdAt: new Date().toISOString(),
                     sku: `SKU-${Date.now()}-${Math.random().toString(36).substring(2, 7).toUpperCase()}`,
@@ -326,6 +327,9 @@ export function OrderForm({ onSuccess }: OrderFormProps) {
                             if (product) {
                                 form.setValue(`items.${index}.price`, product.price);
                                 form.setValue(`items.${index}.productId`, product.id);
+                                if (product.weight) {
+                                    form.setValue(`items.${index}.weight`, product.weight);
+                                }
                             } else {
                                 form.setValue(`items.${index}.productId`, '');
                             }

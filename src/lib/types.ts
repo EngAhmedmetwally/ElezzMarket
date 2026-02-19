@@ -74,6 +74,7 @@ export type Product = {
   isActive: boolean;
   createdAt: string;
   salesCount?: number;
+  weight?: number;
 };
 
 export type Customer = {
