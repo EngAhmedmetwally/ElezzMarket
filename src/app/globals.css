@@ -90,11 +90,6 @@
   [dir="rtl"] body {
     @apply font-arabic;
   }
-
-  @page {
-    size: 80mm auto;
-    margin: 0mm;
-  }
   
   .receipt {
     font-family: 'Courier New', Courier, monospace;
@@ -139,12 +134,18 @@
       display: flex;
       justify-content: space-between;
   }
+}
 
-  @media print {
-    body {
-      -webkit-print-color-adjust: exact !important;
-      color-adjust: exact !important;
-      background: #fff;
-    }
+@page {
+  size: 80mm auto;
+  margin: 0mm;
+}
+
+@media print {
+  body {
+    width: 80mm;
+    -webkit-print-color-adjust: exact !important;
+    color-adjust: exact !important;
+    background: #fff;
   }
 }
