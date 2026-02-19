@@ -260,17 +260,20 @@ export default function OrderDetailsPage() {
         const now = new Date().toISOString();
         const currentUser = authUser.name || authUser.email || "مستخدم مسؤول";
 
+        // Determine commission before transaction
+        const commissionRulesSnap = await get(ref(database, 'commission-rules'));
+        const commissionRules = commissionRulesSnap.val();
+        const commissionAmount = commissionRules?.[newStatus]?.amount || 0;
+
         await runTransaction(orderRef, (currentOrder) => {
             if (currentOrder) {
-                // Prepare new history item
+                // Update status history
                 const newHistoryItem: StatusHistoryItem = {
                     status: newStatus,
                     notes: noteText,
                     createdAt: now,
                     userName: currentUser,
                 };
-                
-                // Add to history
                 if (!currentOrder.statusHistory) {
                     currentOrder.statusHistory = {};
                 }
@@ -291,19 +294,21 @@ export default function OrderDetailsPage() {
                         currentOrder.courierName = selectedCourier.name;
                     }
                 }
+
+                // Update total commission
+                if (commissionAmount > 0) {
+                    currentOrder.totalCommission = (currentOrder.totalCommission || 0) + commissionAmount;
+                }
             }
             return currentOrder;
         });
 
         // --- Handle side effects after the transaction is successful ---
-        const commissionRulesSnap = await get(ref(database, 'commission-rules'));
-        const commissionRules = commissionRulesSnap.val();
-        const commissionAmount = commissionRules?.[newStatus]?.amount || 0;
-
         if (commissionAmount > 0) {
-            // Refetch the order to get the latest state after transaction
+            // We need to refetch the order to get courierId if it was just set.
             const latestOrderSnap = await get(orderRef);
             const latestOrder = latestOrderSnap.val();
+            
             if (latestOrder) {
                 let recipientId: string | undefined;
                 if (["تم التسجيل", "قيد التجهيز"].includes(newStatus)) {
@@ -323,12 +328,6 @@ export default function OrderDetailsPage() {
                     };
                     const newCommRef = push(ref(database, 'commissions'));
                     await set(newCommRef, newCommission);
-
-                    // Update totalCommission on the order using a transaction
-                    const totalCommissionRef = ref(database, `${orderPath}/totalCommission`);
-                    await runTransaction(totalCommissionRef, (currentTotal) => {
-                        return (currentTotal || 0) + commissionAmount;
-                    });
                 }
             }
         }
