@@ -255,9 +255,17 @@ export default function OrderDetailsPage() {
     );
   }
 
-  const availableStatuses = allowedTransitions[order.status] || [];
-  const orderItems = order.items ? (Array.isArray(order.items) ? order.items : Object.values(order.items)) : [];
   const canEditStatus = authUser?.role === 'Admin' || authUser?.permissions?.orders?.editStatus;
+  const canCancelOrder = authUser?.role === 'Admin' || authUser?.permissions?.orders?.cancel;
+
+  let availableStatuses = allowedTransitions[order.status] || [];
+  if (!canCancelOrder) {
+      availableStatuses = availableStatuses.filter(s => s !== 'ملغي');
+  }
+
+  const orderItems = order.items ? (Array.isArray(order.items) ? order.items : Object.values(order.items)) : [];
+  const itemsSubtotal = orderItems.reduce((acc, item) => acc + (item.price * item.quantity), 0);
+  const formatCurrency = (value: number) => new Intl.NumberFormat(language === 'ar' ? 'ar-EG' : 'en-US', { style: 'currency', currency: 'EGP' }).format(value);
 
 
   return (
@@ -293,17 +301,28 @@ export default function OrderDetailsPage() {
                                       <TableCell className="font-medium text-start">{item.productName}</TableCell>
                                       <TableCell className="text-center">{item.weight || '-'}</TableCell>
                                       <TableCell className="text-center">{item.quantity}</TableCell>
-                                      <TableCell className="text-end">EGP {item.price.toLocaleString()}</TableCell>
-                                      <TableCell className="text-end">EGP {(item.price * item.quantity).toLocaleString()}</TableCell>
+                                      <TableCell className="text-end">{formatCurrency(item.price)}</TableCell>
+                                      <TableCell className="text-end">{formatCurrency(item.price * item.quantity)}</TableCell>
                                   </TableRow>
                               ))}
                           </TableBody>
                       </Table>
                       <Separator className="my-4" />
-                      <div className="flex justify-end font-bold text-lg">
-                          <p>{language === 'ar' ? 'الإجمالي الكلي' : 'Grand Total'}</p>
-                          <p className={language === 'ar' ? 'mr-8' : 'ml-8'}>EGP {order.total.toLocaleString()}</p>
-                      </div>
+                       <div className="space-y-2">
+                            <div className="flex justify-between">
+                                <p>{language === 'ar' ? 'مجموع المنتجات' : 'Items Subtotal'}</p>
+                                <p>{formatCurrency(itemsSubtotal)}</p>
+                            </div>
+                            <div className="flex justify-between">
+                                <p>{language === 'ar' ? 'تكلفة الشحن' : 'Shipping Cost'}</p>
+                                <p>{formatCurrency(order.shippingCost || 0)}</p>
+                            </div>
+                            <Separator className="my-2" />
+                            <div className="flex justify-between font-bold text-lg">
+                                <p>{language === 'ar' ? 'الإجمالي الكلي' : 'Grand Total'}</p>
+                                <p>{formatCurrency(order.total)}</p>
+                            </div>
+                       </div>
                   </CardContent>
              </Card>
              <StatusHistoryTimeline history={order.statusHistory} />
@@ -440,5 +459,3 @@ export default function OrderDetailsPage() {
     </>
   );
 }
-
-    

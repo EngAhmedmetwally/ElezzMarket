@@ -19,11 +19,13 @@ import { Separator } from "@/components/ui/separator";
 import { PlusCircle, Trash2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useLanguage } from "@/components/language-provider";
-import type { Customer, Product, OrderItem } from "@/lib/types";
+import type { Customer, Product, OrderItem, ShippingZone } from "@/lib/types";
 import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { useCollection, useDatabase, useUser, useMemoFirebase } from "@/firebase";
 import { ref, get, update, push, set, runTransaction } from "firebase/database";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Skeleton } from "@/components/ui/skeleton";
 
 const orderFormSchema = z.object({
   id: z.string().min(1, "رقم الطلب مطلوب"),
@@ -63,6 +65,11 @@ export function OrderForm({ onSuccess }: OrderFormProps) {
 
   const productsQuery = useMemoFirebase(() => database ? ref(database, 'products') : null, [database]);
   const { data: products } = useCollection<Product>(productsQuery);
+  
+  const shippingZonesQuery = useMemoFirebase(() => database ? ref(database, 'shipping-zones') : null, [database]);
+  const { data: shippingZones, isLoading: isLoadingZones } = useCollection<ShippingZone>(shippingZonesQuery);
+
+  const [selectedZone, setSelectedZone] = React.useState<ShippingZone | null>(null);
 
   const form = useForm<OrderFormValues>({
     resolver: zodResolver(orderFormSchema),
@@ -103,12 +110,16 @@ export function OrderForm({ onSuccess }: OrderFormProps) {
     form.setValue("customerPhone2", customer.customerPhone2 || "");
     form.setValue("customerAddress", customer.customerAddress);
     form.setValue("zoning", customer.zoning);
+    const zone = shippingZones?.find(z => z.name === customer.zoning);
+    setSelectedZone(zone || null);
     setCustomerSearch(""); 
   };
 
 
   const watchedItems = form.watch("items");
-  const total = watchedItems.reduce((acc, item) => acc + (item.quantity || 0) * (item.price || 0), 0);
+  const itemsTotal = watchedItems.reduce((acc, item) => acc + (item.quantity || 0) * (item.price || 0), 0);
+  const shippingCost = selectedZone?.cost || 0;
+  const total = itemsTotal + shippingCost;
   const customerNameValue = form.watch("customerName");
   
   React.useEffect(() => {
@@ -196,7 +207,8 @@ export function OrderForm({ onSuccess }: OrderFormProps) {
             customerAddress: data.customerAddress,
             zoning: data.zoning,
             items: resolvedItems,
-            total: total,
+            shippingCost,
+            total,
             status: "تم التسجيل",
             moderatorId: user.id,
             moderatorName: user.name || user.email || 'Unknown',
@@ -247,6 +259,8 @@ export function OrderForm({ onSuccess }: OrderFormProps) {
         });
     }
   }
+  
+  const formatCurrency = (value: number) => new Intl.NumberFormat(language === 'ar' ? 'ar-EG' : 'en-US', { style: 'currency', currency: 'EGP' }).format(value);
 
   return (
     <Form {...form}>
@@ -326,7 +340,24 @@ export function OrderForm({ onSuccess }: OrderFormProps) {
                 <FormField control={form.control} name="zoning" render={({ field }) => (
                     <FormItem>
                     <FormLabel>{language === 'ar' ? 'المنطقة' : 'Zoning'}</FormLabel>
-                    <FormControl><Input placeholder={language === 'ar' ? 'مثال: القاهرة, الجيزة' : 'e.g. Cairo, Giza'} {...field} /></FormControl>
+                    {isLoadingZones ? <Skeleton className="h-10" /> : (
+                      <Select onValueChange={(zoneName) => {
+                          field.onChange(zoneName);
+                          const zone = shippingZones?.find(z => z.name === zoneName);
+                          setSelectedZone(zone || null);
+                      }} value={field.value}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder={language === 'ar' ? 'اختر منطقة' : 'Select a zone'} />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {shippingZones?.map(zone => (
+                            <SelectItem key={zone.id} value={zone.name}>{zone.name}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    )}
                     <FormMessage />
                     </FormItem>
                 )}/>
@@ -416,10 +447,21 @@ export function OrderForm({ onSuccess }: OrderFormProps) {
           
           <Separator className="my-6" />
 
-          <div className="flex justify-end items-center">
-            <p className="text-lg font-semibold">{language === 'ar' ? 'المجموع:' : 'Total:'}</p>
-            <p className="text-lg font-semibold ml-4">EGP {total.toLocaleString()}</p>
-          </div>
+            <div className="space-y-2">
+                <div className="flex justify-between">
+                    <p>{language === 'ar' ? 'مجموع المنتجات' : 'Items Subtotal'}</p>
+                    <p>{formatCurrency(itemsTotal)}</p>
+                </div>
+                <div className="flex justify-between">
+                    <p>{language === 'ar' ? 'تكلفة الشحن' : 'Shipping Cost'}</p>
+                    <p>{formatCurrency(shippingCost)}</p>
+                </div>
+                <Separator className="my-2" />
+                <div className="flex justify-between font-bold text-lg">
+                    <p>{language === 'ar' ? 'الإجمالي الكلي' : 'Grand Total'}</p>
+                    <p>{formatCurrency(total)}</p>
+                </div>
+            </div>
         </div>
 
         <div className="flex justify-end gap-2">
@@ -434,5 +476,3 @@ export function OrderForm({ onSuccess }: OrderFormProps) {
     </Form>
   );
 }
-
-    

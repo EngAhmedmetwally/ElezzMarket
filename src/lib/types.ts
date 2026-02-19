@@ -1,9 +1,10 @@
 
+
 export type UserRole = "Admin" | "Moderator" | "Courier";
 
 export type Permissions = {
   dashboard: { view: boolean };
-  orders: { view: boolean; add: boolean; edit: boolean; delete: boolean; editStatus: boolean; };
+  orders: { view: boolean; add: boolean; edit: boolean; delete: boolean; editStatus: boolean; cancel: boolean; };
   users: { view: boolean; add: boolean; edit: boolean; delete: boolean; };
   returns: { view: boolean; };
   commissions: { view: boolean; add: boolean; edit: boolean; delete: boolean; };
@@ -58,6 +59,7 @@ export type Order = {
   status: OrderStatus;
   items: OrderItem[];
   total: number;
+  shippingCost?: number;
   totalCommission?: number;
   moderatorId: string;
   moderatorName: string;
@@ -104,4 +106,8 @@ export type Customer = {
   zoning: string;
 };
 
-    
+export type ShippingZone = {
+  id: string;
+  name: string;
+  cost: number;
+};

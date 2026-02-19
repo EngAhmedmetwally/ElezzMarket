@@ -40,7 +40,8 @@ const permissionsSchema = z.object({
 });
 
 const orderPermissionsSchema = permissionsSchema.extend({
-    editStatus: z.boolean().default(false)
+    editStatus: z.boolean().default(false),
+    cancel: z.boolean().default(false),
 });
 
 const userFormSchema = z.object({
@@ -67,7 +68,7 @@ type UserFormValues = z.infer<typeof userFormSchema>;
 
 const screensConfig = [
   { id: 'dashboard', name: 'Dashboard', arName: 'لوحة التحكم', perms: ['view'] },
-  { id: 'orders', name: 'Orders', arName: 'الطلبات', perms: ['view', 'add', 'edit', 'delete', 'editStatus'] },
+  { id: 'orders', name: 'Orders', arName: 'الطلبات', perms: ['view', 'add', 'edit', 'delete', 'editStatus', 'cancel'] },
   { id: 'users', name: 'Users', arName: 'المستخدمون', perms: ['view', 'add', 'edit', 'delete'] },
   { id: 'returns', name: 'Returns', arName: 'المرتجعات', perms: ['view'] },
   { id: 'commissions', name: 'Commissions', arName: 'العمولات', perms: ['view', 'add', 'edit', 'delete'] },
@@ -79,9 +80,10 @@ const permLabels = {
     add: { en: 'Add', ar: 'إضافة' },
     edit: { en: 'Edit', ar: 'تعديل' },
     delete: { en: 'Delete', ar: 'حذف' },
-    editStatus: { en: 'Edit Status', ar: 'تعديل الحالة' }
+    editStatus: { en: 'Edit Status', ar: 'تعديل الحالة' },
+    cancel: { en: 'Cancel', ar: 'إلغاء' }
 };
-const allPerms: (keyof typeof permLabels)[] = ['view', 'add', 'edit', 'delete', 'editStatus'];
+const allPerms: (keyof typeof permLabels)[] = ['view', 'add', 'edit', 'delete', 'editStatus', 'cancel'];
 
 interface AddUserFormProps {
   onSuccess?: () => void;
@@ -104,7 +106,7 @@ export function AddUserForm({ onSuccess, userToEdit }: AddUserFormProps) {
       orderVisibility: userToEdit?.orderVisibility || "own",
       permissions: userToEdit?.permissions || {
         dashboard: { view: true },
-        orders: { view: true, add: true, edit: false, delete: false, editStatus: true },
+        orders: { view: true, add: true, edit: false, delete: false, editStatus: true, cancel: false },
         users: { view: false, add: false, edit: false, delete: false },
         returns: { view: true },
         commissions: { view: true, add: false, edit: false, delete: false },
@@ -319,7 +321,7 @@ export function AddUserForm({ onSuccess, userToEdit }: AddUserFormProps) {
             <AccordionTrigger>{language === 'ar' ? 'الصلاحيات' : 'Permissions'}</AccordionTrigger>
             <AccordionContent>
               <div className="overflow-x-auto pb-2">
-                <div className="grid grid-cols-6 gap-y-2 items-center min-w-[540px]">
+                <div className="grid grid-cols-7 gap-y-2 items-center min-w-[620px]">
                   <div className="font-medium text-muted-foreground">{language === 'ar' ? 'الشاشة' : 'Screen'}</div>
                   {allPerms.map(perm => (
                     <div key={perm} className="font-medium text-muted-foreground text-center text-xs sm:text-sm">{language === 'ar' ? permLabels[perm].ar : permLabels[perm].en}</div>

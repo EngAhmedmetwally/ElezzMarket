@@ -59,8 +59,13 @@ export function RowActions({ order, onUpdate }: RowActionsProps) {
   const couriers = React.useMemo(() => users?.filter(u => u.role === 'Courier') || [], [users]);
   const filteredCouriers = couriers.filter(c => c.name.toLowerCase().includes(courierSearch.toLowerCase()));
   
-  const availableStatuses = (order && order.status && allowedTransitions[order.status]) ? allowedTransitions[order.status] : [];
   const canEditStatus = authUser?.role === 'Admin' || authUser?.permissions?.orders?.editStatus;
+  const canCancelOrder = authUser?.role === 'Admin' || authUser?.permissions?.orders?.cancel;
+
+  let availableStatuses = (order && order.status && allowedTransitions[order.status]) ? allowedTransitions[order.status] : [];
+  if (!canCancelOrder) {
+      availableStatuses = availableStatuses.filter(s => s !== 'ملغي');
+  }
 
   const handleOpenModal = () => {
     setSelectedStatus(undefined);
@@ -183,10 +188,6 @@ export function RowActions({ order, onUpdate }: RowActionsProps) {
           </DropdownMenuItem>
           <DropdownMenuItem onSelect={handleOpenModal} disabled={availableStatuses.length === 0 || !canEditStatus}>
             {language === 'ar' ? 'تحديث الحالة' : 'Update status'}
-          </DropdownMenuItem>
-          <DropdownMenuSeparator />
-          <DropdownMenuItem className="text-destructive focus:text-destructive focus:bg-destructive/10">
-            {language === 'ar' ? 'حذف الطلب' : 'Delete order'}
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
