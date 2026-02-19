@@ -1,3 +1,4 @@
+
 "use client";
 
 import { PageHeader } from "@/components/page-header";
@@ -10,7 +11,8 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import * as React from "react";
 import { useToast } from "@/hooks/use-toast";
-import { useDatabase, useUser, useRealtimeCachedCollection } from "@/firebase";
+import { useDatabase, useUser } from "@/firebase";
+import { useRealtimeCachedCollection } from "@/hooks/use-realtime-cached-collection";
 import { ref, set } from "firebase/database";
 import type { ReceiptSettings, User, AppSettings } from "@/lib/types";
 import { Skeleton } from "@/components/ui/skeleton";
