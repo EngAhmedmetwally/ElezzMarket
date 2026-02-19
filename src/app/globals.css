@@ -90,50 +90,36 @@
   [dir="rtl"] body {
     @apply font-arabic;
   }
+
+  /* New Receipt Styles */
+  .receipt-thermal {
+      font-family: 'Courier New', Courier, monospace;
+      color: black;
+      background: white;
+      width: 72mm;
+      padding: 3mm;
+      box-sizing: border-box;
+  }
+  .receipt-thermal-header { @apply text-center mb-2; }
+  .receipt-thermal-header h1 { @apply text-lg font-bold break-words; }
+  .receipt-thermal-header h2 { @apply text-base font-semibold break-words; }
+
+  .receipt-thermal-info, .receipt-thermal-summary { @apply text-xs; }
+  .receipt-thermal-info .info-item { @apply flex justify-between; }
+  .receipt-thermal-info .info-item span:first-child { @apply font-semibold; }
   
-  .receipt {
-    font-family: 'Courier New', Courier, monospace;
-    font-size: 10pt;
-    color: black;
-  }
-  .receipt h2 {
-    font-size: 14pt;
-    margin: 0;
-  }
-  .receipt p {
-    margin: 1mm 0;
-  }
-  .receipt hr {
-    border: none;
-    border-top: 1px dashed black;
-    margin: 2mm 0;
-  }
-  .receipt table {
-    width: 100%;
-    border-collapse: collapse;
-  }
-  .receipt th, .receipt td {
-    padding: 1mm 0;
-    text-align: left;
-    font-size: 9pt;
-    word-break: break-all;
-  }
-   .receipt th {
-    font-weight: bold;
-  }
-  .receipt td:first-child, .receipt th:first-child {
-      padding-right: 1mm;
-  }
-  .receipt .text-center {
-      text-align: center;
-  }
-  .receipt .text-right {
-      text-align: right;
-  }
-  .receipt .summary div {
-      display: flex;
-      justify-content: space-between;
-  }
+  .receipt-thermal-table { @apply w-full my-3 text-xs; }
+  .receipt-thermal-table th { @apply text-left font-bold pb-1 border-b-2 border-dashed border-black; }
+  .receipt-thermal-table td { @apply pt-1 align-top; }
+  .receipt-thermal-table .item-name { @apply break-words; }
+
+  .receipt-thermal-summary .summary-item { @apply flex justify-between; }
+  .receipt-thermal-summary .total { @apply font-bold text-sm pt-1; }
+
+  .receipt-thermal-footer { @apply text-center text-xs mt-3 break-words; }
+  
+  .receipt-thermal-hr { @apply border-t border-dashed border-black my-2; }
+
   .receipt-container {
     display: none;
   }
@@ -141,24 +127,23 @@
 
 @page {
   size: 80mm auto;
-  margin: 0mm;
+  margin: 0 auto;
 }
 
 @media print {
   body {
-    width: 80mm;
-    min-width: 0 !important;
     background: #fff !important;
+    padding: 0;
+    margin: 0;
+    min-width: 0 !important;
+    width: 80mm;
     -webkit-print-color-adjust: exact !important;
     color-adjust: exact !important;
-    box-sizing: border-box;
-    padding: 0 4mm;
   }
   .print-hidden {
     display: none !important;
   }
   .receipt-container {
     display: block !important;
-    position: static;
   }
 }

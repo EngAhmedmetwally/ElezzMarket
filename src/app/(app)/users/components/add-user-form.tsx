@@ -49,6 +49,8 @@ const userFormSchema = z.object({
   username: z.string().min(1, "اسم المستخدم مطلوب"),
   password: z.string().min(6, "كلمة المرور يجب أن لا تقل عن 6 أحرف"),
   role: z.enum(["Admin", "Moderator", "Courier"]),
+  phone1: z.string().optional(),
+  phone2: z.string().optional(),
   orderVisibility: z.enum(["all", "own"]).default("own"),
   permissions: z.object({
     dashboard: permissionsSchema.pick({ view: true }),
@@ -103,6 +105,8 @@ export function AddUserForm({ onSuccess, userToEdit }: AddUserFormProps) {
       username: userToEdit?.username || "",
       password: "",
       role: userToEdit?.role || "Moderator",
+      phone1: userToEdit?.phone1 || "",
+      phone2: userToEdit?.phone2 || "",
       orderVisibility: userToEdit?.orderVisibility || "own",
       permissions: userToEdit?.permissions || {
         dashboard: { view: true },
@@ -116,6 +120,7 @@ export function AddUserForm({ onSuccess, userToEdit }: AddUserFormProps) {
   });
   
   const [isSubmitting, setIsSubmitting] = React.useState(false);
+  const role = form.watch("role");
 
   React.useEffect(() => {
     if (userToEdit) {
@@ -124,6 +129,8 @@ export function AddUserForm({ onSuccess, userToEdit }: AddUserFormProps) {
         username: userToEdit.username,
         password: '',
         role: userToEdit.role,
+        phone1: userToEdit.phone1 || "",
+        phone2: userToEdit.phone2 || "",
         orderVisibility: userToEdit.orderVisibility,
         permissions: userToEdit.permissions
       })
@@ -146,6 +153,8 @@ export function AddUserForm({ onSuccess, userToEdit }: AddUserFormProps) {
           username: data.username,
           email: `${data.username}@elezz.com`,
           role: data.role,
+          phone1: data.phone1,
+          phone2: data.phone2,
           orderVisibility: data.orderVisibility,
           permissions: data.permissions,
         };
@@ -179,6 +188,8 @@ export function AddUserForm({ onSuccess, userToEdit }: AddUserFormProps) {
             email: `${data.username}@elezz.com`,
             password: data.password,
             role: data.role,
+            phone1: data.phone1,
+            phone2: data.phone2,
             orderVisibility: data.orderVisibility || 'own',
             permissions: data.permissions,
             createdAt: new Date().toISOString(),
@@ -280,6 +291,37 @@ export function AddUserForm({ onSuccess, userToEdit }: AddUserFormProps) {
             </FormItem>
           )}
         />
+
+        {role === 'Courier' && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <FormField
+              control={form.control}
+              name="phone1"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>{language === 'ar' ? 'رقم الهاتف 1' : 'Phone 1'}</FormLabel>
+                  <FormControl>
+                    <Input placeholder={language === 'ar' ? 'رقم الهاتف الأساسي' : 'Primary phone number'} {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="phone2"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>{language === 'ar' ? 'رقم الهاتف 2 (اختياري)' : 'Phone 2 (Optional)'}</FormLabel>
+                  <FormControl>
+                    <Input placeholder={language === 'ar' ? 'رقم هاتف إضافي' : 'Additional phone number'} {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
+        )}
 
         <FormField
           control={form.control}

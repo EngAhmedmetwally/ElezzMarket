@@ -96,74 +96,93 @@ function OrderDetailsSkeleton() {
     )
 }
 
+const Hr = () => <hr className="receipt-thermal-hr" />;
+
 function ReceiptView({ order, language, settings }: { order: Order; language: "ar" | "en"; settings: ReceiptSettings | null }) {
   if (!order) return null;
 
   const orderItems = order.items ? (Array.isArray(order.items) ? order.items : Object.values(order.items)) : [];
   const itemsSubtotal = orderItems.reduce((acc, item) => acc + (item.price * item.quantity), 0);
 
-  // Set default settings if none are found in DB
   const s = settings || {
       showLogo: true, headerText: language === 'ar' ? 'سوق العز' : 'ElEzz Market',
       showOrderId: true, showDate: true, showCustomerName: true, showCustomerPhone: true, showCustomerAddress: true,
       showItemWeight: false, showItemPrice: true, showItemSubtotal: true,
       showItemsSubtotal: true, showShippingCost: true, showGrandTotal: true,
       footerText: language === 'ar' ? 'شكراً لتعاملكم معنا!' : 'Thank you!',
-      showCourierName: false,
+      showCourierName: true,
   };
-
+  
+  const formatCurrency = (value: number) => value.toFixed(2);
 
   return (
-    <div className="receipt">
-      {s.showLogo && (
-        <div className="text-center mb-4">
-          <Rocket className="h-8 w-8 mx-auto text-black" />
-          {s.headerText && <h2 className="font-bold text-lg mt-2">{s.headerText}</h2>}
+    <div className="receipt-thermal">
+        {s.showLogo && (
+            <div className="receipt-thermal-header">
+                <Rocket className="h-10 w-10 mx-auto" />
+                {s.headerText && <h1>{s.headerText}</h1>}
+            </div>
+        )}
+        
+        <div className="receipt-thermal-info my-2 space-y-1">
+             {s.showOrderId && <div className="info-item"><span>{language === 'ar' ? 'رقم الطلب' : 'Order'}:</span><span>{order.id}</span></div>}
+             {s.showDate && <div className="info-item"><span>{language === 'ar' ? 'التاريخ' : 'Date'}:</span><span>{format(new Date(order.createdAt), "dd/MM/yy HH:mm")}</span></div>}
         </div>
-      )}
-      {s.showOrderId && <p>{language === 'ar' ? 'رقم الطلب:' : 'Order ID:'} {order.id}</p>}
-      {s.showDate && <p>{language === 'ar' ? 'التاريخ:' : 'Date:'} {format(new Date(order.createdAt), "dd/MM/yyyy HH:mm")}</p>}
-      
-      {(s.showOrderId || s.showDate) && (s.showCustomerName || s.showCustomerPhone || s.showCustomerAddress || s.showCourierName) && <hr />}
-      
-      {s.showCustomerName && <p><strong>{language === 'ar' ? 'العميل:' : 'Customer:'}</strong> {order.customerName}</p>}
-      {s.showCustomerPhone && <p><strong>{language === 'ar' ? 'الهاتف:' : 'Phone:'}</strong> {order.customerPhone1}</p>}
-      {s.showCustomerAddress && order.customerAddress && <p><strong>{language === 'ar' ? 'العنوان:' : 'Address:'}</strong> {order.customerAddress}</p>}
-      
-      {s.showCourierName && order.courierName && <p><strong>{language === 'ar' ? 'المندوب:' : 'Courier:'}</strong> {order.courierName}</p>}
 
-      {(s.showCustomerName || s.showCustomerPhone || s.showCustomerAddress || s.showCourierName) && <hr />}
-      
-      <table>
-        <thead>
-          <tr>
-            <th>{language === 'ar' ? 'الصنف' : 'Item'}</th>
-            {s.showItemWeight && <th className="text-center">{language === 'ar' ? 'وزن' : 'Wt.'}</th>}
-            <th className="text-center">{language === 'ar' ? 'كمية' : 'Qty'}</th>
-            {s.showItemPrice && <th className="text-right">{language === 'ar' ? 'سعر' : 'Price'}</th>}
-            {s.showItemSubtotal && <th className="text-right">{language === 'ar' ? 'إجمالي' : 'Total'}</th>}
-          </tr>
-        </thead>
-        <tbody>
-          {orderItems.map((item, index) => (
-            <tr key={index}>
-              <td>{item.productName}</td>
-              {s.showItemWeight && <td className="text-center">{item.weight ? `${item.weight * item.quantity}kg` : '-'}</td>}
-              <td className="text-center">{item.quantity}</td>
-              {s.showItemPrice && <td className="text-right">{item.price.toFixed(2)}</td>}
-              {s.showItemSubtotal && <td className="text-right">{(item.price * item.quantity).toFixed(2)}</td>}
-            </tr>
-          ))}
-        </tbody>
-      </table>
-      <hr />
-      <div className="summary space-y-1">
-        {s.showItemsSubtotal && <div><span>{language === 'ar' ? 'مجموع المنتجات' : 'Subtotal'}</span> <span>{itemsSubtotal.toFixed(2)}</span></div>}
-        {s.showShippingCost && <div><span>{language === 'ar' ? 'تكلفة الشحن' : 'Shipping'}</span> <span>{(order.shippingCost || 0).toFixed(2)}</span></div>}
-        {s.showGrandTotal && <div className="font-bold text-base"><span>{language === 'ar' ? 'الإجمالي الكلي' : 'Total'}</span> <span>{order.total.toFixed(2)}</span></div>}
-      </div>
-      {(s.showItemsSubtotal || s.showShippingCost || s.showGrandTotal) && <hr />}
-      {s.footerText && <p className="text-center">{s.footerText}</p>}
+        <Hr />
+
+        <div className="receipt-thermal-info my-2 space-y-1">
+             {s.showCustomerName && <div className="info-item"><span>{language === 'ar' ? 'العميل' : 'Cust'}:</span><span>{order.customerName}</span></div>}
+             {s.showCustomerPhone && <div className="info-item"><span>{language === 'ar' ? 'الهاتف' : 'Phone'}:</span><span>{order.customerPhone1}</span></div>}
+             {s.showCustomerAddress && order.customerAddress && <p className="text-xs break-words pt-1">{order.customerAddress}</p>}
+        </div>
+
+        {s.showCourierName && order.courierName && (
+            <>
+                <Hr />
+                <div className="receipt-thermal-info my-2">
+                    <div className="info-item"><span>{language === 'ar' ? 'المندوب' : 'Courier'}:</span><span>{order.courierName}</span></div>
+                </div>
+            </>
+        )}
+
+        <table className="receipt-thermal-table">
+            <thead>
+                <tr>
+                    <th className="item-name">{language === 'ar' ? 'الصنف' : 'Item'}</th>
+                    <th className="text-center">{language === 'ar' ? 'كمية' : 'Qty'}</th>
+                    {s.showItemPrice && <th className="text-right">{language === 'ar' ? 'سعر' : 'Price'}</th>}
+                    {s.showItemSubtotal && <th className="text-right">{language === 'ar' ? 'إجمالي' : 'Total'}</th>}
+                </tr>
+            </thead>
+            <tbody>
+                {orderItems.map((item, index) => (
+                    <tr key={index}>
+                        <td className="item-name">{item.productName}{s.showItemWeight && item.weight ? ` (${item.weight}kg)` : ''}</td>
+                        <td className="text-center">{item.quantity}</td>
+                        {s.showItemPrice && <td className="text-right">{formatCurrency(item.price)}</td>}
+                        {s.showItemSubtotal && <td className="text-right">{formatCurrency(item.price * item.quantity)}</td>}
+                    </tr>
+                ))}
+            </tbody>
+        </table>
+
+        <Hr />
+
+        <div className="receipt-thermal-summary space-y-1">
+            {s.showItemsSubtotal && <div className="summary-item"><span>{language === 'ar' ? 'مجموع المنتجات' : 'Subtotal'}</span> <span>{formatCurrency(itemsSubtotal)}</span></div>}
+            {s.showShippingCost && <div className="summary-item"><span>{language === 'ar' ? 'تكلفة الشحن' : 'Shipping'}</span> <span>{formatCurrency(order.shippingCost || 0)}</span></div>}
+            {s.showGrandTotal && <div className="summary-item total"><span>{language === 'ar' ? 'الإجمالي الكلي' : 'Total'}</span> <span>{formatCurrency(order.total)}</span></div>}
+        </div>
+        
+        {s.footerText && (
+            <>
+                <Hr />
+                <div className="receipt-thermal-footer">
+                    <p>{s.footerText}</p>
+                </div>
+            </>
+        )}
     </div>
   );
 }
@@ -179,13 +198,10 @@ export default function OrderDetailsPage() {
   const database = useDatabase();
   const { user: authUser } = useAuthUser();
 
-  const [orderPath, setOrderPath] = React.useState<string | null>(null);
+  const [orderPath, setOrderPath] = React.useState<string | null>(pathFromQuery ? `orders/${decodeURIComponent(pathFromQuery)}/${id}`: null);
 
   React.useEffect(() => {
-      if (pathFromQuery) {
-          setOrderPath(`orders/${decodeURIComponent(pathFromQuery)}/${id}`);
-          return;
-      }
+      if (orderPath) return; // If path is already set from query, do nothing
       if (!database || !id) return;
       
       const lookupRef = ref(database, `order-lookup/${id}`);
@@ -194,10 +210,13 @@ export default function OrderDetailsPage() {
               const { path } = snapshot.val();
               setOrderPath(`orders/${path}/${id}`);
           } else {
-              setOrderPath(null);
+              setOrderPath(null); // Explicitly set to null if not found
           }
+      }).catch(err => {
+        console.error("Error fetching order lookup:", err);
+        setOrderPath(null);
       });
-  }, [database, id, pathFromQuery]);
+  }, [database, id, orderPath]);
   
   const orderRef = useMemoFirebase(() => (database && orderPath) ? ref(database, orderPath) : null, [database, orderPath]);
   const { data: order, isLoading: isLoadingOrder, error: orderError } = useDoc<Order>(orderRef);
@@ -218,7 +237,10 @@ export default function OrderDetailsPage() {
   const [courierSearch, setCourierSearch] = React.useState("");
   const [selectedCourierId, setSelectedCourierId] = React.useState<string | null>(null);
 
-  const filteredCouriers = couriers.filter(c => c.name.toLowerCase().includes(courierSearch.toLowerCase()));
+  const filteredCouriers = couriers.filter(c => 
+    c.name.toLowerCase().includes(courierSearch.toLowerCase()) || 
+    (c.phone1 && c.phone1.includes(courierSearch))
+  );
 
   const handleStatusChangeRequest = (newStatus: OrderStatus) => {
     if (order && newStatus !== order.status) {
@@ -236,16 +258,19 @@ export default function OrderDetailsPage() {
     
     try {
         const now = new Date().toISOString();
+        const currentUser = authUser.name || authUser.email || "مستخدم مسؤول";
 
         await runTransaction(orderRef, (currentOrder) => {
             if (currentOrder) {
+                // Prepare new history item
                 const newHistoryItem: StatusHistoryItem = {
                     status: newStatus,
                     notes: noteText,
                     createdAt: now,
-                    userName: authUser.name || authUser.email || "مستخدم مسؤول",
+                    userName: currentUser,
                 };
-
+                
+                // Add to history
                 if (!currentOrder.statusHistory) {
                     currentOrder.statusHistory = {};
                 }
@@ -254,9 +279,11 @@ export default function OrderDetailsPage() {
                     currentOrder.statusHistory[newHistoryKey] = newHistoryItem;
                 }
 
+                // Update order status and timestamp
                 currentOrder.status = newStatus;
                 currentOrder.updatedAt = now;
 
+                // If assigning a courier, add their details
                 if (courierId) {
                     const selectedCourier = couriers.find(c => c.id === courierId);
                     if (selectedCourier) {
@@ -274,6 +301,7 @@ export default function OrderDetailsPage() {
         const commissionAmount = commissionRules?.[newStatus]?.amount || 0;
 
         if (commissionAmount > 0) {
+            // Refetch the order to get the latest state after transaction
             const latestOrderSnap = await get(orderRef);
             const latestOrder = latestOrderSnap.val();
             if (latestOrder) {
@@ -296,7 +324,8 @@ export default function OrderDetailsPage() {
                     const newCommRef = push(ref(database, 'commissions'));
                     await set(newCommRef, newCommission);
 
-                    const totalCommissionRef = ref(database, `${orderRef.path}/totalCommission`);
+                    // Update totalCommission on the order using a transaction
+                    const totalCommissionRef = ref(database, `${orderPath}/totalCommission`);
                     await runTransaction(totalCommissionRef, (currentTotal) => {
                         return (currentTotal || 0) + commissionAmount;
                     });
@@ -346,7 +375,7 @@ export default function OrderDetailsPage() {
     return <OrderDetailsSkeleton />;
   }
 
-  if (!order) {
+  if (!order && !isLoading) {
     return (
       <div className="print-hidden">
         <PageHeader title={language === 'ar' ? 'الطلب غير موجود' : 'Order Not Found'} />
@@ -355,6 +384,9 @@ export default function OrderDetailsPage() {
       </div>
     );
   }
+
+  if (!order) return <OrderDetailsSkeleton />;
+
 
   const canEditStatus = authUser?.role === 'Admin' || authUser?.permissions?.orders?.editStatus;
   const canCancelOrder = authUser?.role === 'Admin' || authUser?.permissions?.orders?.cancel;
@@ -531,7 +563,7 @@ export default function OrderDetailsPage() {
                                     </Avatar>
                                     <div>
                                         <p className="text-sm font-medium">{courier.name}</p>
-                                        <p className="text-xs text-muted-foreground">{courier.email}</p>
+                                        <p className="text-xs text-muted-foreground">{courier.phone1 || courier.email}</p>
                                     </div>
                                 </div>
                             ))}

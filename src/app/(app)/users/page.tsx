@@ -61,6 +61,8 @@ export default function UsersPage() {
         name,
         username,
         email: userDoc.email || '',
+        phone1: userDoc.phone1,
+        phone2: userDoc.phone2,
         role,
         avatarUrl,
         status,
@@ -80,7 +82,7 @@ export default function UsersPage() {
               {language === 'ar' ? 'إضافة مستخدم' : 'Add User'}
             </Button>
           </DialogTrigger>
-          <DialogContent className="sm:max-w-[425px]">
+          <DialogContent className="sm:max-w-xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>{language === 'ar' ? 'إضافة مستخدم جديد' : 'Add New User'}</DialogTitle>
             </DialogHeader>

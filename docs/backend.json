@@ -19,9 +19,13 @@
           "type": "string",
           "description": "The full name of the user."
         },
-        "phoneNumber": {
+        "phone1": {
           "type": "string",
-          "description": "The contact phone number for the user."
+          "description": "The primary contact phone number for the user."
+        },
+        "phone2": {
+          "type": "string",
+          "description": "An optional secondary contact phone number for the user."
         },
         "roleId": {
           "type": "string",
@@ -46,7 +50,6 @@
         "id",
         "email",
         "fullName",
-        "phoneNumber",
         "roleId",
         "isActive",
         "createdAt",
@@ -587,5 +590,3 @@
     ]
   }
 }
-
-    

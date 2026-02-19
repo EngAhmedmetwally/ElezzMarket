@@ -22,6 +22,8 @@ export type User = {
   createdAt: string;
   orderVisibility?: "all" | "own";
   permissions?: Permissions;
+  phone1?: string;
+  phone2?: string;
 };
 
 export type OrderStatus =
