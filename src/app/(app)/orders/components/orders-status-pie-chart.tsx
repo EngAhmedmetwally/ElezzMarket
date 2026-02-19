@@ -10,21 +10,14 @@ import {
 } from "@/components/ui/chart";
 import { useLanguage } from "@/components/language-provider";
 
-const statusColors: Record<string, string> = {
-    "تم الحجز": "hsl(var(--chart-1))",
-    "تم الارسال": "hsl(var(--chart-3))",
-    "تم التسليم": "hsl(var(--chart-2))",
-    "ملغي": "hsl(var(--chart-5))",
-};
-
-
 const chartConfig = {
     orders: {
         label: "Orders"
     },
-    "تم الحجز": { label: "تم الحجز", color: "hsl(var(--chart-1))" },
-    "تم الارسال": { label: "تم الارسال", color: "hsl(var(--chart-3))" },
-    "تم التسليم": { label: "تم التسليم", color: "hsl(var(--chart-2))" },
+    "تم التسجيل": { label: "تم التسجيل", color: "hsl(var(--chart-1))" },
+    "قيد التجهيز": { label: "قيد التجهيز", color: "hsl(var(--chart-3))" },
+    "تم التسليم للمندوب": { label: "تم التسليم للمندوب", color: "hsl(var(--chart-4))" },
+    "تم التسليم للعميل": { label: "تم التسليم للعميل", color: "hsl(var(--chart-2))" },
     "ملغي": { label: "ملغي", color: "hsl(var(--chart-5))" },
 };
 
@@ -34,7 +27,10 @@ interface OrdersStatusPieChartProps {
 
 export function OrdersStatusPieChart({ data }: OrdersStatusPieChartProps) {
     const { language } = useLanguage();
-    const chartData = data.map(item => ({...item, fill: statusColors[item.name] || 'hsl(var(--muted))' }))
+    const chartData = data.map(item => ({
+        ...item, 
+        fill: (chartConfig as any)[item.name]?.color || 'hsl(var(--muted))'
+    }));
     const totalOrders = React.useMemo(() => data.reduce((acc, curr) => acc + curr.value, 0), [data]);
 
     if (!chartData || chartData.length === 0) {

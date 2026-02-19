@@ -108,9 +108,9 @@ export default function CustomerDetailsPage() {
   }
   
   const getDeliveryTime = (order: Order) => {
-    if (order.status === 'تم التسليم' && order.statusHistory) {
+    if (order.status === 'تم التسليم للعميل' && order.statusHistory) {
       const historyArray = Array.isArray(order.statusHistory) ? order.statusHistory : Object.values(order.statusHistory);
-      const deliveredHistory = historyArray.find(h => h.status === 'تم التسليم');
+      const deliveredHistory = historyArray.find(h => h.status === 'تم التسليم للعميل');
       if (deliveredHistory && deliveredHistory.createdAt) {
         return format(new Date(deliveredHistory.createdAt), "PPP p");
       }
