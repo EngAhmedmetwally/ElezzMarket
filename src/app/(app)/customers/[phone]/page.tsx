@@ -41,15 +41,10 @@ export default function CustomerDetailsPage() {
 
         const orderIds = Object.keys(indexSnapshot.val());
         const orderPromises = orderIds.map(async (orderId) => {
-          const lookupRef = ref(database, `order-lookup/${orderId}`);
-          const lookupSnapshot = await get(lookupRef);
-          if (lookupSnapshot.exists()) {
-            const { path } = lookupSnapshot.val();
-            const orderRef = ref(database, `orders/${path}/${orderId}`);
-            const orderSnapshot = await get(orderRef);
-            if (orderSnapshot.exists()) {
-              return { ...orderSnapshot.val(), id: orderId };
-            }
+          const orderRef = ref(database, `orders/${orderId}`);
+          const orderSnapshot = await get(orderRef);
+          if (orderSnapshot.exists()) {
+            return { ...orderSnapshot.val(), id: orderId };
           }
           return null;
         });

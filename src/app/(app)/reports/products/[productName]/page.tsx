@@ -19,6 +19,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { format } from 'date-fns';
+import { fetchOrdersByDateRange } from '@/lib/data-fetching';
 
 type ProductOrder = {
   orderId: string;
@@ -68,74 +69,47 @@ export default function ProductOrdersPage() {
 
   const fromDate = React.useMemo(() => {
     const from = searchParams.get('from');
-    return from ? new Date(from) : undefined;
+    return from ? new Date(from) : new Date(new Date().getFullYear(), new Date().getMonth(), 1);
   }, [searchParams]);
 
   const toDate = React.useMemo(() => {
     const to = searchParams.get('to');
-    return to ? new Date(to) : undefined;
+    return to ? new Date(to) : new Date();
   }, [searchParams]);
 
   const [productOrders, setProductOrders] = React.useState<ProductOrder[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
 
   React.useEffect(() => {
-    if (!database || !productName) return;
+    if (!database || !productName || !fromDate || !toDate) return;
     setIsLoading(true);
 
-    const ordersRef = ref(database, 'orders');
-    get(ordersRef).then(snapshot => {
-      const allOrders: Order[] = [];
-      if (snapshot.exists()) {
-        const ordersByMonthYear = snapshot.val();
-        Object.keys(ordersByMonthYear).forEach(monthYear => {
-          const ordersByDay = ordersByMonthYear[monthYear];
-          Object.keys(ordersByDay).forEach(day => {
-            const orders = ordersByDay[day];
-            Object.keys(orders).forEach(orderId => {
-              allOrders.push({ ...orders[orderId], id: orderId });
-            });
-          });
+    fetchOrdersByDateRange(database, fromDate, toDate)
+      .then(allOrdersInRange => {
+        const filtered = allOrdersInRange.filter(order => {
+          const itemsArray = order.items ? (Array.isArray(order.items) ? order.items : Object.values(order.items)) : [];
+          return itemsArray.some(item => item.productName === productName);
         });
-      }
 
-      const filtered = allOrders.filter(order => {
-        if (!order.createdAt) return false;
-        const orderDate = new Date(order.createdAt);
-        if (fromDate) {
-          const fromDateStart = new Date(fromDate);
-          fromDateStart.setHours(0, 0, 0, 0);
-          if (orderDate < fromDateStart) return false;
-        }
-        if (toDate) {
-          const toDateEnd = new Date(toDate);
-          toDateEnd.setHours(23, 59, 59, 999);
-          if (orderDate > toDateEnd) return false;
-        }
+        const result: ProductOrder[] = filtered.map(order => {
+          const itemsArray = order.items ? (Array.isArray(order.items) ? order.items : Object.values(order.items)) : [];
+          const relevantItem = itemsArray.find(item => item.productName === productName)!;
+          return {
+            orderId: order.id,
+            customerName: order.customerName,
+            customerPhone1: order.customerPhone1,
+            createdAt: order.createdAt,
+            quantity: relevantItem.quantity,
+            weight: relevantItem.weight,
+          };
+        }).sort((a,b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
-        const itemsArray = order.items ? (Array.isArray(order.items) ? order.items : Object.values(order.items)) : [];
-        return itemsArray.some(item => item.productName === productName);
+        setProductOrders(result);
+        setIsLoading(false);
+      }).catch(error => {
+        console.error("Error fetching orders for product report:", error);
+        setIsLoading(false);
       });
-
-      const result: ProductOrder[] = filtered.map(order => {
-        const itemsArray = order.items ? (Array.isArray(order.items) ? order.items : Object.values(order.items)) : [];
-        const relevantItem = itemsArray.find(item => item.productName === productName)!;
-        return {
-          orderId: order.id,
-          customerName: order.customerName,
-          customerPhone1: order.customerPhone1,
-          createdAt: order.createdAt,
-          quantity: relevantItem.quantity,
-          weight: relevantItem.weight,
-        };
-      }).sort((a,b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-
-      setProductOrders(result);
-      setIsLoading(false);
-    }).catch(error => {
-      console.error("Error fetching orders for product report:", error);
-      setIsLoading(false);
-    });
 
   }, [database, productName, fromDate, toDate]);
 

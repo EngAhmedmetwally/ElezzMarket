@@ -136,16 +136,8 @@ export function OrderForm({ onSuccess }: OrderFormProps) {
       return;
     }
 
-    const now = new Date();
-    const year = now.getFullYear();
-    const month = (now.getMonth() + 1).toString().padStart(2, '0');
-    const day = now.getDate().toString().padStart(2, '0');
-    const monthYear = `${month}-${year}`;
-    const datePath = `${monthYear}/${day}`;
-
-    const orderRef = ref(database, `orders/${datePath}/${data.id}`);
-    const orderIdRef = ref(database, `order-lookup/${data.id}`);
-    const snapshot = await get(orderIdRef);
+    const orderRef = ref(database, `orders/${data.id}`);
+    const snapshot = await get(orderRef);
     
     if (snapshot.exists()) {
         form.setError("id", {
@@ -221,7 +213,7 @@ export function OrderForm({ onSuccess }: OrderFormProps) {
         await set(orderRef, newOrder);
 
         const updates: { [key: string]: any } = {};
-        updates[`order-lookup/${data.id}`] = { path: datePath };
+        updates[`order-lookup/${data.id}`] = true;
         updates[`customer-orders/${data.customerPhone1}/${data.id}`] = true;
 
         const customerRef = ref(database, `customers/${data.customerPhone1}`);
@@ -488,5 +480,3 @@ export function OrderForm({ onSuccess }: OrderFormProps) {
     </Form>
   );
 }
-
-    

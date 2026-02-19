@@ -2,7 +2,7 @@
 "use client";
 
 import * as React from "react";
-import { useParams, useSearchParams } from "next/navigation";
+import { useParams } from "next/navigation";
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -190,34 +190,13 @@ function ReceiptView({ order, language, settings }: { order: Order; language: "a
 
 export default function OrderDetailsPage() {
   const params = useParams();
-  const searchParams = useSearchParams();
   const id = typeof params.id === 'string' ? params.id : '';
-  const pathFromQuery = searchParams.get('path');
   const { language } = useLanguage();
   const { toast } = useToast();
   const database = useDatabase();
   const { user: authUser } = useAuthUser();
-
-  const [orderPath, setOrderPath] = React.useState<string | null>(pathFromQuery ? `orders/${decodeURIComponent(pathFromQuery)}/${id}`: null);
-
-  React.useEffect(() => {
-      if (orderPath || !database || !id) return; 
-      
-      const lookupRef = ref(database, `order-lookup/${id}`);
-      get(lookupRef).then(snapshot => {
-          if (snapshot.exists()) {
-              const { path } = snapshot.val();
-              setOrderPath(`orders/${path}/${id}`);
-          } else {
-              setOrderPath(null); 
-          }
-      }).catch(err => {
-        console.error("Error fetching order lookup:", err);
-        setOrderPath(null);
-      });
-  }, [database, id, orderPath]);
   
-  const orderRef = useMemoFirebase(() => (database && orderPath) ? ref(database, orderPath) : null, [database, orderPath]);
+  const orderRef = useMemoFirebase(() => database ? ref(database, `orders/${id}`) : null, [database, id]);
   const { data: order, isLoading: isLoadingOrder, error: orderError } = useDoc<Order>(orderRef);
 
   const usersRef = useMemoFirebase(() => database ? ref(database, `users`) : null, [database]);
