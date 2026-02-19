@@ -29,7 +29,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { useDatabase } from "@/firebase";
+import { useDatabase, useUser } from "@/firebase";
 import type { Order, OrderStatus } from "@/lib/types";
 import { Skeleton } from "@/components/ui/skeleton";
 import { fetchOrdersByDateRange } from "@/lib/data-fetching";
@@ -43,6 +43,7 @@ export default function OrdersPage() {
   const [fromDate, setFromDate] = React.useState<Date | undefined>(new Date(new Date().getFullYear(), new Date().getMonth(), 1));
   const [toDate, setToDate] = React.useState<Date | undefined>(new Date());
   const database = useDatabase();
+  const { user } = useUser();
 
   const handleUpdate = () => setVersion(v => v + 1);
 
@@ -52,17 +53,32 @@ export default function OrdersPage() {
   const [isLoading, setIsLoading] = React.useState(true);
 
   React.useEffect(() => {
-    if (!database || !fromDate || !toDate) return;
+    if (!database || !fromDate || !toDate || !user) return;
     setIsLoading(true);
     fetchOrdersByDateRange(database, fromDate, toDate).then(fetchedOrders => {
-        const sorted = [...fetchedOrders].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+        let userOrders = fetchedOrders;
+
+        const isAdmin = user.role === 'Admin';
+        const canSeeAll = user.orderVisibility === 'all';
+
+        if (!isAdmin && !canSeeAll) {
+             if (user.role === 'Moderator') {
+                 userOrders = fetchedOrders.filter(order => order.moderatorId === user.id);
+             } else if (user.role === 'Courier') {
+                 userOrders = fetchedOrders.filter(order => order.courierId === user.id);
+             } else {
+                 userOrders = [];
+             }
+        }
+        
+        const sorted = [...userOrders].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
         setAllOrders(sorted);
         setIsLoading(false);
     }).catch(error => {
         console.error("Error fetching all orders:", error);
         setIsLoading(false);
     });
-  }, [database, version, fromDate, toDate]);
+  }, [database, user, version, fromDate, toDate]);
 
   
   const uniqueOrderStatuses = React.useMemo(() => {
@@ -126,8 +142,8 @@ export default function OrdersPage() {
         'المودريتور': order.moderatorName,
         'حالة الاوردر': order.status,
         'التسليم': order.status,
-        'عمولة الحجز': order.salesCommission || 0,
-        'عمولة التسليم': order.deliveryCommission || 0,
+        'عمولة الحجز': order.totalCommission || 0, // Placeholder, logic needed
+        'عمولة التسليم': 0, // Placeholder, logic needed
     }));
 
     const worksheet = XLSX.utils.json_to_sheet(sheetData);
