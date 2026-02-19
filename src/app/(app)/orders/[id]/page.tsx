@@ -1,3 +1,4 @@
+
 "use client";
 
 import * as React from "react";
@@ -25,10 +26,10 @@ import { ref, update, runTransaction, get, push } from "firebase/database";
 import { Skeleton } from "@/components/ui/skeleton";
 
 const allowedTransitions: Record<OrderStatus, OrderStatus[]> = {
-    "تم التسجيل": ["تم التسليم للمندوب", "ملغي"],
-    "قيد التجهيز": ["تم التسليم للمندوب", "ملغي"],
-    "تم التسليم للمندوب": ["تم التسليم للعميل"],
-    "تم التسليم للعميل": [],
+    "تم التسجيل": ["قيد التجهيز", "ملغي"],
+    "قيد التجهيز": ["تم الشحن", "ملغي"],
+    "تم الشحن": ["مكتمل", "ملغي"],
+    "مكتمل": [],
     "ملغي": [],
 };
 
@@ -215,7 +216,7 @@ export default function OrderDetailsPage() {
   const handleStatusChangeRequest = (newStatus: OrderStatus) => {
     if (order && newStatus !== order.status) {
       setSelectedStatus(newStatus);
-      if (newStatus === "تم التسليم للمندوب") {
+      if (newStatus === "تم الشحن") {
         setIsCourierModalOpen(true);
       } else {
         setIsNoteModalOpen(true);
@@ -238,7 +239,7 @@ export default function OrderDetailsPage() {
         let recipientId: string | undefined;
         if (["تم التسجيل", "قيد التجهيز"].includes(newStatus)) {
             recipientId = order.moderatorId;
-        } else if (["تم التسليم للمندوب", "تم التسليم للعميل"].includes(newStatus)) {
+        } else if (["تم الشحن", "مكتمل"].includes(newStatus)) {
             recipientId = courierId || order.courierId;
         }
 
@@ -308,10 +309,7 @@ export default function OrderDetailsPage() {
   }
 
 
-  const handlePrint = async () => {
-    if (order?.status === "تم التسجيل" && authUser) {
-        await handleStatusUpdate("قيد التجهيز", language === 'ar' ? "تمت طباعة الفاتورة" : "Invoice printed");
-    }
+  const handlePrint = () => {
     typeof window !== 'undefined' && window.print()
   }
 

@@ -178,8 +178,8 @@ export default function ReportsPage() {
                     <TableHead className="text-start">{language === 'ar' ? 'الموظف' : 'Staff'}</TableHead>
                     <TableHead className="text-end">{language === 'ar' ? 'عمولة التسجيل' : 'Registration Comm.'}</TableHead>
                     <TableHead className="text-end">{language === 'ar' ? 'عمولة التجهيز' : 'Processing Comm.'}</TableHead>
-                    <TableHead className="text-end">{language === 'ar' ? 'عمولة تسليم للمندوب' : 'Courier Handover Comm.'}</TableHead>
-                    <TableHead className="text-end">{language === 'ar' ? 'عمولة تسليم للعميل' : 'Customer Delivery Comm.'}</TableHead>
+                    <TableHead className="text-end">{language === 'ar' ? 'عمولة الشحن' : 'Shipping Comm.'}</TableHead>
+                    <TableHead className="text-end">{language === 'ar' ? 'عمولة الاكتمال' : 'Completion Comm.'}</TableHead>
                     <TableHead className="text-end">{language === 'ar' ? 'إجمالي العمولة' : 'Total Commission'}</TableHead>
                     </TableRow>
                 </TableHeader>
@@ -189,8 +189,8 @@ export default function ReportsPage() {
                         <TableCell className="font-medium text-start">{row.moderator}</TableCell>
                         <TableCell className="text-end">{formatCurrency(row.details.get('تم التسجيل') || 0)}</TableCell>
                         <TableCell className="text-end">{formatCurrency(row.details.get('قيد التجهيز') || 0)}</TableCell>
-                        <TableCell className="text-end">{formatCurrency(row.details.get('تم التسليم للمندوب') || 0)}</TableCell>
-                        <TableCell className="text-end">{formatCurrency(row.details.get('تم التسليم للعميل') || 0)}</TableCell>
+                        <TableCell className="text-end">{formatCurrency(row.details.get('تم الشحن') || 0)}</TableCell>
+                        <TableCell className="text-end">{formatCurrency(row.details.get('مكتمل') || 0)}</TableCell>
                         <TableCell className="text-end font-medium">{formatCurrency(row.totalCommission)}</TableCell>
                     </TableRow>
                     ))}

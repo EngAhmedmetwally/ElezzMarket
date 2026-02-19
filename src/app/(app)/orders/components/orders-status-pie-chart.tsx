@@ -16,8 +16,8 @@ const chartConfig = {
     },
     "تم التسجيل": { label: "تم التسجيل", color: "hsl(var(--chart-1))" },
     "قيد التجهيز": { label: "قيد التجهيز", color: "hsl(var(--chart-3))" },
-    "تم التسليم للمندوب": { label: "تم التسليم للمندوب", color: "hsl(var(--chart-4))" },
-    "تم التسليم للعميل": { label: "تم التسليم للعميل", color: "hsl(var(--chart-2))" },
+    "تم الشحن": { label: "تم الشحن", color: "hsl(var(--chart-4))" },
+    "مكتمل": { label: "مكتمل", color: "hsl(var(--chart-2))" },
     "ملغي": { label: "ملغي", color: "hsl(var(--chart-5))" },
 };
 

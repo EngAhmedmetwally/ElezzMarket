@@ -105,7 +105,7 @@ export default function ShippingReportPage() {
             toDateEnd.setHours(23, 59, 59, 999);
             if (orderDate > toDateEnd) return false;
         }
-        return order.status === "تم التسليم للعميل"; // Only count delivered orders for this report
+        return order.status === "مكتمل"; // Only count delivered orders for this report
     });
   }, [allOrders, fromDate, toDate]);
 

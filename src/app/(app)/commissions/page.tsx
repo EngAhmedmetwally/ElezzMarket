@@ -18,13 +18,13 @@ import { useCollection, useDatabase, useMemoFirebase } from "@/firebase"
 import type { CommissionRule, OrderStatus } from "@/lib/types"
 import { ref, set } from "firebase/database"
 
-const commissionableStatuses: OrderStatus[] = ["تم التسجيل", "قيد التجهيز", "تم التسليم للمندوب", "تم التسليم للعميل"];
+const commissionableStatuses: OrderStatus[] = ["تم التسجيل", "قيد التجهيز", "تم الشحن", "مكتمل"];
 
 const commissionFormSchema = z.object({
   "تم التسجيل": z.coerce.number().min(0, "يجب أن يكون المبلغ 0 أو أكثر"),
   "قيد التجهيز": z.coerce.number().min(0, "يجب أن يكون المبلغ 0 أو أكثر"),
-  "تم التسليم للمندوب": z.coerce.number().min(0, "يجب أن يكون المبلغ 0 أو أكثر"),
-  "تم التسليم للعميل": z.coerce.number().min(0, "يجب أن يكون المبلغ 0 أو أكثر"),
+  "تم الشحن": z.coerce.number().min(0, "يجب أن يكون المبلغ 0 أو أكثر"),
+  "مكتمل": z.coerce.number().min(0, "يجب أن يكون المبلغ 0 أو أكثر"),
 });
 
 type CommissionFormValues = z.infer<typeof commissionFormSchema>;
@@ -42,8 +42,8 @@ export default function CommissionsPage() {
     defaultValues: {
       "تم التسجيل": 0,
       "قيد التجهيز": 0,
-      "تم التسليم للمندوب": 0,
-      "تم التسليم للعميل": 0,
+      "تم الشحن": 0,
+      "مكتمل": 0,
     }
   });
 
@@ -127,7 +127,7 @@ export default function CommissionsPage() {
                   <FormField
                     key={status}
                     control={form.control}
-                    name={status}
+                    name={status as keyof CommissionFormValues}
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>{status}</FormLabel>

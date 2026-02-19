@@ -28,8 +28,8 @@ export type User = {
 export type OrderStatus =
   | "تم التسجيل"
   | "قيد التجهيز"
-  | "تم التسليم للمندوب"
-  | "تم التسليم للعميل"
+  | "تم الشحن"
+  | "مكتمل"
   | "ملغي";
 
 export type OrderItem = {

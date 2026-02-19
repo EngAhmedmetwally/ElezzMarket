@@ -102,7 +102,7 @@ export default function OrdersPage() {
   }, [allOrders, fromDate, toDate]);
   
   const uniqueOrderStatuses = React.useMemo(() => {
-    const definedStatuses: OrderStatus[] = ["تم التسجيل", "قيد التجهيز", "تم التسليم للمندوب", "تم التسليم للعميل", "ملغي"];
+    const definedStatuses: OrderStatus[] = ["تم التسجيل", "قيد التجهيز", "تم الشحن", "مكتمل", "ملغي"];
     
     if (!allOrders || allOrders.length === 0) {
       return definedStatuses;
@@ -114,8 +114,8 @@ export default function OrdersPage() {
     const statusOrderMap: Record<string, number> = {
       "تم التسجيل": 1,
       "قيد التجهيز": 2,
-      "تم التسليم للمندوب": 3,
-      "تم التسليم للعميل": 4,
+      "تم الشحن": 3,
+      "مكتمل": 4,
       "ملغي": 5,
     };
 
