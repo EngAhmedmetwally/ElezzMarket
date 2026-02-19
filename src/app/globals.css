@@ -91,7 +91,7 @@
     @apply font-arabic;
   }
 
-  /* New Receipt Styles */
+  /* Receipt Styles */
   .receipt-thermal {
       font-family: 'Courier New', Courier, monospace;
       color: black;
@@ -102,7 +102,6 @@
   }
   .receipt-thermal-header { @apply text-center mb-2; }
   .receipt-thermal-header h1 { @apply text-lg font-bold break-words; }
-  .receipt-thermal-header h2 { @apply text-base font-semibold break-words; }
 
   .receipt-thermal-info, .receipt-thermal-summary { @apply text-xs; }
   .receipt-thermal-info .info-item { @apply flex justify-between; }
@@ -127,23 +126,34 @@
 
 @page {
   size: 80mm auto;
-  margin: 0 auto;
+  margin: 0;
 }
 
 @media print {
   body {
-    background: #fff !important;
+    background: white !important;
+    min-width: 0 !important;
     padding: 0;
     margin: 0;
-    min-width: 0 !important;
-    width: 80mm;
-    -webkit-print-color-adjust: exact !important;
-    color-adjust: exact !important;
+  }
+  body * {
+    visibility: hidden;
   }
   .print-hidden {
     display: none !important;
   }
+  .receipt-container,
+  .receipt-container * {
+    visibility: visible;
+  }
   .receipt-container {
     display: block !important;
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+  }
+  .receipt-thermal {
+    margin: 0 auto;
   }
 }

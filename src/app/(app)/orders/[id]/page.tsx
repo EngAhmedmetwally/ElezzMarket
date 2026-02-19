@@ -124,23 +124,23 @@ function ReceiptView({ order, language, settings }: { order: Order; language: "a
             </div>
         )}
         
-        <div className="receipt-thermal-info my-2 space-y-1">
+        <div className="receipt-thermal-info">
              {s.showOrderId && <div className="info-item"><span>{language === 'ar' ? 'رقم الطلب' : 'Order'}:</span><span>{order.id}</span></div>}
              {s.showDate && <div className="info-item"><span>{language === 'ar' ? 'التاريخ' : 'Date'}:</span><span>{format(new Date(order.createdAt), "dd/MM/yy HH:mm")}</span></div>}
         </div>
 
         <Hr />
 
-        <div className="receipt-thermal-info my-2 space-y-1">
+        <div className="receipt-thermal-info">
              {s.showCustomerName && <div className="info-item"><span>{language === 'ar' ? 'العميل' : 'Cust'}:</span><span>{order.customerName}</span></div>}
              {s.showCustomerPhone && <div className="info-item"><span>{language === 'ar' ? 'الهاتف' : 'Phone'}:</span><span>{order.customerPhone1}</span></div>}
-             {s.showCustomerAddress && order.customerAddress && <p className="text-xs break-words pt-1">{order.customerAddress}</p>}
+             {s.showCustomerAddress && order.customerAddress && <p className="text-xs break-words pt-1 text-right">{order.customerAddress}</p>}
         </div>
 
         {s.showCourierName && order.courierName && (
             <>
                 <Hr />
-                <div className="receipt-thermal-info my-2">
+                <div className="receipt-thermal-info">
                     <div className="info-item"><span>{language === 'ar' ? 'المندوب' : 'Courier'}:</span><span>{order.courierName}</span></div>
                 </div>
             </>
@@ -201,8 +201,7 @@ export default function OrderDetailsPage() {
   const [orderPath, setOrderPath] = React.useState<string | null>(pathFromQuery ? `orders/${decodeURIComponent(pathFromQuery)}/${id}`: null);
 
   React.useEffect(() => {
-      if (orderPath) return; // If path is already set from query, do nothing
-      if (!database || !id) return;
+      if (orderPath || !database || !id) return; 
       
       const lookupRef = ref(database, `order-lookup/${id}`);
       get(lookupRef).then(snapshot => {
@@ -210,7 +209,7 @@ export default function OrderDetailsPage() {
               const { path } = snapshot.val();
               setOrderPath(`orders/${path}/${id}`);
           } else {
-              setOrderPath(null); // Explicitly set to null if not found
+              setOrderPath(null); 
           }
       }).catch(err => {
         console.error("Error fetching order lookup:", err);
@@ -260,33 +259,28 @@ export default function OrderDetailsPage() {
         const now = new Date().toISOString();
         const currentUser = authUser.name || authUser.email || "مستخدم مسؤول";
 
-        // Determine commission before transaction
         const commissionRulesSnap = await get(ref(database, 'commission-rules'));
         const commissionRules = commissionRulesSnap.val();
         const commissionAmount = commissionRules?.[newStatus]?.amount || 0;
 
         await runTransaction(orderRef, (currentOrder) => {
             if (currentOrder) {
-                // Update status history
-                const newHistoryItem: StatusHistoryItem = {
-                    status: newStatus,
-                    notes: noteText,
-                    createdAt: now,
-                    userName: currentUser,
-                };
+                const newHistoryKey = push(child(orderRef, 'statusHistory')).key;
                 if (!currentOrder.statusHistory) {
                     currentOrder.statusHistory = {};
                 }
-                const newHistoryKey = push(child(orderRef, 'statusHistory')).key;
                 if (newHistoryKey) {
-                    currentOrder.statusHistory[newHistoryKey] = newHistoryItem;
+                    currentOrder.statusHistory[newHistoryKey] = {
+                        status: newStatus,
+                        notes: noteText,
+                        createdAt: now,
+                        userName: currentUser,
+                    };
                 }
 
-                // Update order status and timestamp
                 currentOrder.status = newStatus;
                 currentOrder.updatedAt = now;
 
-                // If assigning a courier, add their details
                 if (courierId) {
                     const selectedCourier = couriers.find(c => c.id === courierId);
                     if (selectedCourier) {
@@ -295,7 +289,6 @@ export default function OrderDetailsPage() {
                     }
                 }
 
-                // Update total commission
                 if (commissionAmount > 0) {
                     currentOrder.totalCommission = (currentOrder.totalCommission || 0) + commissionAmount;
                 }
@@ -303,9 +296,7 @@ export default function OrderDetailsPage() {
             return currentOrder;
         });
 
-        // --- Handle side effects after the transaction is successful ---
         if (commissionAmount > 0) {
-            // We need to refetch the order to get courierId if it was just set.
             const latestOrderSnap = await get(orderRef);
             const latestOrder = latestOrderSnap.val();
             
