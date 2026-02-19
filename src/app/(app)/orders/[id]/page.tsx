@@ -273,13 +273,15 @@ export default function OrderDetailsPage() {
         status: newStatus,
         notes: noteText,
         createdAt: now,
-        userName: authUser.name || "مستخدم مسؤول",
+        userName: authUser.name || authUser.email || "مستخدم مسؤول",
     };
-    const currentHistory = order.statusHistory ? (Array.isArray(order.statusHistory) ? order.statusHistory : Object.values(order.statusHistory)) : [];
-
+    
     updates[`/${orderRef.path}/status`] = newStatus;
     updates[`/${orderRef.path}/updatedAt`] = now;
-    updates[`/${orderRef.path}/statusHistory`] = [...currentHistory, newHistoryItem];
+
+    const newHistoryRef = push(ref(database, `${orderRef.path}/statusHistory`));
+    updates[`/${orderRef.path}/statusHistory/${newHistoryRef.key}`] = newHistoryItem;
+
     if (courierId) {
       const selectedCourier = couriers.find(c => c.id === courierId);
       if(selectedCourier) {
@@ -321,7 +323,7 @@ export default function OrderDetailsPage() {
 
   if (!order) {
     return (
-      <div>
+      <div className="print:hidden">
         <PageHeader title={language === 'ar' ? 'الطلب غير موجود' : 'Order Not Found'} />
         <p>{language === 'ar' ? 'لم نتمكن من العثور على الطلب المطلوب.' : 'The requested order could not be found.'}</p>
         {orderError && <p className="text-destructive">{orderError.message}</p>}

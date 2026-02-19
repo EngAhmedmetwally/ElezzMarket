@@ -220,6 +220,14 @@ export function OrderForm({ onSuccess }: OrderFormProps) {
             resolvedItems.push({ ...item, productId });
         }
         
+        const statusHistory: any = {};
+        const initialHistoryKey = push(ref(database)).key; // Get a unique key
+        statusHistory[initialHistoryKey!] = {
+            status: 'تم التسجيل',
+            createdAt: new Date().toISOString(),
+            userName: user.name || user.email || 'Unknown',
+        };
+
         const newOrder = {
             id: data.id,
             customerName: data.customerName,
@@ -236,13 +244,7 @@ export function OrderForm({ onSuccess }: OrderFormProps) {
             moderatorName: user.name || user.email || 'Unknown',
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString(),
-            statusHistory: [
-                {
-                    status: 'تم التسجيل',
-                    createdAt: new Date().toISOString(),
-                    userName: user.name || user.email || 'Unknown',
-                }
-            ],
+            statusHistory,
             totalCommission: totalCommission,
         };
         updates[orderPath] = newOrder;
