@@ -28,6 +28,8 @@ import { useCachedDoc } from "@/hooks/use-cached-doc";
 import { useCachedCollection } from "@/hooks/use-cached-collection";
 import { syncCollection } from "@/lib/data-sync";
 import { Logo } from "@/components/icons/logo";
+import { idbPut } from "@/lib/db";
+import { syncEvents } from "@/lib/sync-events";
 
 const allowedTransitions: Record<OrderStatus, OrderStatus[]> = {
     "تم التسجيل": ["قيد التجهيز", "ملغي"],
@@ -285,52 +287,66 @@ export default function OrderDetailsPage() {
             return currentOrder;
         });
 
-        // Force an immediate sync after the transaction
-        await syncCollection(database, 'orders', true);
+        if (transactionResult.committed) {
+            const updatedOrder = transactionResult.snapshot.val();
+           if (updatedOrder) {
+               // Manually update IndexedDB with the fresh data and emit an event
+               // to trigger UI updates on any component using this order.
+               const orderToStore = { ...updatedOrder, path: order.path, id: order.id };
+               await idbPut('orders', orderToStore);
+               syncEvents.emit('synced', 'orders');
+           }
+       
+           if (commissionAmount > 0) {
+               const latestOrder = transactionResult.snapshot.val();
+               
+               if (latestOrder) {
+                   let recipientId: string | undefined;
+                   if (["تم التسجيل", "قيد التجهيز"].includes(newStatus)) {
+                       recipientId = latestOrder.moderatorId;
+                   } else if (["تم الشحن", "مكتمل"].includes(newStatus)) {
+                       recipientId = latestOrder.courierId;
+                   }
 
-        if (commissionAmount > 0) {
-            const latestOrder = transactionResult.snapshot.val();
-            
-            if (latestOrder) {
-                let recipientId: string | undefined;
-                if (["تم التسجيل", "قيد التجهيز"].includes(newStatus)) {
-                    recipientId = latestOrder.moderatorId;
-                } else if (["تم الشحن", "مكتمل"].includes(newStatus)) {
-                    recipientId = latestOrder.courierId;
-                }
+                   if (recipientId) {
+                       const newCommission: Omit<Commission, 'id'> = {
+                           orderId: order.id,
+                           userId: recipientId,
+                           orderStatus: newStatus,
+                           amount: commissionAmount,
+                           calculationDate: now,
+                           paymentStatus: 'Calculated',
+                       };
+                       const newCommRef = push(ref(database, 'commissions'));
+                       await set(newCommRef, newCommission);
+                       // Also sync commissions
+                       await syncCollection(database, 'commissions', true);
+                   }
+               }
+           }
+           
+           if (newStatus === 'ملغي' && order.status !== 'ملغي') {
+               const productSaleUpdatePromises = (order.items || []).map(item => {
+                   if (!item.productId) return Promise.resolve();
+                   const productSalesRef = ref(database, `products/${item.productId}/salesCount`);
+                   return runTransaction(productSalesRef, (currentCount) => (currentCount || 0) - item.quantity);
+               });
+               await Promise.all(productSaleUpdatePromises);
+               // Also sync products
+               await syncCollection(database, 'products', true);
+           }
 
-                if (recipientId) {
-                    const newCommission: Omit<Commission, 'id'> = {
-                        orderId: order.id,
-                        userId: recipientId,
-                        orderStatus: newStatus,
-                        amount: commissionAmount,
-                        calculationDate: now,
-                        paymentStatus: 'Calculated',
-                    };
-                    const newCommRef = push(ref(database, 'commissions'));
-                    await set(newCommRef, newCommission);
-                    // Also sync commissions
-                    await syncCollection(database, 'commissions', true);
-                }
-            }
-        }
-        
-        if (newStatus === 'ملغي' && order.status !== 'ملغي') {
-            const productSaleUpdatePromises = (order.items || []).map(item => {
-                if (!item.productId) return Promise.resolve();
-                const productSalesRef = ref(database, `products/${item.productId}/salesCount`);
-                return runTransaction(productSalesRef, (currentCount) => (currentCount || 0) - item.quantity);
-            });
-            await Promise.all(productSaleUpdatePromises);
-            // Also sync products
-            await syncCollection(database, 'products', true);
-        }
-
-        toast({
-            title: language === 'ar' ? 'تم تحديث الحالة' : 'Status Updated',
-            description: `${language === 'ar' ? 'تم تحديث حالة الطلب إلى' : 'Order status updated to'} ${newStatus}.`,
-        });
+           toast({
+               title: language === 'ar' ? 'تم تحديث الحالة' : 'Status Updated',
+               description: `${language === 'ar' ? 'تم تحديث حالة الطلب إلى' : 'Order status updated to'} ${newStatus}.`,
+           });
+       } else {
+            toast({
+               variant: "destructive",
+               title: language === 'ar' ? 'فشل التحديث' : 'Update Failed',
+               description: language === 'ar' ? 'لم يتم تحديث الطلب، ربما تم تعديله من قبل مستخدم آخر.' : 'The order was not updated, it may have been modified by another user.',
+           });
+       }
 
         setIsNoteModalOpen(false);
         setIsCourierModalOpen(false);
