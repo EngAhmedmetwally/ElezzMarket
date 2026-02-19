@@ -132,4 +132,7 @@ export type ReceiptSettings = {
   showCourierName?: boolean;
 };
 
+export type AppSettings = {
+  maxUsers: number;
+};
     

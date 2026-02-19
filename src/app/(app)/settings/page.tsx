@@ -1,8 +1,9 @@
+
 "use client";
 
 import { PageHeader } from "@/components/page-header";
 import { ReceiptSettingsForm } from "./components/receipt-settings-form";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { useLanguage } from "@/components/language-provider";
 import { ReceiptPreview } from "./components/receipt-preview";
 import { useForm } from "react-hook-form";
@@ -11,13 +12,16 @@ import * as z from "zod";
 import * as React from "react";
 import { useToast } from "@/hooks/use-toast";
 import { useDatabase, useDoc, useMemoFirebase, useUser, useCollection } from "@/firebase";
-import { ref, update } from "firebase/database";
-import type { ReceiptSettings, User } from "@/lib/types";
+import { ref, update, set } from "firebase/database";
+import type { ReceiptSettings, User, AppSettings } from "@/lib/types";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Users } from "lucide-react";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 
 
-const settingsFormSchema = z.object({
+const receiptSettingsSchema = z.object({
   showLogo: z.boolean().default(true),
   headerText: z.string().optional(),
   showOrderId: z.boolean().default(true),
@@ -35,7 +39,13 @@ const settingsFormSchema = z.object({
   showCourierName: z.boolean().default(false),
 });
 
-type SettingsFormValues = z.infer<typeof settingsFormSchema>;
+type ReceiptSettingsFormValues = z.infer<typeof receiptSettingsSchema>;
+
+const appSettingsSchema = z.object({
+  maxUsers: z.coerce.number().int().min(1, "العدد يجب أن يكون 1 على الأقل"),
+});
+
+type AppSettingsFormValues = z.infer<typeof appSettingsSchema>;
 
 
 export default function SettingsPage() {
@@ -45,8 +55,11 @@ export default function SettingsPage() {
   const { user } = useUser();
   const isEmergencyAdmin = user?.email === 'emergency.admin@elezz.com';
 
-  const settingsRef = useMemoFirebase(() => database ? ref(database, 'receipt-settings') : null, [database]);
-  const { data: currentSettings, isLoading } = useDoc<ReceiptSettings>(settingsRef);
+  const receiptSettingsRef = useMemoFirebase(() => database ? ref(database, 'receipt-settings') : null, [database]);
+  const { data: currentReceiptSettings, isLoading: isLoadingReceiptSettings } = useDoc<ReceiptSettings>(receiptSettingsRef);
+
+  const appSettingsRef = useMemoFirebase(() => database ? ref(database, 'app-settings') : null, [database]);
+  const { data: currentAppSettings, isLoading: isLoadingAppSettings } = useDoc<AppSettings>(appSettingsRef);
   
   const usersQuery = useMemoFirebase(() => database ? ref(database, 'users') : null, [database]);
   const { data: usersData, isLoading: isLoadingUsers } = useCollection<User>(usersQuery);
@@ -56,8 +69,8 @@ export default function SettingsPage() {
     return usersData.filter(u => u.role !== 'Courier').length;
   }, [usersData]);
 
-  const form = useForm<SettingsFormValues>({
-    resolver: zodResolver(settingsFormSchema),
+  const receiptForm = useForm<ReceiptSettingsFormValues>({
+    resolver: zodResolver(receiptSettingsSchema),
     defaultValues: {
       showLogo: true,
       headerText: language === 'ar' ? 'سوق العز' : 'ElEzz Market',
@@ -77,29 +90,56 @@ export default function SettingsPage() {
     },
   });
 
-  const watchedSettings = form.watch();
+  const appSettingsForm = useForm<AppSettingsFormValues>({
+    resolver: zodResolver(appSettingsSchema),
+    defaultValues: {
+      maxUsers: 25,
+    },
+  });
+
+  const watchedReceiptSettings = receiptForm.watch();
   
   React.useEffect(() => {
-    if (currentSettings) {
-        const valuesToSet = { ...form.getValues(), ...currentSettings };
-        form.reset(valuesToSet);
+    if (currentReceiptSettings) {
+        const valuesToSet = { ...receiptForm.getValues(), ...currentReceiptSettings };
+        receiptForm.reset(valuesToSet);
     }
-  }, [currentSettings, form]);
+  }, [currentReceiptSettings, receiptForm]);
 
-  async function onSubmit(data: SettingsFormValues) {
-    if (!database || !settingsRef) return;
+  React.useEffect(() => {
+    if (currentAppSettings) {
+      appSettingsForm.reset({ maxUsers: currentAppSettings.maxUsers });
+    }
+  }, [currentAppSettings, appSettingsForm]);
+
+  async function onReceiptSubmit(data: ReceiptSettingsFormValues) {
+    if (!database || !receiptSettingsRef) return;
     try {
-      await update(settingsRef, data);
+      await update(receiptSettingsRef, data);
       toast({ title: language === 'ar' ? 'تم حفظ الإعدادات' : 'Settings Saved', description: language === 'ar' ? 'تم تحديث إعدادات الإيصال بنجاح.' : 'Receipt settings have been updated successfully.' });
     } catch (error) {
       toast({ variant: 'destructive', title: language === 'ar' ? 'خطأ' : 'Error', description: (error as Error).message });
     }
   }
 
-  if (isLoading || isLoadingUsers) {
+  async function onAppSettingsSubmit(data: AppSettingsFormValues) {
+    if (!database || !appSettingsRef) return;
+    try {
+      await set(appSettingsRef, data);
+      toast({ title: language === 'ar' ? 'تم حفظ الإعدادات' : 'Settings Saved', description: language === 'ar' ? 'تم تحديث إعدادات الخطة بنجاح.' : 'Plan settings have been updated successfully.' });
+    } catch (error) {
+      toast({ variant: 'destructive', title: language === 'ar' ? 'خطأ' : 'Error', description: (error as Error).message });
+    }
+  }
+
+  const maxUsers = currentAppSettings?.maxUsers || 25;
+  const isLoading = isLoadingReceiptSettings || isLoadingUsers || isLoadingAppSettings;
+
+  if (isLoading) {
     return (
         <div className="space-y-8">
             <PageHeader title={language === 'ar' ? 'الإعدادات' : 'Settings'} />
+            {isEmergencyAdmin && <Skeleton className="h-24" />}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                 <div className="lg:col-span-2">
                     <Card>
@@ -137,14 +177,43 @@ export default function SettingsPage() {
 
       {isEmergencyAdmin && (
          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">{language === 'ar' ? 'خطة المستخدمين' : 'User Plan'}</CardTitle>
-                <Users className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-                <div className="text-2xl font-bold">{nonCourierUsersCount} / 25</div>
-                <p className="text-xs text-muted-foreground">{language === 'ar' ? 'عدد المستخدمين (غير المناديب) المسجلين في النظام' : 'Registered users (non-couriers) in the system'}</p>
-            </CardContent>
+            <Form {...appSettingsForm}>
+              <form onSubmit={appSettingsForm.handleSubmit(onAppSettingsSubmit)}>
+                <CardHeader>
+                  <CardTitle>{language === 'ar' ? 'إدارة الخطة' : 'Plan Management'}</CardTitle>
+                  <CardDescription>{language === 'ar' ? 'قم بتعيين الحد الأقصى للمستخدمين (غير المناديب) للنظام.' : 'Set the maximum number of users (non-couriers) for the system.'}</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="flex flex-col sm:flex-row gap-4 sm:gap-8 items-start sm:items-center rounded-lg border p-4">
+                      <div className="space-y-1">
+                          <p className="text-sm font-medium text-muted-foreground">{language === 'ar' ? 'خطة المستخدمين' : 'User Plan'}</p>
+                          <div className="flex items-baseline gap-2">
+                            <span className="text-2xl font-bold">{nonCourierUsersCount}</span>
+                            <span className="text-xl font-medium text-muted-foreground">/ {maxUsers}</span>
+                          </div>
+                      </div>
+                      <div className="w-full sm:w-auto">
+                        <FormField
+                          control={appSettingsForm.control}
+                          name="maxUsers"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>{language === 'ar' ? 'تعيين الحد الأقصى للمستخدمين' : 'Set Max Users'}</FormLabel>
+                              <FormControl>
+                                <Input type="number" className="max-w-xs" {...field} />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+                  </div>
+                </CardContent>
+                <CardFooter className="border-t px-6 py-4">
+                  <Button type="submit" disabled={appSettingsForm.formState.isSubmitting}>{language === 'ar' ? 'حفظ إعدادات الخطة' : 'Save Plan Settings'}</Button>
+                </CardFooter>
+              </form>
+            </Form>
         </Card>
       )}
 
@@ -157,7 +226,7 @@ export default function SettingsPage() {
             </CardDescription>
             </CardHeader>
             <CardContent>
-                <ReceiptSettingsForm form={form} onSubmit={onSubmit} />
+                <ReceiptSettingsForm form={receiptForm} onSubmit={onReceiptSubmit} />
             </CardContent>
         </Card>
 
@@ -167,7 +236,7 @@ export default function SettingsPage() {
                     <CardTitle>{language === 'ar' ? 'معاينة الإيصال' : 'Receipt Preview'}</CardTitle>
                  </CardHeader>
                  <CardContent>
-                    <ReceiptPreview settings={watchedSettings} />
+                    <ReceiptPreview settings={watchedReceiptSettings} />
                  </CardContent>
             </Card>
         </div>

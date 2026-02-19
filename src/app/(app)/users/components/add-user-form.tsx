@@ -27,8 +27,8 @@ import { useLanguage } from "@/components/language-provider";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Checkbox } from "@/components/ui/checkbox";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import type { User } from "@/lib/types";
-import { useDatabase } from "@/firebase";
+import type { User, AppSettings } from "@/lib/types";
+import { useDatabase, useDoc, useMemoFirebase } from "@/firebase";
 import { ref, set, push, update, get } from "firebase/database";
 
 
@@ -120,6 +120,9 @@ export function AddUserForm({ onSuccess, userToEdit }: AddUserFormProps) {
   const isEditMode = !!userToEdit;
   
   const formSchema = getUserFormSchema(isEditMode);
+  
+  const appSettingsRef = useMemoFirebase(() => database ? ref(database, 'app-settings') : null, [database]);
+  const { data: appSettings } = useDoc<AppSettings>(appSettingsRef);
 
   const form = useForm<UserFormValues>({
     resolver: zodResolver(formSchema),
@@ -199,13 +202,14 @@ export function AddUserForm({ onSuccess, userToEdit }: AddUserFormProps) {
     } else {
         try {
           if (data.role !== 'Courier') {
+            const maxUsers = appSettings?.maxUsers || 25;
             const usersRef = ref(database, 'users');
             const usersSnapshot = await get(usersRef);
             if (usersSnapshot.exists()) {
                 const users = usersSnapshot.val();
                 const nonCourierUsersCount = Object.values(users).filter((u: any) => u.role !== 'Courier').length;
-                if (nonCourierUsersCount >= 25) {
-                    throw new Error(language === 'ar' ? "لا يمكنك إضافة المزيد من المستخدمين (غير المناديب)." : "You cannot add more users (non-couriers).");
+                if (nonCourierUsersCount >= maxUsers) {
+                    throw new Error(language === 'ar' ? `لا يمكنك إضافة المزيد من المستخدمين (غير المناديب). الحد الأقصى هو ${maxUsers}.` : `You cannot add more users (non-couriers). The maximum limit is ${maxUsers}.`);
                 }
             }
           }
