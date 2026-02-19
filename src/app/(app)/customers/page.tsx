@@ -22,55 +22,48 @@ export default function CustomersPage() {
   const [fromDate, setFromDate] = React.useState<Date | undefined>(new Date(new Date().getFullYear(), new Date().getMonth(), 1));
   const [toDate, setToDate] = React.useState<Date | undefined>(new Date());
 
-  const { data: allOrders, isLoading } = useCachedCollection<Order>('orders');
+  const { data: allCustomers, isLoading: isLoadingCustomers } = useCachedCollection<Customer & {id: string}>('customers');
+  const { data: allOrders, isLoading: isLoadingOrders } = useCachedCollection<Order>('orders');
+  const isLoading = isLoadingCustomers || isLoadingOrders;
 
-  const customers = React.useMemo(() => {
-    if (!allOrders || !fromDate || !toDate) return [];
+  const customers: CustomerWithOrderCount[] = React.useMemo(() => {
+    if (!allCustomers || !allOrders || !fromDate || !toDate) return [];
     
     const from = fromDate.getTime();
     const to = new Date(toDate).setHours(23, 59, 59, 999);
     
-    const filtered = allOrders.filter(order => {
+    const ordersInDateRange = allOrders.filter(order => {
         if (!order.createdAt) return false;
         const orderDate = new Date(order.createdAt).getTime();
         return orderDate >= from && orderDate <= to;
     });
 
-    const sortedOrders = filtered.sort((a, b) => {
-        if (!a.createdAt || !b.createdAt) return 0;
-        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
-    });
+    const orderStatsMap = new Map<string, { orderCount: number; lastOrderDate: string }>();
 
-    const customerMap = new Map<string, CustomerWithOrderCount>();
-    
-    sortedOrders.forEach((order: any) => {
-      const phone = order.customerPhone1;
-      if (!phone) return;
+    ordersInDateRange.forEach(order => {
+        const phone = order.customerPhone1;
+        if (!phone) return;
 
-      const orderDate = order.createdAt ? new Date(order.createdAt).toISOString() : new Date().toISOString();
-
-      if (customerMap.has(phone)) {
-        const existing = customerMap.get(phone)!;
-        existing.orderCount += 1;
-        if (new Date(orderDate) > new Date(existing.lastOrderDate)) {
-           existing.lastOrderDate = orderDate;
+        const stats = orderStatsMap.get(phone) || { orderCount: 0, lastOrderDate: '' };
+        stats.orderCount += 1;
+        
+        const orderDate = new Date(order.createdAt).toISOString();
+        if (!stats.lastOrderDate || new Date(orderDate) > new Date(stats.lastOrderDate)) {
+            stats.lastOrderDate = orderDate;
         }
-      } else {
-        customerMap.set(phone, {
-          id: phone,
-          customerName: order.customerName,
-          facebookName: order.facebookName,
-          customerPhone1: order.customerPhone1,
-          customerPhone2: order.customerPhone2,
-          customerAddress: order.customerAddress,
-          zoning: order.zoning,
-          orderCount: 1,
-          lastOrderDate: orderDate,
-        });
-      }
+        orderStatsMap.set(phone, stats);
     });
-    return Array.from(customerMap.values());
-  }, [allOrders, fromDate, toDate]);
+
+    return allCustomers.map((customer) => {
+        const stats = orderStatsMap.get(customer.id);
+        return {
+            ...customer,
+            orderCount: stats?.orderCount || 0,
+            lastOrderDate: stats?.lastOrderDate || '',
+        };
+    });
+
+  }, [allCustomers, allOrders, fromDate, toDate]);
 
 
   const columns = getCustomerColumns(language);

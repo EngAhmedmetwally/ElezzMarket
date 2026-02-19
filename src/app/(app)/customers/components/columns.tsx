@@ -67,7 +67,10 @@ export const getCustomerColumns = (language: 'ar' | 'en'): ColumnDef<CustomerWit
             <ArrowUpDown className={language === 'ar' ? 'ms-2 h-4 w-4' : 'ml-2 h-4 w-4'} />
           </Button>
     ),
-    cell: ({ row }) => new Date(row.getValue("lastOrderDate")).toLocaleDateString(language === 'ar' ? 'ar-EG' : 'en-US'),
+    cell: ({ row }) => {
+        const date = row.getValue("lastOrderDate");
+        return date ? new Date(date as string).toLocaleDateString(language === 'ar' ? 'ar-EG' : 'en-US') : '-';
+    },
   },
 ];
 
