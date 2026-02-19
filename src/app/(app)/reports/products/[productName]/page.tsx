@@ -23,7 +23,7 @@ import { format } from 'date-fns';
 type ProductOrder = {
   orderId: string;
   customerName: string;
-  customerPhone: string;
+  customerPhone1: string;
   createdAt: string;
   quantity: number;
   weight?: number;
@@ -123,7 +123,7 @@ export default function ProductOrdersPage() {
         return {
           orderId: order.id,
           customerName: order.customerName,
-          customerPhone: order.customerPhone,
+          customerPhone1: order.customerPhone1,
           createdAt: order.createdAt,
           quantity: relevantItem.quantity,
           weight: relevantItem.weight,
@@ -203,7 +203,7 @@ export default function ProductOrdersPage() {
                   <TableCell className="font-medium">{order.orderId}</TableCell>
                   <TableCell>
                       <div>{order.customerName}</div>
-                      <div className="text-sm text-muted-foreground">{order.customerPhone}</div>
+                      <div className="text-sm text-muted-foreground">{order.customerPhone1}</div>
                   </TableCell>
                   <TableCell>{format(new Date(order.createdAt), 'PPP')}</TableCell>
                   <TableCell className="text-center">{order.quantity}</TableCell>
