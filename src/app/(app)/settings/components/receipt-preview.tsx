@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Rocket } from 'lucide-react';
+import { Logo } from '@/components/icons/logo';
 import { format } from "date-fns";
 import { useLanguage } from "@/components/language-provider";
 import type { ReceiptSettings } from "@/lib/types";
@@ -37,7 +37,7 @@ export function ReceiptPreview({ settings }: ReceiptPreviewProps) {
     <div className="bg-card p-4 rounded-lg shadow-inner w-full max-w-[302px] mx-auto font-mono text-card-foreground text-xs leading-relaxed">
         {settings.showLogo && (
             <div className="text-center mb-2">
-            <Rocket className="h-8 w-8 mx-auto" />
+            <Logo className="h-8 w-8 mx-auto" />
             {settings.headerText && <h2 className="font-bold text-base mt-2 break-words">{settings.headerText}</h2>}
             </div>
         )}

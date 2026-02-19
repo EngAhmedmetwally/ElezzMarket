@@ -24,12 +24,12 @@ import {
   ShoppingBag,
   RotateCcw,
   BadgePercent,
-  Rocket,
   Users2,
   CalendarDays,
   Truck,
   Settings,
 } from "lucide-react";
+import { Logo } from "@/components/icons/logo";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import React, { type ReactNode } from "react";
@@ -84,7 +84,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
     return (
       <div className="flex h-screen w-screen items-center justify-center bg-background">
         <div className="flex flex-col items-center gap-4">
-          <Rocket className="h-12 w-12 animate-pulse text-primary" />
+          <Logo className="h-12 w-12 animate-pulse text-primary" />
           <p className="text-muted-foreground">
             {language === 'ar' ? 'جاري التحقق...' : 'Verifying...'}
           </p>
@@ -100,7 +100,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
           <SidebarHeader className="p-4">
             <Link href="/home" className="flex items-center gap-2">
               <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-                <Rocket className="h-6 w-6" />
+                <Logo className="h-6 w-6" />
               </div>
               <span className="font-bold text-lg">{language === 'ar' ? 'سوق العز' : 'ElEzz Market'}</span>
             </Link>

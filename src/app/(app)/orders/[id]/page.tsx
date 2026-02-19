@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { StatusBadge } from "@/components/status-badge";
-import { Printer, Search, Rocket } from "lucide-react";
+import { Printer, Search } from "lucide-react";
 import { useLanguage } from "@/components/language-provider";
 import type { Order, OrderStatus, StatusHistoryItem, User, Commission, ReceiptSettings } from "@/lib/types";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -27,6 +27,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useCachedDoc } from "@/hooks/use-cached-doc";
 import { useCachedCollection } from "@/hooks/use-cached-collection";
 import { syncCollection } from "@/lib/data-sync";
+import { Logo } from "@/components/icons/logo";
 
 const allowedTransitions: Record<OrderStatus, OrderStatus[]> = {
     "تم التسجيل": ["قيد التجهيز", "ملغي"],
@@ -122,7 +123,7 @@ function ReceiptView({ order, language, settings }: { order: Order; language: "a
     <div className="receipt-thermal">
         {s.showLogo && (
             <div className="receipt-thermal-header">
-                <Rocket className="h-10 w-10 mx-auto" />
+                <Logo className="h-10 w-10 mx-auto" />
                 {s.headerText && <h1>{s.headerText}</h1>}
             </div>
         )}

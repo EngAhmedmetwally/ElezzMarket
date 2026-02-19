@@ -6,7 +6,6 @@ import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { Rocket } from "lucide-react";
 import { useUser, useAuthActions, useDatabase } from "@/firebase";
 import { ref, query, orderByChild, equalTo, get } from "firebase/database";
 import type { User } from "@/lib/types";
@@ -24,6 +23,7 @@ import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { useLanguage } from "@/components/language-provider";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Logo } from "@/components/icons/logo";
 
 const formSchema = z.object({
   username: z.string().min(1, "اسم المستخدم مطلوب"),
@@ -130,7 +130,7 @@ export default function LoginPage() {
      return (
       <div className="flex h-screen w-screen items-center justify-center bg-background">
         <div className="flex flex-col items-center gap-4">
-          <Rocket className="h-12 w-12 animate-pulse text-primary" />
+          <Logo className="h-12 w-12 animate-pulse text-primary" />
           <p className="text-muted-foreground">
              {language === 'ar' ? 'جاري التحميل...' : 'Loading...'}
           </p>
@@ -145,7 +145,7 @@ export default function LoginPage() {
         <CardHeader className="text-center">
             <div className="flex justify-center mb-4">
                 <div className="flex h-14 w-14 items-center justify-center rounded-full bg-primary text-primary-foreground">
-                    <Rocket className="h-8 w-8" />
+                    <Logo className="h-8 w-8" />
                 </div>
             </div>
           <CardTitle>{language === 'ar' ? 'سوق العز' : 'ElEzz Market'}</CardTitle>
