@@ -269,10 +269,22 @@ export default function OrderDetailsPage() {
                 if (!currentOrder.statusHistory) {
                     currentOrder.statusHistory = {};
                 }
+
+                let finalNote = noteText;
+                if (newStatus === "تم الشحن" && courierId) {
+                    const selectedCourier = couriers.find(c => c.id === courierId);
+                    if (selectedCourier) {
+                        currentOrder.courierId = selectedCourier.id;
+                        currentOrder.courierName = selectedCourier.name;
+                        const courierInfo = `${language === 'ar' ? 'بواسطة المندوب:' : 'By Courier:'} ${selectedCourier.name}${selectedCourier.phone1 ? ` (${selectedCourier.phone1})` : ''}`;
+                        finalNote = noteText ? `${courierInfo} - ${noteText}` : courierInfo;
+                    }
+                }
+
                 if (newHistoryKey) {
                     currentOrder.statusHistory[newHistoryKey] = {
                         status: newStatus,
-                        notes: noteText,
+                        notes: finalNote,
                         createdAt: now,
                         userName: currentUser,
                     };
@@ -280,14 +292,6 @@ export default function OrderDetailsPage() {
 
                 currentOrder.status = newStatus;
                 currentOrder.updatedAt = now;
-
-                if (courierId) {
-                    const selectedCourier = couriers.find(c => c.id === courierId);
-                    if (selectedCourier) {
-                        currentOrder.courierId = selectedCourier.id;
-                        currentOrder.courierName = selectedCourier.name;
-                    }
-                }
 
                 if (commissionAmount > 0) {
                     currentOrder.totalCommission = (currentOrder.totalCommission || 0) + commissionAmount;
