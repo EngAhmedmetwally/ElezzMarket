@@ -279,14 +279,10 @@ export default function OrderDetailsPage() {
         };
         
         const newHistoryKey = push(ref(database, `${orderRef.path}/statusHistory`)).key;
-        const newStatusHistory = {
-            ...(order.statusHistory || {}),
-            [newHistoryKey!]: newHistoryItem
-        };
 
         updates[`/${orderRef.path}/status`] = newStatus;
         updates[`/${orderRef.path}/updatedAt`] = now;
-        updates[`/${orderRef.path}/statusHistory`] = newStatusHistory;
+        updates[`/${orderRef.path}/statusHistory/${newHistoryKey}`] = newHistoryItem;
 
         if (courierId) {
           const selectedCourier = couriers.find(c => c.id === courierId);
@@ -550,3 +546,5 @@ export default function OrderDetailsPage() {
     </>
   );
 }
+
+    
