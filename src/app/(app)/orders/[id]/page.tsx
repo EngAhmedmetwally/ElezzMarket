@@ -30,6 +30,7 @@ import { syncCollection } from "@/lib/data-sync";
 import { Logo } from "@/components/icons/logo";
 import { idbPut } from "@/lib/db";
 import { syncEvents } from "@/lib/sync-events";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 const allowedTransitions: Record<OrderStatus, OrderStatus[]> = {
     "تم التسجيل": ["قيد التجهيز", "ملغي"],
@@ -201,6 +202,7 @@ export default function OrderDetailsPage() {
   const { toast } = useToast();
   const database = useDatabase();
   const { user: authUser } = useAuthUser();
+  const isMobile = useIsMobile();
   
   const { data: order, isLoading: isLoadingOrder } = useCachedDoc<Order>('orders', id);
   const { data: users, isLoading: isLoadingUsers } = useCachedCollection<User>('users');
@@ -414,50 +416,67 @@ export default function OrderDetailsPage() {
         <div className="grid md:grid-cols-3 gap-8">
           <div className="md:col-span-2 space-y-8">
              <Card>
-                  <CardHeader>
-                      <CardTitle>{language === 'ar' ? 'منتجات الطلب' : 'Order Items'}</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                      <Table>
-                          <TableHeader>
-                              <TableRow>
-                                  <TableHead className="text-start">{language === 'ar' ? 'المنتج' : 'Product'}</TableHead>
-                                  <TableHead className="text-center">{language === 'ar' ? 'الوزن' : 'Weight'}</TableHead>
-                                  <TableHead className="text-center">{language === 'ar' ? 'الكمية' : 'Quantity'}</TableHead>
-                                  <TableHead className="text-end">{language === 'ar' ? 'سعر الوحدة' : 'Unit Price'}</TableHead>
-                                  <TableHead className="text-end">{language === 'ar' ? 'المجموع الفرعي' : 'Subtotal'}</TableHead>
-                              </TableRow>
-                          </TableHeader>
-                          <TableBody>
-                              {orderItems.map((item, index) => (
-                                  <TableRow key={index}>
-                                      <TableCell className="font-medium text-start">{item.productName}</TableCell>
-                                      <TableCell className="text-center">{item.weight || '-'}</TableCell>
-                                      <TableCell className="text-center">{item.quantity}</TableCell>
-                                      <TableCell className="text-end">{formatCurrency(item.price)}</TableCell>
-                                      <TableCell className="text-end">{formatCurrency(item.price * item.quantity)}</TableCell>
-                                  </TableRow>
-                              ))}
-                          </TableBody>
-                      </Table>
-                      <Separator className="my-4" />
-                       <div className="space-y-2">
-                            <div className="flex justify-between">
-                                <p>{language === 'ar' ? 'مجموع المنتجات' : 'Items Subtotal'}</p>
-                                <p>{formatCurrency(itemsSubtotal)}</p>
-                            </div>
-                            <div className="flex justify-between">
-                                <p>{language === 'ar' ? 'تكلفة الشحن' : 'Shipping Cost'}</p>
-                                <p>{formatCurrency(order.shippingCost || 0)}</p>
-                            </div>
-                            <Separator className="my-2" />
-                            <div className="flex justify-between font-bold text-lg">
-                                <p>{language === 'ar' ? 'الإجمالي الكلي' : 'Grand Total'}</p>
-                                <p>{formatCurrency(order.total)}</p>
-                            </div>
-                       </div>
-                  </CardContent>
-             </Card>
+                <CardHeader>
+                    <CardTitle>{language === 'ar' ? 'منتجات الطلب' : 'Order Items'}</CardTitle>
+                </CardHeader>
+                <CardContent>
+                    {isMobile ? (
+                        <div className="space-y-4">
+                            {orderItems.map((item, index) => (
+                                <div key={index} className="flex justify-between items-start gap-4">
+                                    <div className="flex-1">
+                                        <p className="font-medium break-words">{item.productName}</p>
+                                        <p className="text-sm text-muted-foreground">
+                                            {formatCurrency(item.price)} x {item.quantity}
+                                            {item.weight ? ` (${(item.weight * item.quantity).toFixed(2)} ${language === 'ar' ? 'كجم' : 'kg'})` : ''}
+                                        </p>
+                                    </div>
+                                    <p className="font-medium text-end">{formatCurrency(item.price * item.quantity)}</p>
+                                </div>
+                            ))}
+                        </div>
+                    ) : (
+                        <Table>
+                            <TableHeader>
+                                <TableRow>
+                                    <TableHead className="text-start">{language === 'ar' ? 'المنتج' : 'Product'}</TableHead>
+                                    <TableHead className="text-center">{language === 'ar' ? 'الوزن (كجم)' : 'Weight (kg)'}</TableHead>
+                                    <TableHead className="text-center">{language === 'ar' ? 'الكمية' : 'Quantity'}</TableHead>
+                                    <TableHead className="text-end">{language === 'ar' ? 'سعر الوحدة' : 'Unit Price'}</TableHead>
+                                    <TableHead className="text-end">{language === 'ar' ? 'المجموع الفرعي' : 'Subtotal'}</TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {orderItems.map((item, index) => (
+                                    <TableRow key={index}>
+                                        <TableCell className="font-medium text-start">{item.productName}</TableCell>
+                                        <TableCell className="text-center">{item.weight ? (item.weight * item.quantity).toFixed(2) : '-'}</TableCell>
+                                        <TableCell className="text-center">{item.quantity}</TableCell>
+                                        <TableCell className="text-end">{formatCurrency(item.price)}</TableCell>
+                                        <TableCell className="text-end">{formatCurrency(item.price * item.quantity)}</TableCell>
+                                    </TableRow>
+                                ))}
+                            </TableBody>
+                        </Table>
+                    )}
+                    <Separator className="my-4" />
+                    <div className="space-y-2">
+                        <div className="flex justify-between">
+                            <p>{language === 'ar' ? 'مجموع المنتجات' : 'Items Subtotal'}</p>
+                            <p>{formatCurrency(itemsSubtotal)}</p>
+                        </div>
+                        <div className="flex justify-between">
+                            <p>{language === 'ar' ? 'تكلفة الشحن' : 'Shipping Cost'}</p>
+                            <p>{formatCurrency(order.shippingCost || 0)}</p>
+                        </div>
+                        <Separator className="my-2" />
+                        <div className="flex justify-between font-bold text-lg">
+                            <p>{language === 'ar' ? 'الإجمالي الكلي' : 'Grand Total'}</p>
+                            <p>{formatCurrency(order.total)}</p>
+                        </div>
+                    </div>
+                </CardContent>
+            </Card>
              <StatusHistoryTimeline history={order.statusHistory} />
           </div>
           <div className="space-y-8">
