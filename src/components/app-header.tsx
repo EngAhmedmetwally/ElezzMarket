@@ -27,9 +27,11 @@ export default function AppHeader() {
         </div>
         <div className="ml-auto flex items-center space-x-2">
           <ConnectionStatus />
-          <LanguageToggle />
-          <ThemeToggle />
-          <UserNav />
+          <div className="hidden items-center space-x-2 md:flex">
+            <LanguageToggle />
+            <ThemeToggle />
+            <UserNav />
+          </div>
         </div>
       </div>
       <div className="h-px w-full bg-border" />

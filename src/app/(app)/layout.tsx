@@ -13,6 +13,7 @@ import {
   SidebarMenuSub,
   SidebarMenuSubItem,
   SidebarMenuSubButton,
+  SidebarFooter,
 } from "@/components/ui/sidebar";
 import AppHeader from "@/components/app-header";
 import {
@@ -34,6 +35,9 @@ import { usePathname, useRouter } from "next/navigation";
 import React, { type ReactNode } from "react";
 import { useLanguage } from "@/components/language-provider";
 import { useUser } from "@/firebase";
+import { LanguageToggle } from "@/components/language-toggle";
+import { ThemeToggle } from "@/components/theme-toggle";
+import { UserNav } from "@/components/user-nav";
 
 const navItems = [
   { href: "/dashboard", icon: LayoutDashboard, label: "Dashboard", arLabel: "لوحة التحكم" },
@@ -142,6 +146,13 @@ export default function AppLayout({ children }: { children: ReactNode }) {
               ))}
             </SidebarMenu>
           </SidebarContent>
+          <SidebarFooter className="p-2 md:hidden">
+            <div className="flex items-center justify-around rounded-lg bg-muted p-2">
+              <LanguageToggle />
+              <ThemeToggle />
+              <UserNav />
+            </div>
+          </SidebarFooter>
         </Sidebar>
       )}
       <SidebarInset>
