@@ -70,6 +70,20 @@ export const idbGetAll = async <T>(storeName: string): Promise<T[]> => {
     });
 };
 
+export const idbGetAllKeys = async (storeName: string): Promise<IDBValidKey[]> => {
+    const db = await openDB();
+    return new Promise((resolve, reject) => {
+        const transaction = db.transaction(storeName, 'readonly');
+        const store = transaction.objectStore(storeName);
+        const request = store.getAllKeys();
+        request.onsuccess = () => resolve(request.result);
+        request.onerror = () => {
+            console.error(`Error getting all keys from ${storeName}:`, request.error);
+            reject(request.error);
+        };
+    });
+};
+
 export const idbPut = async (storeName: string, value: any): Promise<IDBValidKey> => {
     const db = await openDB();
     return new Promise((resolve, reject) => {
@@ -97,6 +111,20 @@ export const idbBulkPut = async (storeName: string, values: any[]): Promise<void
                 store.put(value);
             }
         });
+    });
+};
+
+export const idbDelete = async (storeName: string, key: IDBValidKey): Promise<void> => {
+    const db = await openDB();
+    return new Promise((resolve, reject) => {
+        const transaction = db.transaction(storeName, 'readwrite');
+        const store = transaction.objectStore(storeName);
+        const request = store.delete(key);
+        request.onsuccess = () => resolve();
+        request.onerror = () => {
+            console.error(`Error deleting from ${storeName}:`, request.error);
+            reject(request.error);
+        };
     });
 };
 

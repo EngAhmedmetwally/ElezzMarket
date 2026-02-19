@@ -1,7 +1,7 @@
 
 'use client';
 import { ref, get, type Database } from "firebase/database";
-import { idbBulkPut, idbGet, idbPut, idbClear } from './db';
+import { idbBulkPut, idbGet, idbPut, idbClear, idbGetAllKeys, idbDelete } from './db';
 import type { Order } from './types';
 import { syncEvents } from './sync-events';
 
@@ -35,6 +35,8 @@ export async function syncCollection(database: Database, collectionName: string,
         const collectionRef = ref(database, collectionName);
         const snapshot = await get(collectionRef);
         
+        let remoteDataArray: any[] = [];
+        
         if (snapshot.exists()) {
             const data = snapshot.val();
             
@@ -62,16 +64,26 @@ export async function syncCollection(database: Database, collectionName: string,
                         });
                     }
                 });
-                await idbBulkPut('orders', allOrders);
+                remoteDataArray = allOrders;
             } else if (collectionName === 'app-settings' || collectionName === 'receipt-settings') {
-                 await idbPut(collectionName, {id: 'main', ...data});
+                 remoteDataArray.push({id: 'main', ...data});
             } else {
-                const dataArray = objectToArray(data);
-                await idbBulkPut(collectionName, dataArray);
+                remoteDataArray = objectToArray(data);
             }
-        } else {
-            // If the collection does not exist on Firebase, clear it from IndexedDB.
-            await idbClear(collectionName);
+        }
+
+        // Now, perform a diff sync
+        const localKeys = await idbGetAllKeys(collectionName);
+        const remoteKeys = new Set(remoteDataArray.map(item => item.id));
+
+        const keysToDelete = localKeys.filter(key => !remoteKeys.has(key as string));
+
+        const deletePromises = keysToDelete.map(key => idbDelete(collectionName, key));
+        await Promise.all(deletePromises);
+
+        // Update/add remote data
+        if (remoteDataArray.length > 0) {
+            await idbBulkPut(collectionName, remoteDataArray);
         }
         
         await idbPut('sync-timestamps', { collection: collectionName, timestamp: now });
