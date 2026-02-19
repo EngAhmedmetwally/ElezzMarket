@@ -10,7 +10,7 @@ import { Separator } from "@/components/ui/separator";
 import { StatusBadge } from "@/components/status-badge";
 import { Printer, Search, Rocket } from "lucide-react";
 import { useLanguage } from "@/components/language-provider";
-import type { Order, OrderStatus, StatusHistoryItem, User, Commission, CommissionRule, ReceiptSettings } from "@/lib/types";
+import type { Order, OrderStatus, StatusHistoryItem, User, Commission, ReceiptSettings } from "@/lib/types";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
@@ -21,9 +21,11 @@ import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
-import { useDoc, useCollection, useDatabase, useMemoFirebase, useUser as useAuthUser } from "@/firebase";
+import { useDatabase, useUser as useAuthUser } from "@/firebase";
 import { ref, update, runTransaction, get, push, child, set } from "firebase/database";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useCachedDoc } from "@/hooks/use-cached-doc";
+import { useCachedCollection } from "@/hooks/use-cached-collection";
 
 const allowedTransitions: Record<OrderStatus, OrderStatus[]> = {
     "تم التسجيل": ["قيد التجهيز", "ملغي"],
@@ -196,14 +198,14 @@ export default function OrderDetailsPage() {
   const database = useDatabase();
   const { user: authUser } = useAuthUser();
   
-  const orderRef = useMemoFirebase(() => database ? ref(database, `orders/${id}`) : null, [database, id]);
-  const { data: order, isLoading: isLoadingOrder, error: orderError } = useDoc<Order>(orderRef);
+  const { data: order, isLoading: isLoadingOrder } = useCachedDoc<Order>('orders', id);
+  const { data: users, isLoading: isLoadingUsers } = useCachedCollection<User>('users');
+  const { data: receiptSettingsCollection, isLoading: isLoadingSettings } = useCachedCollection<ReceiptSettings>('receipt-settings');
 
-  const usersRef = useMemoFirebase(() => database ? ref(database, `users`) : null, [database]);
-  const { data: users, isLoading: isLoadingUsers } = useCollection<User>(usersRef);
-  
-  const settingsRef = useMemoFirebase(() => database ? ref(database, 'receipt-settings') : null, [database]);
-  const { data: receiptSettings } = useDoc<ReceiptSettings>(settingsRef);
+  const receiptSettings = React.useMemo(() => {
+    if (!receiptSettingsCollection || receiptSettingsCollection.length === 0) return null;
+    return receiptSettingsCollection[0];
+  }, [receiptSettingsCollection]);
 
   const [isNoteModalOpen, setIsNoteModalOpen] = React.useState(false);
   const [isCourierModalOpen, setIsCourierModalOpen] = React.useState(false);
@@ -232,8 +234,10 @@ export default function OrderDetailsPage() {
   };
 
   const handleStatusUpdate = async (newStatus: OrderStatus, noteText: string, courierId?: string | null) => {
-    if (!order || !database || !authUser || !orderRef) return;
+    if (!order || !database || !authUser) return;
     
+    const orderRef = ref(database, order.path || `orders/${order.id}`);
+
     try {
         const now = new Date().toISOString();
         const currentUser = authUser.name || authUser.email || "مستخدم مسؤول";
@@ -342,7 +346,7 @@ export default function OrderDetailsPage() {
     typeof window !== 'undefined' && window.print()
   }
 
-  const isLoading = isLoadingOrder || isLoadingUsers;
+  const isLoading = isLoadingOrder || isLoadingUsers || isLoadingSettings;
 
   if (isLoading && !order) {
     return <OrderDetailsSkeleton />;
@@ -353,7 +357,6 @@ export default function OrderDetailsPage() {
       <div className="print-hidden">
         <PageHeader title={language === 'ar' ? 'الطلب غير موجود' : 'Order Not Found'} />
         <p>{language === 'ar' ? 'لم نتمكن من العثور على الطلب المطلوب.' : 'The requested order could not be found.'}</p>
-        {orderError && <p className="text-destructive">{orderError.message}</p>}
       </div>
     );
   }
