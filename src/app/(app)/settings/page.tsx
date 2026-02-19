@@ -43,7 +43,7 @@ export default function SettingsPage() {
   const { toast } = useToast();
   const database = useDatabase();
   const { user } = useUser();
-  const isAdmin = user?.role === 'Admin';
+  const isEmergencyAdmin = user?.email === 'emergency.admin@elezz.com';
 
   const settingsRef = useMemoFirebase(() => database ? ref(database, 'receipt-settings') : null, [database]);
   const { data: currentSettings, isLoading } = useDoc<ReceiptSettings>(settingsRef);
@@ -130,7 +130,7 @@ export default function SettingsPage() {
     <div className="space-y-8">
       <PageHeader title={language === 'ar' ? 'الإعدادات' : 'Settings'} />
 
-      {isAdmin && (
+      {isEmergencyAdmin && (
          <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">{language === 'ar' ? 'خطة المستخدمين' : 'User Plan'}</CardTitle>
