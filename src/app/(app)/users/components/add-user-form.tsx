@@ -39,6 +39,10 @@ const permissionsSchema = z.object({
   delete: z.boolean().default(false),
 });
 
+const orderPermissionsSchema = permissionsSchema.extend({
+    editStatus: z.boolean().default(false)
+});
+
 const userFormSchema = z.object({
   fullName: z.string().min(1, "الاسم الكامل مطلوب"),
   username: z.string().min(1, "اسم المستخدم مطلوب"),
@@ -47,7 +51,7 @@ const userFormSchema = z.object({
   orderVisibility: z.enum(["all", "own"]).default("own"),
   permissions: z.object({
     dashboard: permissionsSchema.pick({ view: true }),
-    orders: permissionsSchema,
+    orders: orderPermissionsSchema,
     users: permissionsSchema,
     returns: permissionsSchema.pick({ view: true }),
     commissions: permissionsSchema,
@@ -63,7 +67,7 @@ type UserFormValues = z.infer<typeof userFormSchema>;
 
 const screensConfig = [
   { id: 'dashboard', name: 'Dashboard', arName: 'لوحة التحكم', perms: ['view'] },
-  { id: 'orders', name: 'Orders', arName: 'الطلبات', perms: ['view', 'add', 'edit', 'delete'] },
+  { id: 'orders', name: 'Orders', arName: 'الطلبات', perms: ['view', 'add', 'edit', 'delete', 'editStatus'] },
   { id: 'users', name: 'Users', arName: 'المستخدمون', perms: ['view', 'add', 'edit', 'delete'] },
   { id: 'returns', name: 'Returns', arName: 'المرتجعات', perms: ['view'] },
   { id: 'commissions', name: 'Commissions', arName: 'العمولات', perms: ['view', 'add', 'edit', 'delete'] },
@@ -75,8 +79,9 @@ const permLabels = {
     add: { en: 'Add', ar: 'إضافة' },
     edit: { en: 'Edit', ar: 'تعديل' },
     delete: { en: 'Delete', ar: 'حذف' },
+    editStatus: { en: 'Edit Status', ar: 'تعديل الحالة' }
 };
-const allPerms: (keyof typeof permLabels)[] = ['view', 'add', 'edit', 'delete'];
+const allPerms: (keyof typeof permLabels)[] = ['view', 'add', 'edit', 'delete', 'editStatus'];
 
 interface AddUserFormProps {
   onSuccess?: () => void;
@@ -99,7 +104,7 @@ export function AddUserForm({ onSuccess, userToEdit }: AddUserFormProps) {
       orderVisibility: userToEdit?.orderVisibility || "own",
       permissions: userToEdit?.permissions || {
         dashboard: { view: true },
-        orders: { view: true, add: true, edit: false, delete: false },
+        orders: { view: true, add: true, edit: false, delete: false, editStatus: true },
         users: { view: false, add: false, edit: false, delete: false },
         returns: { view: true },
         commissions: { view: true, add: false, edit: false, delete: false },
@@ -313,10 +318,10 @@ export function AddUserForm({ onSuccess, userToEdit }: AddUserFormProps) {
           <AccordionItem value="permissions">
             <AccordionTrigger>{language === 'ar' ? 'الصلاحيات' : 'Permissions'}</AccordionTrigger>
             <AccordionContent>
-              <div className="grid grid-cols-5 gap-y-2 items-center">
+              <div className="grid grid-cols-6 gap-y-2 items-center">
                 <div className="font-medium text-muted-foreground">{language === 'ar' ? 'الشاشة' : 'Screen'}</div>
                 {allPerms.map(perm => (
-                  <div key={perm} className="font-medium text-muted-foreground text-center">{language === 'ar' ? permLabels[perm].ar : permLabels[perm].en}</div>
+                  <div key={perm} className="font-medium text-muted-foreground text-center text-xs sm:text-sm">{language === 'ar' ? permLabels[perm].ar : permLabels[perm].en}</div>
                 ))}
 
                 {screensConfig.map((screen) => (
@@ -324,10 +329,10 @@ export function AddUserForm({ onSuccess, userToEdit }: AddUserFormProps) {
                     <div className="font-medium">{language === 'ar' ? screen.arName : screen.name}</div>
                     {allPerms.map(perm => (
                       <div key={perm} className="flex justify-center">
-                        {screen.perms.includes(perm) ? (
+                        {screen.perms.includes(perm as any) ? (
                           <FormField
                             control={form.control}
-                            name={`permissions.${screen.id}.${perm}`}
+                            name={`permissions.${screen.id}.${perm as any}`}
                             render={({ field }) => (
                               <FormItem>
                                 <FormControl>

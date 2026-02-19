@@ -62,6 +62,7 @@ export function RowActions({ order, onUpdate }: RowActionsProps) {
   const filteredCouriers = couriers.filter(c => c.name.toLowerCase().includes(courierSearch.toLowerCase()));
   
   const availableStatuses = (order && order.status && allowedTransitions[order.status]) ? allowedTransitions[order.status] : [];
+  const canEditStatus = authUser?.role === 'Admin' || authUser?.permissions?.orders?.editStatus;
 
   const handleOpenModal = () => {
     setSelectedStatus(undefined);
@@ -200,7 +201,7 @@ export function RowActions({ order, onUpdate }: RowActionsProps) {
           <DropdownMenuItem asChild>
             <Link href={`/orders/${order.id}`}>{language === 'ar' ? 'عرض التفاصيل' : 'View details'}</Link>
           </DropdownMenuItem>
-          <DropdownMenuItem onSelect={handleOpenModal} disabled={availableStatuses.length === 0}>
+          <DropdownMenuItem onSelect={handleOpenModal} disabled={availableStatuses.length === 0 || !canEditStatus}>
             {language === 'ar' ? 'تحديث الحالة' : 'Update status'}
           </DropdownMenuItem>
           <DropdownMenuSeparator />

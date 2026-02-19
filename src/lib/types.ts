@@ -1,6 +1,16 @@
 
 
+
 export type UserRole = "Admin" | "Moderator" | "Courier";
+
+export type Permissions = {
+  dashboard: { view: boolean };
+  orders: { view: boolean; add: boolean; edit: boolean; delete: boolean; editStatus: boolean; };
+  users: { view: boolean; add: boolean; edit: boolean; delete: boolean; };
+  returns: { view: boolean; };
+  commissions: { view: boolean; add: boolean; edit: boolean; delete: boolean; };
+  reports: { view: boolean; };
+}
 
 export type User = {
   id: string;
@@ -13,7 +23,7 @@ export type User = {
   status: "نشط" | "معطل";
   createdAt: string;
   orderVisibility?: "all" | "own";
-  permissions?: any; // Keeping this flexible for now
+  permissions?: Permissions;
 };
 
 export type OrderStatus =

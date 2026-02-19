@@ -286,6 +286,7 @@ export default function OrderDetailsPage() {
 
   const availableStatuses = allowedTransitions[order.status] || [];
   const orderItems = order.items ? (Array.isArray(order.items) ? order.items : Object.values(order.items)) : [];
+  const canEditStatus = authUser?.role === 'Admin' || authUser?.permissions?.orders?.editStatus;
 
 
   return (
@@ -345,7 +346,7 @@ export default function OrderDetailsPage() {
                       <StatusBadge status={order.status} className="text-base w-fit" />
                        <Select 
                           onValueChange={(newStatus: OrderStatus) => handleStatusChangeRequest(newStatus)}
-                          disabled={availableStatuses.length === 0}
+                          disabled={availableStatuses.length === 0 || !canEditStatus}
                         >
                           <SelectTrigger>
                               <SelectValue placeholder={language === 'ar' ? "تغيير الحالة" : "Change status"} />
