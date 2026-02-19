@@ -32,7 +32,7 @@ import {
 import { useDatabase } from "@/firebase";
 import type { Order, OrderStatus } from "@/lib/types";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ref, get } from "firebase/database";
+import { fetchOrdersByDateRange } from "@/lib/data-fetching";
 
 
 export default function OrdersPage() {
@@ -40,8 +40,8 @@ export default function OrdersPage() {
   const { language } = useLanguage();
   const { toast } = useToast();
   const [version, setVersion] = React.useState(0);
-  const [fromDate, setFromDate] = React.useState<Date | undefined>(undefined);
-  const [toDate, setToDate] = React.useState<Date | undefined>(undefined);
+  const [fromDate, setFromDate] = React.useState<Date | undefined>(new Date(new Date().getFullYear(), new Date().getMonth(), 1));
+  const [toDate, setToDate] = React.useState<Date | undefined>(new Date());
   const database = useDatabase();
 
   const handleUpdate = () => setVersion(v => v + 1);
@@ -52,83 +52,26 @@ export default function OrdersPage() {
   const [isLoading, setIsLoading] = React.useState(true);
 
   React.useEffect(() => {
-    if (!database) return;
+    if (!database || !fromDate || !toDate) return;
     setIsLoading(true);
-    const ordersRef = ref(database, 'orders');
-    get(ordersRef).then(snapshot => {
-        const fetchedOrders: Order[] = [];
-        if (snapshot.exists()) {
-            const ordersByMonthYear = snapshot.val();
-            Object.keys(ordersByMonthYear).forEach(monthYear => {
-                const ordersByDay = ordersByMonthYear[monthYear];
-                Object.keys(ordersByDay).forEach(day => {
-                    const orders = ordersByDay[day];
-                    Object.keys(orders).forEach(orderId => {
-                        const path = `${monthYear}/${day}`;
-                        fetchedOrders.push({ ...orders[orderId], id: orderId, path });
-                    });
-                });
-            });
-        }
-        setAllOrders(fetchedOrders);
+    fetchOrdersByDateRange(database, fromDate, toDate).then(fetchedOrders => {
+        const sorted = [...fetchedOrders].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+        setAllOrders(sorted);
         setIsLoading(false);
     }).catch(error => {
         console.error("Error fetching all orders:", error);
         setIsLoading(false);
     });
-  }, [database, version]);
+  }, [database, version, fromDate, toDate]);
 
-
-  const filteredOrders = React.useMemo(() => {
-    if (!allOrders) return [];
-    
-    const sorted = [...allOrders].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-
-    return sorted.filter(order => {
-        if (!order.createdAt) return true;
-        const orderDate = new Date(order.createdAt);
-        if (fromDate) {
-            const fromDateStart = new Date(fromDate);
-            fromDateStart.setHours(0, 0, 0, 0);
-            if (orderDate < fromDateStart) return false;
-        }
-        if (toDate) {
-            const toDateEnd = new Date(toDate);
-            toDateEnd.setHours(23, 59, 59, 999);
-            if (orderDate > toDateEnd) return false;
-        }
-        return true;
-    });
-  }, [allOrders, fromDate, toDate]);
   
   const uniqueOrderStatuses = React.useMemo(() => {
     const definedStatuses: OrderStatus[] = ["تم التسجيل", "قيد التجهيز", "تم الشحن", "مكتمل", "ملغي"];
-    
-    if (!allOrders || allOrders.length === 0) {
-      return definedStatuses;
-    }
-    
-    const statusesFromData = new Set<OrderStatus>(allOrders.map(o => o.status).filter(Boolean));
-    definedStatuses.forEach(s => statusesFromData.add(s));
-
-    const statusOrderMap: Record<string, number> = {
-      "تم التسجيل": 1,
-      "قيد التجهيز": 2,
-      "تم الشحن": 3,
-      "مكتمل": 4,
-      "ملغي": 5,
-    };
-
-    return Array.from(statusesFromData).sort((a, b) => {
-        const orderA = statusOrderMap[a] || 99;
-        const orderB = statusOrderMap[b] || 99;
-        return orderA - orderB;
-    });
-  }, [allOrders]);
+    return definedStatuses;
+  }, []);
 
   const ordersByStatus = React.useMemo(() => {
-    if (!filteredOrders) return [];
-    const statusCounts = filteredOrders.reduce((acc, order) => {
+    const statusCounts = allOrders.reduce((acc, order) => {
         if (order.status) {
           acc[order.status] = (acc[order.status] || 0) + 1;
         }
@@ -136,7 +79,7 @@ export default function OrdersPage() {
     }, {} as Record<string, number>);
 
     return Object.entries(statusCounts).map(([name, value]) => ({ name, value }));
-  }, [filteredOrders]);
+  }, [allOrders]);
 
 
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -282,7 +225,7 @@ export default function OrdersPage() {
             </div>
         </div>
       ) : (
-        <OrdersClient data={filteredOrders} columns={columns} onUpdate={handleUpdate} statuses={uniqueOrderStatuses} />
+        <OrdersClient data={allOrders} columns={columns} onUpdate={handleUpdate} statuses={uniqueOrderStatuses} />
       )}
     </div>
   );

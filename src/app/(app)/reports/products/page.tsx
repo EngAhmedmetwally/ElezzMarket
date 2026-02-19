@@ -9,10 +9,10 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { StaffPerformanceChart } from "../components/staff-performance-chart";
 import { Progress } from "@/components/ui/progress";
 import { useDatabase } from "@/firebase";
-import { ref, get } from "firebase/database";
 import type { Order } from "@/lib/types";
 import { Skeleton } from "@/components/ui/skeleton";
 import { DatePicker } from "@/components/ui/datepicker";
+import { fetchOrdersByDateRange } from "@/lib/data-fetching";
 
 function ProductsReportSkeleton() {
   return (
@@ -51,56 +51,24 @@ export default function ProductsReportPage() {
   const isMobile = useIsMobile();
   const database = useDatabase();
   const [version, setVersion] = React.useState(0);
-  const [fromDate, setFromDate] = React.useState<Date | undefined>(undefined);
-  const [toDate, setToDate] = React.useState<Date | undefined>(undefined);
+  const [fromDate, setFromDate] = React.useState<Date | undefined>(new Date(new Date().getFullYear(), new Date().getMonth(), 1));
+  const [toDate, setToDate] = React.useState<Date | undefined>(new Date());
 
-  const [allOrders, setAllOrders] = React.useState<Order[]>([]);
+  const [filteredOrders, setFilteredOrders] = React.useState<Order[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
 
   React.useEffect(() => {
-    if (!database) return;
+    if (!database || !fromDate || !toDate) return;
     setIsLoading(true);
-    const ordersRef = ref(database, 'orders');
-    get(ordersRef).then(snapshot => {
-        const fetchedOrders: Order[] = [];
-        if (snapshot.exists()) {
-            const ordersByMonthYear = snapshot.val();
-            Object.keys(ordersByMonthYear).forEach(monthYear => {
-                const ordersByDay = ordersByMonthYear[monthYear];
-                Object.keys(ordersByDay).forEach(day => {
-                    const orders = ordersByDay[day];
-                    Object.keys(orders).forEach(orderId => {
-                        fetchedOrders.push({ ...orders[orderId], id: orderId });
-                    });
-                });
-            });
-        }
-        setAllOrders(fetchedOrders);
+    fetchOrdersByDateRange(database, fromDate, toDate).then(fetchedOrders => {
+        setFilteredOrders(fetchedOrders);
         setIsLoading(false);
     }).catch(error => {
-        console.error("Error fetching all orders for products report:", error);
+        console.error("Error fetching orders for products report:", error);
         setIsLoading(false);
     });
-  }, [database, version]);
+  }, [database, version, fromDate, toDate]);
 
-
-  const filteredOrders = React.useMemo(() => {
-    return allOrders.filter(order => {
-        if (!order.createdAt) return false;
-        const orderDate = new Date(order.createdAt);
-        if (fromDate) {
-            const fromDateStart = new Date(fromDate);
-            fromDateStart.setHours(0, 0, 0, 0);
-            if (orderDate < fromDateStart) return false;
-        }
-        if (toDate) {
-            const toDateEnd = new Date(toDate);
-            toDateEnd.setHours(23, 59, 59, 999);
-            if (orderDate > toDateEnd) return false;
-        }
-        return true;
-    });
-  }, [allOrders, fromDate, toDate]);
 
   const productsSales = React.useMemo(() => {
     const productMap = new Map<string, { name: string; count: number }>();

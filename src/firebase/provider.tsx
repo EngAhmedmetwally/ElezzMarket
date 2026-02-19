@@ -3,7 +3,7 @@
 
 import React, { DependencyList, createContext, useContext, ReactNode, useMemo, useState, useEffect } from 'react';
 import { FirebaseApp } from 'firebase/app';
-import { Database } from 'firebase/database';
+import { Database, ref, onValue, off } from 'firebase/database';
 import { User } from '@/lib/types';
 import { FirebaseErrorListener } from '@/components/FirebaseErrorListener';
 
@@ -14,6 +14,7 @@ export interface FirebaseContextState {
   database: Database | null;
   user: User | null;
   isUserLoading: boolean; 
+  connectionStatus: 'connected' | 'disconnected' | 'loading';
   login: (userData: User) => void;
   logout: () => void;
 }
@@ -34,6 +35,7 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
 }) => {
   const [user, setUser] = useState<User | null>(null);
   const [isUserLoading, setIsUserLoading] = useState(true);
+  const [connectionStatus, setConnectionStatus] = useState<'connected' | 'disconnected' | 'loading'>('loading');
 
   useEffect(() => {
     // Load user from localStorage on initial mount
@@ -49,6 +51,18 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
       setIsUserLoading(false);
     }
   }, []);
+
+   useEffect(() => {
+    if (!database) {
+      setConnectionStatus('disconnected');
+      return;
+    }
+    const connectedRef = ref(database, '.info/connected');
+    const listener = onValue(connectedRef, (snap) => {
+      setConnectionStatus(snap.val() === true ? 'connected' : 'disconnected');
+    });
+    return () => off(connectedRef, 'value', listener);
+  }, [database]);
 
   const login = (userData: User) => {
     const userToStore = { ...userData };
@@ -70,10 +84,11 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
       database: servicesAvailable ? database : null,
       user,
       isUserLoading,
+      connectionStatus,
       login,
       logout,
     };
-  }, [firebaseApp, database, user, isUserLoading]);
+  }, [firebaseApp, database, user, isUserLoading, connectionStatus]);
 
   return (
     <FirebaseContext.Provider value={contextValue}>
@@ -145,6 +160,13 @@ export const useAuthActions = () => {
 export const useAuth = (): any => {
   return null;
 };
+
+/** Hook to access the current connection status to Firebase. */
+export const useConnectionStatus = () => {
+  const { connectionStatus } = useFirebaseContext();
+  return connectionStatus;
+}
+
 
 // useMemoFirebase is a utility and can stay
 type MemoFirebase <T> = T & {__memo?: boolean};

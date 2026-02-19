@@ -9,11 +9,11 @@ import { useLanguage } from "@/components/language-provider";
 import { DatePicker } from "@/components/ui/datepicker";
 import { useDatabase } from "@/firebase";
 import type { Order } from "@/lib/types";
-import { ref, get } from "firebase/database";
 import { Skeleton } from "@/components/ui/skeleton";
 import { StaffPerformanceChart } from "../components/staff-performance-chart";
 import { format } from "date-fns";
 import Link from "next/link";
+import { fetchOrdersByDateRange } from "@/lib/data-fetching";
 
 // Data structure for the report
 type DailyReportData = {
@@ -58,54 +58,20 @@ export default function DailyReportPage() {
   );
   const [toDate, setToDate] = React.useState<Date | undefined>(new Date());
   
-  const [allOrders, setAllOrders] = React.useState<Order[]>([]);
+  const [filteredOrders, setFilteredOrders] = React.useState<Order[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
 
   React.useEffect(() => {
-    if (!database) return;
+    if (!database || !fromDate || !toDate) return;
     setIsLoading(true);
-    const ordersRef = ref(database, 'orders');
-    get(ordersRef).then(snapshot => {
-        const fetchedOrders: Order[] = [];
-        if (snapshot.exists()) {
-            const ordersByMonthYear = snapshot.val();
-            Object.keys(ordersByMonthYear).forEach(monthYear => {
-                const ordersByDay = ordersByMonthYear[monthYear];
-                Object.keys(ordersByDay).forEach(day => {
-                    const orders = ordersByDay[day];
-                    Object.keys(orders).forEach(orderId => {
-                        fetchedOrders.push({ ...orders[orderId], id: orderId });
-                    });
-                });
-            });
-        }
-        setAllOrders(fetchedOrders);
+    fetchOrdersByDateRange(database, fromDate, toDate).then(fetchedOrders => {
+        setFilteredOrders(fetchedOrders);
         setIsLoading(false);
     }).catch(error => {
-        console.error("Error fetching all orders for daily report:", error);
+        console.error("Error fetching orders for daily report:", error);
         setIsLoading(false);
     });
-  }, [database, version]);
-
-  const filteredOrders = React.useMemo(() => {
-    if (!allOrders) return [];
-
-    return allOrders.filter(order => {
-      if (!order.createdAt) return false;
-      const orderDate = new Date(order.createdAt);
-      if (fromDate) {
-          const fromDateStart = new Date(fromDate);
-          fromDateStart.setHours(0, 0, 0, 0);
-          if (orderDate < fromDateStart) return false;
-      }
-      if (toDate) {
-          const toDateEnd = new Date(toDate);
-          toDateEnd.setHours(23, 59, 59, 999);
-          if (orderDate > toDateEnd) return false;
-      }
-      return true;
-    });
-  }, [allOrders, fromDate, toDate]);
+  }, [database, version, fromDate, toDate]);
 
   const dailyReportData = React.useMemo(() => {
     if (!filteredOrders) return [];

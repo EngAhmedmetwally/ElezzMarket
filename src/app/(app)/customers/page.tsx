@@ -5,11 +5,12 @@ import * as React from "react";
 import { PageHeader } from "@/components/page-header";
 import { useLanguage } from "@/components/language-provider";
 import { useDatabase } from "@/firebase";
-import { ref, get } from "firebase/database";
 import type { Order, Customer } from "@/lib/types";
 import { Skeleton } from "@/components/ui/skeleton";
 import { CustomersClient } from "./components/client";
 import { getCustomerColumns } from "./components/columns";
+import { DatePicker } from "@/components/ui/datepicker";
+import { fetchOrdersByDateRange } from "@/lib/data-fetching";
 
 export type CustomerWithOrderCount = Customer & {
   id: string; // using phone1 as id
@@ -21,30 +22,19 @@ export default function CustomersPage() {
   const { language } = useLanguage();
   const database = useDatabase();
   const [version] = React.useState(0);
+  const [fromDate, setFromDate] = React.useState<Date | undefined>(new Date(new Date().getFullYear(), new Date().getMonth(), 1));
+  const [toDate, setToDate] = React.useState<Date | undefined>(new Date());
 
   const [customers, setCustomers] = React.useState<CustomerWithOrderCount[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
 
 
   React.useEffect(() => {
-    if (!database) return;
+    if (!database || !fromDate || !toDate) return;
+    
     setIsLoading(true);
-    const ordersRef = ref(database, 'orders');
-    get(ordersRef).then(snapshot => {
-        const allOrders: Order[] = [];
-        if (snapshot.exists()) {
-            const ordersByMonthYear = snapshot.val();
-            Object.keys(ordersByMonthYear).forEach(monthYear => {
-                const ordersByDay = ordersByMonthYear[monthYear];
-                Object.keys(ordersByDay).forEach(day => {
-                    const orders = ordersByDay[day];
-                    Object.keys(orders).forEach(orderId => {
-                        allOrders.push({ ...orders[orderId], id: orderId });
-                    });
-                });
-            });
-        }
-        
+    
+    fetchOrdersByDateRange(database, fromDate, toDate).then(allOrders => {
         const sortedOrders = allOrders.sort((a, b) => {
             if (!a.createdAt || !b.createdAt) return 0;
             return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
@@ -81,10 +71,10 @@ export default function CustomersPage() {
         setCustomers(Array.from(customerMap.values()));
         setIsLoading(false);
     }).catch(error => {
-        console.error("Error fetching all orders for customers page:", error);
+        console.error("Error fetching orders for customers page:", error);
         setIsLoading(false);
     });
-  }, [database, version]);
+  }, [database, version, fromDate, toDate]);
 
 
   const columns = getCustomerColumns(language);
@@ -92,6 +82,10 @@ export default function CustomersPage() {
   return (
     <div>
       <PageHeader title={language === 'ar' ? 'العملاء' : 'Customers'} />
+      <div className="flex flex-col sm:flex-row items-center gap-4 mb-4">
+        <DatePicker date={fromDate} onDateChange={setFromDate} placeholder={language === 'ar' ? 'من تاريخ' : 'From date'} />
+        <DatePicker date={toDate} onDateChange={setToDate} placeholder={language === 'ar' ? 'إلى تاريخ' : 'To date'} />
+      </div>
       {isLoading ? (
         <div className="space-y-4">
             <div className="flex items-center py-4">
@@ -111,5 +105,3 @@ export default function CustomersPage() {
     </div>
   );
 }
-
-    

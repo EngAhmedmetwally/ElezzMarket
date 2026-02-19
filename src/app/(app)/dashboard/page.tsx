@@ -17,9 +17,9 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useLanguage } from "@/components/language-provider";
 import { DatePicker } from "@/components/ui/datepicker";
 import { useCollection, useDatabase, useMemoFirebase } from "@/firebase";
-import { ref, get } from "firebase/database";
 import type { Order, User } from "@/lib/types";
 import { Skeleton } from "@/components/ui/skeleton";
+import { fetchOrdersByDateRange } from "@/lib/data-fetching";
 
 function DashboardSkeleton() {
   const { language } = useLanguage();
@@ -53,61 +53,30 @@ function DashboardSkeleton() {
 
 export default function DashboardPage() {
   const { language } = useLanguage();
-  const [fromDate, setFromDate] = React.useState<Date | undefined>(undefined);
-  const [toDate, setToDate] = React.useState<Date | undefined>(undefined);
+  const [fromDate, setFromDate] = React.useState<Date | undefined>(new Date(new Date().getFullYear(), new Date().getMonth(), 1));
+  const [toDate, setToDate] = React.useState<Date | undefined>(new Date());
   const database = useDatabase();
   const [version] = React.useState(0);
 
-  const [allOrders, setAllOrders] = React.useState<Order[]>([]);
+  const [filteredOrders, setFilteredOrders] = React.useState<Order[]>([]);
   const [isLoadingOrders, setIsLoadingOrders] = React.useState(true);
 
   React.useEffect(() => {
-    if (!database) return;
+    if (!database || !fromDate || !toDate) return;
+    
     setIsLoadingOrders(true);
-    const ordersRef = ref(database, 'orders');
-    get(ordersRef).then(snapshot => {
-        const fetchedOrders: Order[] = [];
-        if (snapshot.exists()) {
-            const ordersByMonthYear = snapshot.val();
-            Object.keys(ordersByMonthYear).forEach(monthYear => {
-                const ordersByDay = ordersByMonthYear[monthYear];
-                Object.keys(ordersByDay).forEach(day => {
-                    const orders = ordersByDay[day];
-                    Object.keys(orders).forEach(orderId => {
-                        fetchedOrders.push({ ...orders[orderId], id: orderId });
-                    });
-                });
-            });
-        }
-        setAllOrders(fetchedOrders);
+    fetchOrdersByDateRange(database, fromDate, toDate)
+      .then(setFilteredOrders)
+      .catch(error => {
+        console.error("Error fetching orders for dashboard:", error);
+      })
+      .finally(() => {
         setIsLoadingOrders(false);
-    }).catch(error => {
-        console.error("Error fetching all orders for dashboard:", error);
-        setIsLoadingOrders(false);
-    });
-  }, [database, version]);
+      });
+  }, [database, version, fromDate, toDate]);
   
   const usersQuery = useMemoFirebase(() => database ? ref(database, "users") : null, [database]);
   const { data: usersData, isLoading: isLoadingUsers } = useCollection<User>(usersQuery);
-
-  const filteredOrders = React.useMemo(() => {
-    if (!allOrders) return [];
-    return allOrders.filter(order => {
-        if (!order.createdAt) return false;
-        const orderDate = new Date(order.createdAt);
-        if (fromDate) {
-            const fromDateStart = new Date(fromDate);
-            fromDateStart.setHours(0, 0, 0, 0);
-            if (orderDate < fromDateStart) return false;
-        }
-        if (toDate) {
-            const toDateEnd = new Date(toDate);
-            toDateEnd.setHours(23, 59, 59, 999);
-            if (orderDate > toDateEnd) return false;
-        }
-        return true;
-    });
-  }, [allOrders, fromDate, toDate]);
 
   const totalSales = filteredOrders.reduce((acc, order) => acc + (order.total || 0), 0);
   const totalOrders = filteredOrders.length;
@@ -137,7 +106,7 @@ export default function DashboardPage() {
   }, [filteredOrders, language]);
 
   const topModerators = React.useMemo(() => {
-    if (!usersData || !allOrders) return [];
+    if (!usersData || !filteredOrders) return [];
     
     const moderators = usersData.filter(u => u.role === 'Moderator');
     

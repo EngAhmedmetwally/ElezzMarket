@@ -13,8 +13,8 @@ import { StaffPerformanceChart } from "../components/staff-performance-chart";
 import { DatePicker } from "@/components/ui/datepicker";
 import { useCollection, useDatabase, useMemoFirebase } from "@/firebase";
 import type { Order, User } from "@/lib/types";
-import { ref, get } from "firebase/database";
 import { Skeleton } from "@/components/ui/skeleton";
+import { fetchOrdersByDateRange } from "@/lib/data-fetching";
 
 
 function StaffReportSkeleton() {
@@ -61,59 +61,26 @@ export default function StaffReportPage() {
   const isMobile = useIsMobile();
   const database = useDatabase();
   const [version, setVersion] = React.useState(0);
-  const [fromDate, setFromDate] = React.useState<Date | undefined>(undefined);
-  const [toDate, setToDate] = React.useState<Date | undefined>(undefined);
+  const [fromDate, setFromDate] = React.useState<Date | undefined>(new Date(new Date().getFullYear(), new Date().getMonth(), 1));
+  const [toDate, setToDate] = React.useState<Date | undefined>(new Date());
   
-    const [allOrders, setAllOrders] = React.useState<Order[]>([]);
-    const [isLoadingOrders, setIsLoadingOrders] = React.useState(true);
+  const [filteredOrders, setFilteredOrders] = React.useState<Order[]>([]);
+  const [isLoadingOrders, setIsLoadingOrders] = React.useState(true);
 
-    React.useEffect(() => {
-        if (!database) return;
-        setIsLoadingOrders(true);
-        const ordersRef = ref(database, 'orders');
-        get(ordersRef).then(snapshot => {
-            const fetchedOrders: Order[] = [];
-            if (snapshot.exists()) {
-                const ordersByMonthYear = snapshot.val();
-                Object.keys(ordersByMonthYear).forEach(monthYear => {
-                    const ordersByDay = ordersByMonthYear[monthYear];
-                    Object.keys(ordersByDay).forEach(day => {
-                        const orders = ordersByDay[day];
-                        Object.keys(orders).forEach(orderId => {
-                            fetchedOrders.push({ ...orders[orderId], id: orderId });
-                        });
-                    });
-                });
-            }
-            setAllOrders(fetchedOrders);
-            setIsLoadingOrders(false);
-        }).catch(error => {
-            console.error("Error fetching all orders for staff report:", error);
-            setIsLoadingOrders(false);
-        });
-    }, [database, version]);
+  React.useEffect(() => {
+    if (!database || !fromDate || !toDate) return;
+    setIsLoadingOrders(true);
+    fetchOrdersByDateRange(database, fromDate, toDate).then(fetchedOrders => {
+        setFilteredOrders(fetchedOrders);
+        setIsLoadingOrders(false);
+    }).catch(error => {
+        console.error("Error fetching all orders for staff report:", error);
+        setIsLoadingOrders(false);
+    });
+  }, [database, version, fromDate, toDate]);
 
   const usersQuery = useMemoFirebase(() => database ? ref(database, "users") : null, [database]);
   const { data: usersData, isLoading: isLoadingUsers } = useCollection<User>(usersQuery);
-
-  const filteredOrders = React.useMemo(() => {
-    if (!allOrders) return [];
-    return allOrders.filter(order => {
-        if (!order.createdAt) return false;
-        const orderDate = new Date(order.createdAt);
-        if (fromDate) {
-            const fromDateStart = new Date(fromDate);
-            fromDateStart.setHours(0, 0, 0, 0);
-            if (orderDate < fromDateStart) return false;
-        }
-        if (toDate) {
-            const toDateEnd = new Date(toDate);
-            toDateEnd.setHours(23, 59, 59, 999);
-            if (orderDate > toDateEnd) return false;
-        }
-        return true;
-    });
-  }, [allOrders, fromDate, toDate]);
 
   const moderatorsReport = React.useMemo(() => {
     if (!usersData) return [];
@@ -132,9 +99,9 @@ export default function StaffReportPage() {
     const couriers = usersData.filter(u => u.role === "Courier");
     return couriers.map(cour => {
       const assignedOrders = filteredOrders.filter(o => o.courierId === cour.id);
-      const delivered = assignedOrders.filter(o => o.status === "تم التسليم للعميل" && o.courierId === cour.id).length;
+      const delivered = assignedOrders.filter(o => o.status === "مكتمل" && o.courierId === cour.id).length;
       const cancelled = assignedOrders.filter(o => o.status === 'ملغي' && o.courierId === cour.id).length;
-      const totalAttempted = delivered + cancelled;
+      const totalAttempted = assignedOrders.filter(o => o.status === 'مكتمل' || o.status === 'ملغي').length;
       const completionRate = totalAttempted > 0 ? (delivered / totalAttempted) * 100 : 0;
       
       return {

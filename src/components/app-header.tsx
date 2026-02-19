@@ -8,6 +8,7 @@ import { ThemeToggle } from "@/components/theme-toggle";
 import { LanguageToggle } from "./language-toggle";
 import { useLanguage } from "./language-provider";
 import { useUser } from "@/firebase";
+import { ConnectionStatus } from "./connection-status";
 
 export default function AppHeader() {
   const { language } = useLanguage();
@@ -25,6 +26,7 @@ export default function AppHeader() {
             <div className="hidden md:block font-bold text-lg">{language === 'ar' ? 'سوق العز' : 'ElEzz Market'}</div>
         </div>
         <div className="ml-auto flex items-center space-x-2">
+          <ConnectionStatus />
           <LanguageToggle />
           <ThemeToggle />
           <UserNav />
