@@ -23,7 +23,7 @@ import type { Customer, Product, OrderItem, ShippingZone, Commission } from "@/l
 import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { useCollection, useDatabase, useUser, useMemoFirebase } from "@/firebase";
-import { ref, get, update, push, set, runTransaction } from "firebase/database";
+import { ref, get, update, push, set, runTransaction, child } from "firebase/database";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -143,7 +143,7 @@ export function OrderForm({ onSuccess }: OrderFormProps) {
     const monthYear = `${month}-${year}`;
     const datePath = `${monthYear}/${day}`;
 
-    const orderPath = `orders/${datePath}/${data.id}`;
+    const orderRef = ref(database, `orders/${datePath}/${data.id}`);
     const orderIdRef = ref(database, `order-lookup/${data.id}`);
     const snapshot = await get(orderIdRef);
     
@@ -161,68 +161,37 @@ export function OrderForm({ onSuccess }: OrderFormProps) {
     }
     
     const allProducts: (Product & {id: string})[] = products || [];
-    const updates: { [key: string]: any } = {};
 
     try {
-        const commissionRulesSnap = await get(ref(database, 'commission-rules'));
-        const commissionRules = commissionRulesSnap.val();
-        const registrationCommissionAmount = commissionRules?.["تم التسجيل"]?.amount || 0;
-        let totalCommission = 0;
-
-        if (registrationCommissionAmount > 0) {
-            const newCommissionRef = push(ref(database, 'commissions'));
-            const commissionId = newCommissionRef.key;
-            if (!commissionId) throw new Error("Could not create commission ID");
-
-            const newCommission: Commission = {
-                id: commissionId,
-                orderId: data.id,
-                userId: user.id, // The moderator creating it
-                orderStatus: "تم التسجيل",
-                amount: registrationCommissionAmount,
-                calculationDate: new Date().toISOString(),
-                paymentStatus: 'Calculated',
-            };
-            updates[`/commissions/${commissionId}`] = newCommission;
-            totalCommission += registrationCommissionAmount;
-        }
-
         const resolvedItems: OrderItem[] = [];
-
         for (const item of data.items) {
             let productId = item.productId;
             const existingProduct = allProducts.find(p => p.id === productId || p.name.toLowerCase() === item.productName.toLowerCase());
+            let currentProductRef;
 
             if (existingProduct) {
                 productId = existingProduct.id;
-                const productSalesRef = ref(database, `products/${productId}/salesCount`);
-                await runTransaction(productSalesRef, (currentCount) => {
-                    return (currentCount || 0) + item.quantity;
-                });
+                currentProductRef = ref(database, `products/${productId}`);
             } else {
-                const newProductRef = push(ref(database, 'products'));
-                productId = newProductRef.key!;
-                const newProductData: Omit<Product, 'id'> & {salesCount: number} = {
+                currentProductRef = push(ref(database, 'products'));
+                productId = currentProductRef.key!;
+                const newProductData: Omit<Product, 'id'> = {
                     name: item.productName,
                     price: item.price,
                     weight: item.weight,
                     isActive: true,
                     createdAt: new Date().toISOString(),
                     sku: `SKU-${Date.now()}-${Math.random().toString(36).substring(2, 7).toUpperCase()}`,
-                    salesCount: item.quantity
                 };
-                updates[`products/${productId}`] = newProductData;
+                await set(currentProductRef, newProductData);
             }
             
-            if (!productId) {
-                throw new Error(`Could not determine product ID for ${item.productName}`);
-            }
-
+            await runTransaction(child(currentProductRef, 'salesCount'), (currentCount) => (currentCount || 0) + item.quantity);
             resolvedItems.push({ ...item, productId });
         }
         
         const statusHistory: any = {};
-        const initialHistoryKey = push(ref(database)).key; // Get a unique key
+        const initialHistoryKey = push(child(orderRef, 'statusHistory')).key;
         statusHistory[initialHistoryKey!] = {
             status: 'تم التسجيل',
             createdAt: new Date().toISOString(),
@@ -246,10 +215,12 @@ export function OrderForm({ onSuccess }: OrderFormProps) {
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString(),
             statusHistory,
-            totalCommission: totalCommission,
+            totalCommission: 0,
         };
-        updates[orderPath] = newOrder;
-        
+
+        await set(orderRef, newOrder);
+
+        const updates: { [key: string]: any } = {};
         updates[`order-lookup/${data.id}`] = { path: datePath };
         updates[`customer-orders/${data.customerPhone1}/${data.id}`] = true;
 
@@ -266,8 +237,24 @@ export function OrderForm({ onSuccess }: OrderFormProps) {
             };
             updates[`customers/${data.customerPhone1}`] = newCustomer; 
         }
-
         await update(ref(database), updates);
+
+        // Commission Logic
+        const commissionRulesSnap = await get(ref(database, 'commission-rules'));
+        const commissionRules = commissionRulesSnap.val();
+        const registrationCommissionAmount = commissionRules?.["تم التسجيل"]?.amount || 0;
+        if (registrationCommissionAmount > 0) {
+            const newCommission: Omit<Commission, 'id'> = {
+                orderId: data.id,
+                userId: user.id,
+                orderStatus: "تم التسجيل",
+                amount: registrationCommissionAmount,
+                calculationDate: new Date().toISOString(),
+                paymentStatus: 'Calculated',
+            };
+            await set(push(ref(database, 'commissions')), newCommission);
+            await runTransaction(child(orderRef, 'totalCommission'), (currentTotal) => (currentTotal || 0) + registrationCommissionAmount);
+        }
 
         toast({
             title: language === 'ar' ? "تم إنشاء الطلب" : "Order Created",
@@ -501,3 +488,5 @@ export function OrderForm({ onSuccess }: OrderFormProps) {
     </Form>
   );
 }
+
+    

@@ -22,7 +22,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
 import { useDoc, useCollection, useDatabase, useMemoFirebase, useUser as useAuthUser } from "@/firebase";
-import { ref, update, runTransaction, get, push } from "firebase/database";
+import { ref, update, runTransaction, get, push, child, set } from "firebase/database";
 import { Skeleton } from "@/components/ui/skeleton";
 
 const allowedTransitions: Record<OrderStatus, OrderStatus[]> = {
@@ -37,8 +37,9 @@ function StatusHistoryTimeline({ history }: { history?: Record<string, StatusHis
     const { language } = useLanguage();
     const sortedHistory = React.useMemo(() => {
         if (!history) return [];
-        const historyArray = Object.values(history);
-        return historyArray.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+        return Object.entries(history)
+            .map(([id, item]) => ({ ...item, id }))
+            .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
     }, [history]);
     
     return (
@@ -49,11 +50,11 @@ function StatusHistoryTimeline({ history }: { history?: Record<string, StatusHis
             <CardContent>
                  {sortedHistory.length > 0 ? (
                     <div className="space-y-4">
-                        {sortedHistory.map((item, index) => (
-                            <div key={index} className="flex gap-4">
+                        {sortedHistory.map((item) => (
+                            <div key={item.id} className="flex gap-4">
                                 <div className="flex flex-col items-center">
                                     <div className="w-4 h-4 rounded-full bg-primary mt-1"></div>
-                                    {index < sortedHistory.length - 1 && <div className="flex-1 w-0.5 bg-border"></div>}
+                                    {item.id !== sortedHistory[sortedHistory.length - 1].id && <div className="flex-1 w-0.5 bg-border"></div>}
                                 </div>
                                 <div>
                                     <div className="flex items-center gap-2 flex-wrap">
@@ -228,85 +229,106 @@ export default function OrderDetailsPage() {
     if (!order || !database || !authUser || !orderRef) return;
     
     try {
-        let updates: any = {};
         const now = new Date().toISOString();
+
+        // Use a transaction to ensure atomic updates on the order object
+        await runTransaction(orderRef, (currentOrder) => {
+            if (currentOrder) {
+                // 1. Create the new history entry
+                const newHistoryItem: StatusHistoryItem = {
+                    status: newStatus,
+                    notes: noteText,
+                    createdAt: now,
+                    userName: authUser.name || authUser.email || "مستخدم مسؤول",
+                };
+
+                // 2. Append to status history
+                if (!currentOrder.statusHistory) {
+                    currentOrder.statusHistory = {};
+                }
+                const newHistoryKey = push(child(orderRef, 'statusHistory')).key;
+                if (newHistoryKey) {
+                    currentOrder.statusHistory[newHistoryKey] = newHistoryItem;
+                }
+
+                // 3. Update order status and timestamp
+                currentOrder.status = newStatus;
+                currentOrder.updatedAt = now;
+
+                // 4. Update courier
+                if (courierId) {
+                    const selectedCourier = couriers.find(c => c.id === courierId);
+                    if (selectedCourier) {
+                        currentOrder.courierId = selectedCourier.id;
+                        currentOrder.courierName = selectedCourier.name;
+                    }
+                }
+            }
+            return currentOrder;
+        });
+
+        // --- Handle side effects after the transaction is successful ---
         
-        // 1. Handle Commission
+        // 1. Commission Logic
         const commissionRulesSnap = await get(ref(database, 'commission-rules'));
         const commissionRules = commissionRulesSnap.val();
         const commissionAmount = commissionRules?.[newStatus]?.amount || 0;
 
         if (commissionAmount > 0) {
-            let recipientId: string | undefined;
-            if (["تم التسجيل", "قيد التجهيز"].includes(newStatus)) {
-                recipientId = order.moderatorId;
-            } else if (["تم الشحن", "مكتمل"].includes(newStatus)) {
-                recipientId = courierId || order.courierId;
-            }
+            const latestOrderSnap = await get(orderRef); // Get the fresh order data
+            const latestOrder = latestOrderSnap.val();
+            if (latestOrder) {
+                let recipientId: string | undefined;
+                if (["تم التسجيل", "قيد التجهيز"].includes(newStatus)) {
+                    recipientId = latestOrder.moderatorId;
+                } else if (["تم الشحن", "مكتمل"].includes(newStatus)) {
+                    recipientId = latestOrder.courierId;
+                }
 
-            if (recipientId) {
-                const newCommissionRef = push(ref(database, 'commissions'));
-                const newCommission: Commission = {
-                    id: newCommissionRef.key!,
-                    orderId: order.id,
-                    userId: recipientId,
-                    orderStatus: newStatus,
-                    amount: commissionAmount,
-                    calculationDate: now,
-                    paymentStatus: 'Calculated',
-                };
-                updates[`/commissions/${newCommission.id}`] = newCommission;
-                updates[`/${orderRef.path}/totalCommission`] = (order.totalCommission || 0) + commissionAmount;
+                if (recipientId) {
+                    const newCommission: Omit<Commission, 'id'| 'id'> = {
+                        orderId: order.id,
+                        userId: recipientId,
+                        orderStatus: newStatus,
+                        amount: commissionAmount,
+                        calculationDate: now,
+                        paymentStatus: 'Calculated',
+                    };
+                    const newCommRef = push(ref(database, 'commissions'));
+                    await set(newCommRef, newCommission);
+
+                    // Also update the total on the order itself
+                    const totalCommissionRef = ref(database, `${orderRef.path}/totalCommission`);
+                    await runTransaction(totalCommissionRef, (currentTotal) => {
+                        return (currentTotal || 0) + commissionAmount;
+                    });
+                }
             }
         }
-
-        // 2. Handle Product Sales Count for Cancellation
+        
+        // 2. Cancellation Logic
         if (newStatus === 'ملغي' && order.status !== 'ملغي') {
             const productSaleUpdatePromises = (order.items || []).map(item => {
                 if (!item.productId) return Promise.resolve();
                 const productSalesRef = ref(database, `products/${item.productId}/salesCount`);
                 return runTransaction(productSalesRef, (currentCount) => (currentCount || 0) - item.quantity);
             });
-            await Promise.all(productSaleUpdatePromises).catch(err => console.error("Failed to decrement sales count", err));
+            await Promise.all(productSaleUpdatePromises);
         }
 
-        // 3. Prepare Order Update
-        const newHistoryItem: StatusHistoryItem = {
-            status: newStatus,
-            notes: noteText,
-            createdAt: now,
-            userName: authUser.name || authUser.email || "مستخدم مسؤول",
-        };
-        
-        const newHistoryKey = push(ref(database, `${orderRef.path}/statusHistory`)).key;
-
-        updates[`/${orderRef.path}/status`] = newStatus;
-        updates[`/${orderRef.path}/updatedAt`] = now;
-        updates[`/${orderRef.path}/statusHistory/${newHistoryKey}`] = newHistoryItem;
-
-        if (courierId) {
-          const selectedCourier = couriers.find(c => c.id === courierId);
-          if(selectedCourier) {
-            updates[`/${orderRef.path}/courierId`] = selectedCourier.id;
-            updates[`/${orderRef.path}/courierName`] = selectedCourier.name;
-          }
-        }
-        
-        // 4. Execute all updates
-        await update(ref(database), updates);
-
+        // --- UI Updates ---
         toast({
             title: language === 'ar' ? 'تم تحديث الحالة' : 'Status Updated',
             description: `${language === 'ar' ? 'تم تحديث حالة الطلب إلى' : 'Order status updated to'} ${newStatus}.`,
         });
 
-        // 5. Reset state
         setIsNoteModalOpen(false);
         setIsCourierModalOpen(false);
         setNote("");
         setSelectedStatus(null);
         setSelectedCourierId(null);
         setCourierSearch("");
+        
     } catch (e: any) {
         console.error("Status update failed:", e);
         toast({

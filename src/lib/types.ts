@@ -1,5 +1,4 @@
 
-
 export type UserRole = "Admin" | "Moderator" | "Courier";
 
 export type Permissions = {
@@ -130,3 +129,5 @@ export type ReceiptSettings = {
   showItemWeight?: boolean;
   showCourierName?: boolean;
 };
+
+    
