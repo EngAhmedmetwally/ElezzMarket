@@ -1,96 +1,20 @@
-
 "use client";
 
 import * as React from "react";
-import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
-import * as z from "zod";
 import { useLanguage } from "@/components/language-provider";
-import { useToast } from "@/hooks/use-toast";
-import { useDatabase, useDoc, useMemoFirebase } from "@/firebase";
-import { ref, update } from "firebase/database";
-import type { ReceiptSettings } from "@/lib/types";
-
 import { Button } from "@/components/ui/button";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormDescription } from "@/components/ui/form";
+import { Form, FormControl, FormField, FormItem, FormLabel } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
-import { Skeleton } from "@/components/ui/skeleton";
 
-const settingsFormSchema = z.object({
-  showLogo: z.boolean().default(true),
-  headerText: z.string().optional(),
-  showOrderId: z.boolean().default(true),
-  showDate: z.boolean().default(true),
-  showCustomerName: z.boolean().default(true),
-  showCustomerPhone: z.boolean().default(true),
-  showCustomerAddress: z.boolean().default(true),
-  showItemsSubtotal: z.boolean().default(true),
-  showShippingCost: z.boolean().default(true),
-  showGrandTotal: z.boolean().default(true),
-  footerText: z.string().optional(),
-  showItemWeight: z.boolean().default(false),
-  showItemPrice: z.boolean().default(true),
-  showItemSubtotal: z.boolean().default(true),
-});
+interface ReceiptSettingsFormProps {
+    form: ReturnType<typeof useForm<any>>;
+    onSubmit: (data: any) => void;
+}
 
-type SettingsFormValues = z.infer<typeof settingsFormSchema>;
-
-export function ReceiptSettingsForm() {
+export function ReceiptSettingsForm({ form, onSubmit }: ReceiptSettingsFormProps) {
   const { language } = useLanguage();
-  const { toast } = useToast();
-  const database = useDatabase();
-
-  const settingsRef = useMemoFirebase(() => database ? ref(database, 'receipt-settings') : null, [database]);
-  const { data: currentSettings, isLoading } = useDoc<ReceiptSettings>(settingsRef);
-  
-  const form = useForm<SettingsFormValues>({
-    resolver: zodResolver(settingsFormSchema),
-    defaultValues: {
-      showLogo: true,
-      headerText: language === 'ar' ? 'سوق العز' : 'ElEzz Market',
-      showOrderId: true,
-      showDate: true,
-      showCustomerName: true,
-      showCustomerPhone: true,
-      showCustomerAddress: true,
-      showItemsSubtotal: true,
-      showShippingCost: true,
-      showGrandTotal: true,
-      footerText: language === 'ar' ? 'شكراً لتعاملكم معنا!' : 'Thank you!',
-      showItemWeight: false,
-      showItemPrice: true,
-      showItemSubtotal: true,
-    },
-  });
-  
-  React.useEffect(() => {
-    if (currentSettings) {
-        // use form.reset to update form values with data from DB
-        const valuesToSet = { ...form.getValues(), ...currentSettings };
-        form.reset(valuesToSet);
-    }
-  }, [currentSettings, form]);
-
-  async function onSubmit(data: SettingsFormValues) {
-    if (!database || !settingsRef) return;
-    try {
-      await update(settingsRef, data);
-      toast({ title: language === 'ar' ? 'تم حفظ الإعدادات' : 'Settings Saved', description: language === 'ar' ? 'تم تحديث إعدادات الإيصال بنجاح.' : 'Receipt settings have been updated successfully.' });
-    } catch (error) {
-      toast({ variant: 'destructive', title: language === 'ar' ? 'خطأ' : 'Error', description: (error as Error).message });
-    }
-  }
-  
-  if (isLoading) {
-    return (
-        <div className="space-y-8">
-            <Skeleton className="h-10 w-full" />
-            <Skeleton className="h-10 w-full" />
-            <Skeleton className="h-10 w-full" />
-        </div>
-    )
-  }
 
   return (
     <Form {...form}>
@@ -109,7 +33,7 @@ export function ReceiptSettingsForm() {
                  <FormField control={form.control} name="headerText" render={({ field }) => (
                     <FormItem>
                     <FormLabel>{language === 'ar' ? 'نص رأس الإيصال' : 'Header Text'}</FormLabel>
-                    <FormControl><Input {...field} /></FormControl>
+                    <FormControl><Input {...field} value={field.value ?? ''} /></FormControl>
                     </FormItem>
                 )}/>
             </div>
@@ -201,7 +125,7 @@ export function ReceiptSettingsForm() {
                 <FormField control={form.control} name="footerText" render={({ field }) => (
                     <FormItem>
                     <FormLabel>{language === 'ar' ? 'نص ذيل الإيصال' : 'Footer Text'}</FormLabel>
-                    <FormControl><Input {...field} /></FormControl>
+                    <FormControl><Input {...field} value={field.value ?? ''} /></FormControl>
                     </FormItem>
                 )}/>
             </div>
