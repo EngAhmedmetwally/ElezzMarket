@@ -3,6 +3,7 @@
 
 import * as React from "react";
 import { DollarSign, Package, Users, BarChart } from "lucide-react";
+import { ref } from "firebase/database";
 import { PageHeader } from "@/components/page-header";
 import { KpiCard } from "@/components/dashboard/kpi-card";
 import { SalesChart } from "@/components/dashboard/sales-chart";
