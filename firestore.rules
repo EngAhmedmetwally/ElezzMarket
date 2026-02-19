@@ -3,9 +3,13 @@
   "rules": {
     ".read": true,
     ".write": true,
-    "products": {
+    "orders": {
       ".indexOn": [
-        "salesCount"
+        "createdAt",
+        "customerPhone1",
+        "status",
+        "moderatorId",
+        "courierId"
       ]
     },
     "users": {
