@@ -323,7 +323,7 @@ export default function OrderDetailsPage() {
 
   if (!order) {
     return (
-      <div className="print:hidden">
+      <div className="print-hidden">
         <PageHeader title={language === 'ar' ? 'الطلب غير موجود' : 'Order Not Found'} />
         <p>{language === 'ar' ? 'لم نتمكن من العثور على الطلب المطلوب.' : 'The requested order could not be found.'}</p>
         {orderError && <p className="text-destructive">{orderError.message}</p>}
@@ -346,7 +346,7 @@ export default function OrderDetailsPage() {
 
   return (
     <>
-      <div className="print:hidden">
+      <div className="print-hidden">
         <PageHeader title={`${language === 'ar' ? 'طلب' : 'Order'} ${order.id}`}>
           <Button onClick={handlePrint}>
             <Printer className="me-2 h-4 w-4" />
@@ -451,91 +451,91 @@ export default function OrderDetailsPage() {
               </Card>
           </div>
         </div>
-      </div>
-      
-      <div className="hidden print:block receipt-container">
-        {order && <ReceiptView order={order} language={language} settings={receiptSettings} />}
-      </div>
-
-      <Dialog open={isNoteModalOpen} onOpenChange={setIsNoteModalOpen}>
-        <DialogContent>
-            <DialogHeader>
-                <DialogTitle>{language === 'ar' ? `إضافة ملاحظة لـ "${selectedStatus}"` : `Add note for "${selectedStatus}"`}</DialogTitle>
-            </DialogHeader>
-            <div className="py-4">
-                <Textarea
-                    placeholder={language === 'ar' ? 'أضف ملاحظتك هنا...' : 'Add your note here...'}
-                    value={note}
-                    onChange={(e) => setNote(e.target.value)}
-                />
-            </div>
-            <DialogFooter>
-                <DialogClose asChild>
-                    <Button variant="outline">{language === 'ar' ? 'إلغاء' : 'Cancel'}</Button>
-                </DialogClose>
-                <Button onClick={() => selectedStatus && handleStatusUpdate(selectedStatus, note)}>{language === 'ar' ? 'حفظ التغيير' : 'Save Change'}</Button>
-            </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-       <Dialog open={isCourierModalOpen} onOpenChange={setIsCourierModalOpen}>
-        <DialogContent className="sm:max-w-md">
-            <DialogHeader>
-                <DialogTitle>{language === 'ar' ? 'إسناد مندوب' : 'Assign Courier'}</DialogTitle>
-                <DialogDescription>{language === 'ar' ? 'اختر مندوبًا لتسليم هذا الطلب.' : 'Select a courier to deliver this order.'}</DialogDescription>
-            </DialogHeader>
-            <div className="py-4 space-y-4">
-                <div className="relative">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input 
-                        placeholder={language === 'ar' ? 'ابحث عن مندوب...' : 'Search for courier...'} 
-                        className="pl-9"
-                        value={courierSearch}
-                        onChange={(e) => setCourierSearch(e.target.value)}
+        
+        <Dialog open={isNoteModalOpen} onOpenChange={setIsNoteModalOpen}>
+            <DialogContent>
+                <DialogHeader>
+                    <DialogTitle>{language === 'ar' ? `إضافة ملاحظة لـ "${selectedStatus}"` : `Add note for "${selectedStatus}"`}</DialogTitle>
+                </DialogHeader>
+                <div className="py-4">
+                    <Textarea
+                        placeholder={language === 'ar' ? 'أضف ملاحظتك هنا...' : 'Add your note here...'}
+                        value={note}
+                        onChange={(e) => setNote(e.target.value)}
                     />
                 </div>
-                <ScrollArea className="h-48">
-                    <div className="space-y-2">
-                        {filteredCouriers.map(courier => (
-                            <div 
-                                key={courier.id}
-                                onClick={() => setSelectedCourierId(courier.id)}
-                                className={cn(
-                                    "flex items-center gap-3 rounded-md p-2 cursor-pointer transition-colors",
-                                    selectedCourierId === courier.id ? "bg-primary text-primary-foreground" : "hover:bg-muted"
-                                )}
-                            >
-                                <Avatar className="h-8 w-8">
-                                    <AvatarImage src={courier.avatarUrl} alt={courier.name} />
-                                    <AvatarFallback>{courier.name.charAt(0)}</AvatarFallback>
-                                </Avatar>
-                                <div>
-                                    <p className="text-sm font-medium">{courier.name}</p>
-                                    <p className="text-xs text-muted-foreground">{courier.email}</p>
-                                </div>
-                            </div>
-                        ))}
+                <DialogFooter>
+                    <DialogClose asChild>
+                        <Button variant="outline">{language === 'ar' ? 'إلغاء' : 'Cancel'}</Button>
+                    </DialogClose>
+                    <Button onClick={() => selectedStatus && handleStatusUpdate(selectedStatus, note)}>{language === 'ar' ? 'حفظ التغيير' : 'Save Change'}</Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
+
+        <Dialog open={isCourierModalOpen} onOpenChange={setIsCourierModalOpen}>
+            <DialogContent className="sm:max-w-md">
+                <DialogHeader>
+                    <DialogTitle>{language === 'ar' ? 'إسناد مندوب' : 'Assign Courier'}</DialogTitle>
+                    <DialogDescription>{language === 'ar' ? 'اختر مندوبًا لتسليم هذا الطلب.' : 'Select a courier to deliver this order.'}</DialogDescription>
+                </DialogHeader>
+                <div className="py-4 space-y-4">
+                    <div className="relative">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                        <Input 
+                            placeholder={language === 'ar' ? 'ابحث عن مندوب...' : 'Search for courier...'} 
+                            className="pl-9"
+                            value={courierSearch}
+                            onChange={(e) => setCourierSearch(e.target.value)}
+                        />
                     </div>
-                </ScrollArea>
-                <Textarea
-                    placeholder={language === 'ar' ? 'أضف ملاحظة (اختياري)...' : 'Add a note (optional)...'}
-                    value={note}
-                    onChange={(e) => setNote(e.target.value)}
-                />
-            </div>
-            <DialogFooter>
-                <DialogClose asChild>
-                    <Button variant="outline">{language === 'ar' ? 'إلغاء' : 'Cancel'}</Button>
-                </DialogClose>
-                <Button 
-                  onClick={() => selectedStatus && handleStatusUpdate(selectedStatus, note, selectedCourierId)}
-                  disabled={!selectedCourierId}
-                >
-                  {language === 'ar' ? 'تأكيد وحفظ' : 'Confirm & Save'}
-                </Button>
-            </DialogFooter>
-        </DialogContent>
-      </Dialog>
+                    <ScrollArea className="h-48">
+                        <div className="space-y-2">
+                            {filteredCouriers.map(courier => (
+                                <div 
+                                    key={courier.id}
+                                    onClick={() => setSelectedCourierId(courier.id)}
+                                    className={cn(
+                                        "flex items-center gap-3 rounded-md p-2 cursor-pointer transition-colors",
+                                        selectedCourierId === courier.id ? "bg-primary text-primary-foreground" : "hover:bg-muted"
+                                    )}
+                                >
+                                    <Avatar className="h-8 w-8">
+                                        <AvatarImage src={courier.avatarUrl} alt={courier.name} />
+                                        <AvatarFallback>{courier.name.charAt(0)}</AvatarFallback>
+                                    </Avatar>
+                                    <div>
+                                        <p className="text-sm font-medium">{courier.name}</p>
+                                        <p className="text-xs text-muted-foreground">{courier.email}</p>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </ScrollArea>
+                    <Textarea
+                        placeholder={language === 'ar' ? 'أضف ملاحظة (اختياري)...' : 'Add a note (optional)...'}
+                        value={note}
+                        onChange={(e) => setNote(e.target.value)}
+                    />
+                </div>
+                <DialogFooter>
+                    <DialogClose asChild>
+                        <Button variant="outline">{language === 'ar' ? 'إلغاء' : 'Cancel'}</Button>
+                    </DialogClose>
+                    <Button 
+                    onClick={() => selectedStatus && handleStatusUpdate(selectedStatus, note, selectedCourierId)}
+                    disabled={!selectedCourierId}
+                    >
+                    {language === 'ar' ? 'تأكيد وحفظ' : 'Confirm & Save'}
+                    </Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
+      </div>
+      
+      <div className="receipt-container">
+        {order && <ReceiptView order={order} language={language} settings={receiptSettings} />}
+      </div>
     </>
   );
 }

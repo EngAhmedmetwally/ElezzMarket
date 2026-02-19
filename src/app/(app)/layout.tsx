@@ -91,7 +91,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
   return (
     <SidebarProvider side={side}>
       {showSidebar && (
-        <Sidebar side={side} collapsible="icon" className="print:hidden">
+        <Sidebar side={side} collapsible="icon">
           <SidebarHeader className="p-4">
             <Link href="/home" className="flex items-center gap-2">
               <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary text-primary-foreground">
@@ -145,9 +145,9 @@ export default function AppLayout({ children }: { children: ReactNode }) {
         </Sidebar>
       )}
       <SidebarInset>
-        <div className="flex h-full flex-col print:block">
+        <div className="flex h-full flex-col">
           <AppHeader />
-          <main className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8 min-w-0 print:p-0 print:overflow-visible">
+          <main className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8 min-w-0">
             {children}
           </main>
         </div>

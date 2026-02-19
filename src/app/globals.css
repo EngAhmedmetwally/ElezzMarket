@@ -134,6 +134,9 @@
       display: flex;
       justify-content: space-between;
   }
+  .receipt-container {
+    display: none;
+  }
 }
 
 @page {
@@ -144,8 +147,19 @@
 @media print {
   body {
     width: 80mm;
+    min-width: 0 !important;
+    background: #fff !important;
     -webkit-print-color-adjust: exact !important;
     color-adjust: exact !important;
-    background: #fff;
+  }
+  .print-hidden {
+    display: none !important;
+  }
+  .receipt-container {
+    display: block !important;
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
   }
 }
