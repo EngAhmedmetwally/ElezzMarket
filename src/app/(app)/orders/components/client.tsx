@@ -85,7 +85,7 @@ export function OrdersClient<TData extends Order, TValue>({
     }
   });
 
-  const orderStatuses: OrderStatus[] = ["تم الحجز", "تم الارسال", "تم التسليم", "ملغي"];
+  const orderStatuses: OrderStatus[] = ["تم التسجيل", "قيد التجهيز", "تم التسليم للمندوب", "تم التسليم للعميل", "ملغي"];
 
   const filters = (
     <div className="flex flex-wrap items-center gap-4 py-4">
@@ -148,7 +148,7 @@ export function OrdersClient<TData extends Order, TValue>({
           {table.getRowModel().rows?.length ? (
             table.getRowModel().rows.map((row) => {
               const selectCell = row.getVisibleCells().find(cell => cell.column.id === 'select');
-              const totalCommission = (row.original.salesCommission || 0) + (row.original.deliveryCommission || 0);
+              const totalCommission = row.original.totalCommission || 0;
               return (
                 <Card 
                   key={row.id} 

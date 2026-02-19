@@ -83,7 +83,7 @@ export const getOrderColumns = (language: 'ar' | 'en', onUpdate: () => void): Co
   },
    {
     id: "totalCommission",
-    accessorFn: (row) => (row.salesCommission || 0) + (row.deliveryCommission || 0),
+    accessorFn: (row) => row.totalCommission || 0,
     header: ({ column }) => {
        return (
         <div className="hidden lg:table-cell text-end">
@@ -98,18 +98,12 @@ export const getOrderColumns = (language: 'ar' | 'en', onUpdate: () => void): Co
        )
     },
     cell: ({ row }) => {
-      const salesComm = row.original.salesCommission;
-      const deliveryComm = row.original.deliveryCommission;
-      const totalCommission = (typeof salesComm === 'number' ? salesComm : 0) + (typeof deliveryComm === 'number' ? deliveryComm : 0);
+      const totalCommission = row.original.totalCommission || 0;
 
       if (row.original.status === 'ملغي') {
         return <div className="hidden lg:table-cell text-end font-medium">-</div>;
       }
       
-      if (totalCommission === 0 && (salesComm === undefined || deliveryComm === undefined)) {
-         return <div className="hidden lg:table-cell text-end font-medium">-</div>;
-      }
-
       const formatted = new Intl.NumberFormat(language === 'ar' ? 'ar-EG' : 'en-US', {
         style: "currency",
         currency: "EGP",

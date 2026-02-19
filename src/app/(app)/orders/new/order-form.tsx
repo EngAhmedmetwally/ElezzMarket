@@ -1,3 +1,4 @@
+
 "use client";
 
 import * as React from "react";
@@ -84,7 +85,7 @@ export function OrderForm({ onSuccess }: OrderFormProps) {
   const filteredCustomers = React.useMemo(() => {
     if (!customerSearch) return [];
     return allCustomers.filter(
-      c => (c.customerName && c.customerName.toLowerCase().includes(customerSearch.toLowerCase())) ||
+      (c: any) => (c.customerName && c.customerName.toLowerCase().includes(customerSearch.toLowerCase())) ||
            (c.customerPhone && c.customerPhone.toLowerCase().includes(customerSearch.toLowerCase()))
     );
   }, [customerSearch, allCustomers]);
@@ -186,20 +187,19 @@ export function OrderForm({ onSuccess }: OrderFormProps) {
             zoning: data.zoning,
             items: resolvedItems,
             total: total,
-            status: "تم الحجز",
+            status: "تم التسجيل",
             moderatorId: user.id,
             moderatorName: user.name || user.email || 'Unknown',
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString(),
             statusHistory: [
                 {
-                    status: 'تم الحجز',
+                    status: 'تم التسجيل',
                     createdAt: new Date().toISOString(),
                     userName: user.name || user.email || 'Unknown',
                 }
             ],
-            salesCommission: 0,
-            deliveryCommission: 0,
+            totalCommission: 0,
         };
         updates[orderPath] = newOrder;
         
@@ -269,7 +269,7 @@ export function OrderForm({ onSuccess }: OrderFormProps) {
                     {filteredCustomers.length > 0 && customerSearch && (
                         <Card className="absolute z-10 w-full mt-1 shadow-lg">
                             <CardContent className="p-2 max-h-60 overflow-y-auto">
-                                {filteredCustomers.map((customer) => (
+                                {filteredCustomers.map((customer: any) => (
                                     <div 
                                         key={customer.id} 
                                         className="p-2 hover:bg-muted rounded-md cursor-pointer text-sm"

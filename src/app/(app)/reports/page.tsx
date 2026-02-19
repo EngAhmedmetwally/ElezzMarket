@@ -13,7 +13,7 @@ import { ArrowLeft, ArrowRight } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { CommissionChart } from "./components/commission-chart";
 import { useCollection, useDatabase, useMemoFirebase } from "@/firebase";
-import type { Order, User } from "@/lib/types";
+import type { Order, User, Commission } from "@/lib/types";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ref, get } from "firebase/database";
 
@@ -60,10 +60,10 @@ function ReportsSkeleton() {
 }
 
 export default function ReportsPage() {
-  const { language, isRTL } = useLanguage();
-  const isMobile = useIsMobile();
-  const database = useDatabase();
-  const [version] = React.useState(0);
+    const { language, isRTL } = useLanguage();
+    const isMobile = useIsMobile();
+    const database = useDatabase();
+    const [version, setVersion] = React.useState(0);
     const [fromDate, setFromDate] = React.useState<Date | undefined>(
         new Date(new Date().getFullYear(), new Date().getMonth(), 1)
     );
@@ -72,88 +72,62 @@ export default function ReportsPage() {
     );
     const Arrow = isRTL ? ArrowLeft : ArrowRight;
 
-    const [allOrders, setAllOrders] = React.useState<Order[]>([]);
-    const [isLoadingOrders, setIsLoadingOrders] = React.useState(true);
-
-    React.useEffect(() => {
-        if (!database) return;
-        setIsLoadingOrders(true);
-        const ordersRef = ref(database, 'orders');
-        get(ordersRef).then(snapshot => {
-            const fetchedOrders: Order[] = [];
-            if (snapshot.exists()) {
-                const ordersByMonthYear = snapshot.val();
-                Object.keys(ordersByMonthYear).forEach(monthYear => {
-                    const ordersByDay = ordersByMonthYear[monthYear];
-                    Object.keys(ordersByDay).forEach(day => {
-                        const orders = ordersByDay[day];
-                        Object.keys(orders).forEach(orderId => {
-                            fetchedOrders.push({ ...orders[orderId], id: orderId });
-                        });
-                    });
-                });
-            }
-            setAllOrders(fetchedOrders);
-            setIsLoadingOrders(false);
-        }).catch(error => {
-            console.error("Error fetching all orders for reports:", error);
-            setIsLoadingOrders(false);
-        });
-    }, [database, version]);
-
-
-    const usersQuery = useMemoFirebase(() => database ? ref(database, "users") : null, [database]);
+    const usersQuery = useMemoFirebase(() => database ? ref(database, "users") : null, [database, version]);
     const { data: usersData, isLoading: isLoadingUsers } = useCollection<User>(usersQuery);
 
-    const commissionReportData = React.useMemo(() => {
-        if (!allOrders || !usersData) return [];
+    const commissionsQuery = useMemoFirebase(() => database ? ref(database, "commissions") : null, [database, version]);
+    const { data: commissionsData, isLoading: isLoadingCommissions } = useCollection<Commission>(commissionsQuery);
 
-        const filteredOrders = allOrders.filter(order => {
-            if (!order.createdAt) return false;
-            const orderDate = new Date(order.createdAt);
+    const commissionReportData = React.useMemo(() => {
+        if (!commissionsData || !usersData) return [];
+
+        const filteredCommissions = commissionsData.filter(commission => {
+            if (!commission.calculationDate) return false;
+            const commissionDate = new Date(commission.calculationDate);
             if (fromDate) {
                 const fromDateStart = new Date(fromDate);
                 fromDateStart.setHours(0, 0, 0, 0);
-                if (orderDate < fromDateStart) return false;
+                if (commissionDate < fromDateStart) return false;
             }
             if (toDate) {
                 const toDateEnd = new Date(toDate);
                 toDateEnd.setHours(23, 59, 59, 999);
-                if (orderDate > toDateEnd) return false;
+                if (commissionDate > toDateEnd) return false;
             }
             return true;
         });
 
-        const moderators = usersData.filter(u => u.role === 'Moderator');
-        
-        return moderators.map(moderator => {
-        const moderatorOrders = filteredOrders.filter(o => o.moderatorId === moderator.id);
-        
-        const sales = moderatorOrders.reduce((acc, order) => acc + (order.total || 0), 0);
-        const salesCommission = moderatorOrders.reduce((acc, order) => acc + (order.salesCommission || 0), 0);
-        
-        const deliveredOrders = moderatorOrders.filter(o => o.status === 'تم التسليم');
-        const deliveries = deliveredOrders.length;
-        const deliveryCommission = deliveredOrders.reduce((acc, order) => acc + (order.deliveryCommission || 0), 0);
+        const reportMap = new Map<string, { moderator: string; totalCommission: number; details: Map<string, number> }>();
 
-        const totalCommission = salesCommission + deliveryCommission;
+        usersData.forEach(user => {
+            if (user.role === 'Moderator' || user.role === 'Courier') {
+                reportMap.set(user.id, {
+                    moderator: user.name,
+                    totalCommission: 0,
+                    details: new Map(),
+                });
+            }
+        });
+
+        filteredCommissions.forEach(commission => {
+            const userReport = reportMap.get(commission.userId);
+            if (userReport) {
+                userReport.totalCommission += commission.amount;
+                const statusAmount = userReport.details.get(commission.orderStatus) || 0;
+                userReport.details.set(commission.orderStatus, statusAmount + commission.amount);
+            }
+        });
         
-        return {
-            moderator: moderator.name,
-            sales,
-            salesCommission,
-            deliveries,
-            deliveryCommission,
-            totalCommission,
-        };
-        }).filter(d => d.totalCommission > 0 || d.sales > 0);
-    }, [allOrders, usersData, fromDate, toDate]);
+        return Array.from(reportMap.values()).filter(d => d.totalCommission > 0);
+    }, [commissionsData, usersData, fromDate, toDate]);
 
 
     const chartData = commissionReportData.map(d => ({ moderator: d.moderator, totalCommission: d.totalCommission }));
     const formatCurrency = (value: number) => new Intl.NumberFormat(language === 'ar' ? 'ar-EG' : 'en-US', { style: 'currency', currency: 'EGP' }).format(value);
+    
+    const isLoading = isLoadingUsers || isLoadingCommissions;
 
-    if (isLoadingOrders || isLoadingUsers) {
+    if (isLoading) {
       return (
         <div>
           <PageHeader title={language === 'ar' ? 'التقارير' : 'Reports'} />
@@ -172,7 +146,7 @@ export default function ReportsPage() {
             <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
                 <div>
                     <CardTitle>{language === 'ar' ? 'تقرير العمولات التفصيلي' : 'Detailed Commission Report'}</CardTitle>
-                    <CardDescription>{language === 'ar' ? 'ملخص عمولات الوسطاء حسب النطاق الزمني' : 'Moderator commissions summary by date range'}</CardDescription>
+                    <CardDescription>{language === 'ar' ? 'ملخص عمولات الموظفين حسب النطاق الزمني' : 'Staff commissions summary by date range'}</CardDescription>
                 </div>
                 <div className="flex flex-col sm:flex-row items-center gap-2">
                     <DatePicker date={fromDate} onDateChange={setFromDate} placeholder={language === 'ar' ? 'من تاريخ' : 'From Date'} />
@@ -190,10 +164,9 @@ export default function ReportsPage() {
                                 <CardDescription>{language === 'ar' ? 'إجمالي العمولة:' : 'Total Commission:'} <span className="font-bold text-primary">{formatCurrency(row.totalCommission)}</span></CardDescription>
                             </CardHeader>
                             <CardContent className="space-y-2 text-sm">
-                                <div className="flex justify-between"><span>{language === 'ar' ? 'المبيعات' : 'Sales'}</span> <span>{formatCurrency(row.sales)}</span></div>
-                                <div className="flex justify-between"><span>{language === 'ar' ? 'عمولة البيع' : 'Sales Commission'}</span> <span>{formatCurrency(row.salesCommission)}</span></div>
-                                <div className="flex justify-between"><span>{language === 'ar' ? 'التسليمات' : 'Deliveries'}</span> <span>{row.deliveries}</span></div>
-                                <div className="flex justify-between"><span>{language === 'ar' ? 'عمولة التسليم' : 'Delivery Commission'}</span> <span>{formatCurrency(row.deliveryCommission)}</span></div>
+                                {Array.from(row.details.entries()).map(([status, amount]) => (
+                                    <div className="flex justify-between" key={status}><span>{language === 'ar' ? 'عمولة' : 'Commission'}: {status}</span> <span>{formatCurrency(amount)}</span></div>
+                                ))}
                             </CardContent>
                         </Card>
                     ))}
@@ -202,11 +175,11 @@ export default function ReportsPage() {
                 <Table>
                 <TableHeader>
                     <TableRow>
-                    <TableHead className="text-start">{language === 'ar' ? 'الوسيط' : 'Moderator'}</TableHead>
-                    <TableHead className="text-end">{language === 'ar' ? 'المبيعات' : 'Sales'}</TableHead>
-                    <TableHead className="text-end">{language === 'ar' ? 'عمولة البيع' : 'Sales Commission'}</TableHead>
-                    <TableHead className="text-end">{language === 'ar' ? 'التسليمات' : 'Deliveries'}</TableHead>
-                    <TableHead className="text-end">{language === 'ar' ? 'عمولة التسليم' : 'Delivery Commission'}</TableHead>
+                    <TableHead className="text-start">{language === 'ar' ? 'الموظف' : 'Staff'}</TableHead>
+                    <TableHead className="text-end">{language === 'ar' ? 'عمولة التسجيل' : 'Registration Comm.'}</TableHead>
+                    <TableHead className="text-end">{language === 'ar' ? 'عمولة التجهيز' : 'Processing Comm.'}</TableHead>
+                    <TableHead className="text-end">{language === 'ar' ? 'عمولة تسليم للمندوب' : 'Courier Handover Comm.'}</TableHead>
+                    <TableHead className="text-end">{language === 'ar' ? 'عمولة تسليم للعميل' : 'Customer Delivery Comm.'}</TableHead>
                     <TableHead className="text-end">{language === 'ar' ? 'إجمالي العمولة' : 'Total Commission'}</TableHead>
                     </TableRow>
                 </TableHeader>
@@ -214,10 +187,10 @@ export default function ReportsPage() {
                     {commissionReportData.map((row, index) => (
                     <TableRow key={index}>
                         <TableCell className="font-medium text-start">{row.moderator}</TableCell>
-                        <TableCell className="text-end">{formatCurrency(row.sales)}</TableCell>
-                        <TableCell className="text-end">{formatCurrency(row.salesCommission)}</TableCell>
-                        <TableCell className="text-end">{row.deliveries}</TableCell>
-                        <TableCell className="text-end">{formatCurrency(row.deliveryCommission)}</TableCell>
+                        <TableCell className="text-end">{formatCurrency(row.details.get('تم التسجيل') || 0)}</TableCell>
+                        <TableCell className="text-end">{formatCurrency(row.details.get('قيد التجهيز') || 0)}</TableCell>
+                        <TableCell className="text-end">{formatCurrency(row.details.get('تم التسليم للمندوب') || 0)}</TableCell>
+                        <TableCell className="text-end">{formatCurrency(row.details.get('تم التسليم للعميل') || 0)}</TableCell>
                         <TableCell className="text-end font-medium">{formatCurrency(row.totalCommission)}</TableCell>
                     </TableRow>
                     ))}

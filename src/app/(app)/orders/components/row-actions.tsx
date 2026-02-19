@@ -6,9 +6,9 @@ import { MoreHorizontal, Search } from "lucide-react";
 import Link from "next/link";
 import { useLanguage } from "@/components/language-provider";
 import { useToast } from "@/hooks/use-toast";
-import type { Order, OrderStatus, User, StatusHistoryItem, CommissionRule } from "@/lib/types";
+import type { Order, OrderStatus, User, StatusHistoryItem, Commission, CommissionRule } from "@/lib/types";
 import { cn } from "@/lib/utils";
-import { ref, update, runTransaction } from "firebase/database";
+import { ref, update, runTransaction, get, push } from "firebase/database";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -33,9 +33,10 @@ interface RowActionsProps {
 }
 
 const allowedTransitions: Record<OrderStatus, OrderStatus[]> = {
-    "تم الحجز": ["تم الارسال", "ملغي"],
-    "تم الارسال": ["تم التسليم", "ملغي"],
-    "تم التسليم": [],
+    "تم التسجيل": ["قيد التجهيز", "تم التسليم للمندوب", "ملغي"],
+    "قيد التجهيز": ["تم التسليم للمندوب", "ملغي"],
+    "تم التسليم للمندوب": ["تم التسليم للعميل", "ملغي"],
+    "تم التسليم للعميل": [],
     "ملغي": [],
 };
 
@@ -55,9 +56,6 @@ export function RowActions({ order, onUpdate }: RowActionsProps) {
   const usersRef = useMemoFirebase(() => database ? ref(database, `users`) : null, [database]);
   const { data: users } = useCollection<User>(usersRef);
   
-  const rulesRef = useMemoFirebase(() => database ? ref(database, `commission-rules`) : null, [database]);
-  const { data: commissionRules } = useCollection<CommissionRule>(rulesRef);
-
   const couriers = React.useMemo(() => users?.filter(u => u.role === 'Courier') || [], [users]);
   const filteredCouriers = couriers.filter(c => c.name.toLowerCase().includes(courierSearch.toLowerCase()));
   
@@ -72,116 +70,98 @@ export function RowActions({ order, onUpdate }: RowActionsProps) {
     setIsModalOpen(true);
   };
   
-  const handleSaveStatusChange = async () => {
-    if (!database || !authUser || !order.id) {
-        toast({
-            variant: "destructive",
-            title: language === 'ar' ? 'خطأ' : 'Error',
-            description: language === 'ar' ? 'بيانات الطلب أو المستخدم غير مكتملة.' : 'Order or user data is incomplete.',
-        });
-        return;
-    }
-
-    if (!selectedStatus) {
-        toast({
-            variant: "destructive",
-            title: language === 'ar' ? 'خطأ' : 'Error',
-            description: language === 'ar' ? 'يرجى اختيار حالة جديدة.' : 'Please select a new status.',
-        });
+   const handleStatusUpdate = async (newStatus: OrderStatus, noteText: string, courierId?: string | null) => {
+    if (!order || !database || !authUser || !order.path) {
+        toast({ variant: "destructive", title: language === 'ar' ? 'خطأ' : 'Error', description: "Order data is incomplete."});
         return;
     }
     
-    if (!order.path) {
-        console.error("Order path is missing, cannot update status.", order);
-        toast({
-            variant: "destructive",
-            title: language === 'ar' ? 'خطأ في التحديث' : "Update Error",
-            description: language === 'ar' ? 'مسار الطلب مفقود، لا يمكن تحديث الحالة.' : "Order path is missing, cannot update status.",
-        });
-        return;
-    }
-    
-    if (selectedStatus === 'ملغي' && order.status !== 'ملغي') {
-        const productSaleUpdatePromises = (order.items || []).map(item => {
-            if (!item.productId) {
-                console.warn(`Cannot update sales count for item without a productId: ${item.productName}`);
-                return Promise.resolve();
-            }
-            const productSalesRef = ref(database, `products/${item.productId}/salesCount`);
-            return runTransaction(productSalesRef, (currentCount) => {
-                const newCount = (currentCount || 0) - item.quantity;
-                return newCount < 0 ? 0 : newCount;
-            });
-        });
+    let updates: any = {};
+    const now = new Date().toISOString();
+    const orderRef = ref(database, `orders/${order.path}/${order.id}`);
 
-        try {
-            await Promise.all(productSaleUpdatePromises);
-        } catch (error) {
-            console.error("Failed to decrement product sales counts", error);
-            toast({
-                variant: "destructive",
-                title: language === 'ar' ? 'خطأ في التحديث' : "Update Error",
-                description: language === 'ar' ? 'فشل تحديث إحصائيات مبيعات المنتج أثناء الإلغاء.' : "Failed to update product sales counts during cancellation.",
-            });
+    // 1. Handle Commission
+    const commissionRulesSnap = await get(ref(database, 'commission-rules'));
+    const commissionRules = commissionRulesSnap.val();
+    const commissionAmount = commissionRules?.[newStatus]?.amount || 0;
+
+    if (commissionAmount > 0) {
+        let recipientId: string | undefined;
+        if (["تم التسجيل", "قيد التجهيز"].includes(newStatus)) {
+            recipientId = order.moderatorId;
+        } else if (["تم التسليم للمندوب", "تم التسليم للعميل"].includes(newStatus)) {
+            recipientId = courierId || order.courierId;
+        }
+
+        if (recipientId) {
+            const newCommissionRef = push(ref(database, 'commissions'));
+            const newCommission: Commission = {
+                id: newCommissionRef.key!,
+                orderId: order.id,
+                userId: recipientId,
+                orderStatus: newStatus,
+                amount: commissionAmount,
+                calculationDate: now,
+                paymentStatus: 'Calculated',
+            };
+            updates[`/commissions/${newCommission.id}`] = newCommission;
+            updates[`/orders/${order.path}/${order.id}/totalCommission`] = (order.totalCommission || 0) + commissionAmount;
         }
     }
 
-    const orderRef = ref(database, `orders/${order.path}/${order.id}`);
-
-    const selectedCourier = couriers.find(c => c.id === selectedCourierId);
-
-    if (selectedStatus === "تم الارسال" && !selectedCourier) {
-      toast({
-        variant: "destructive",
-        title: language === 'ar' ? 'خطأ' : 'Error',
-        description: language === 'ar' ? 'يرجى اختيار مندوب.' : 'Please select a courier.',
-      });
-      return;
+    // 2. Handle Product Sales Count for Cancellation
+    if (newStatus === 'ملغي' && order.status !== 'ملغي') {
+        const productSaleUpdatePromises = (order.items || []).map(item => {
+            if (!item.productId) return Promise.resolve();
+            const productSalesRef = ref(database, `products/${item.productId}/salesCount`);
+            return runTransaction(productSalesRef, (currentCount) => (currentCount || 0) - item.quantity);
+        });
+        await Promise.all(productSaleUpdatePromises).catch(err => console.error("Failed to decrement sales count", err));
     }
     
-    let salesComm = order.salesCommission || 0;
-    let deliveryComm = order.deliveryCommission || 0;
-
-    if (selectedStatus === 'تم الارسال' && commissionRules) {
-        const salesCommissionRule = commissionRules.find(r => r.id === 'sale');
-        salesComm = salesCommissionRule?.amount || 0;
-    } else if (selectedStatus === 'تم التسليم' && commissionRules) {
-        const deliveryCommissionRule = commissionRules.find(r => r.id === 'delivery');
-        deliveryComm = deliveryCommissionRule?.amount || 0;
-    } else if (selectedStatus === 'ملغي') {
-        salesComm = 0;
-        deliveryComm = 0;
-    }
-    
-    const currentHistory = (order.statusHistory && (Array.isArray(order.statusHistory) ? order.statusHistory : Object.values(order.statusHistory))) || [];
-
+    // 3. Prepare Order Update
     const newHistoryItem: StatusHistoryItem = {
-        status: selectedStatus,
-        notes: note,
-        createdAt: new Date().toISOString(),
+        status: newStatus,
+        notes: noteText,
+        createdAt: now,
         userName: authUser.name || "مستخدم مسؤول",
     };
+    const currentHistory = (order.statusHistory && (Array.isArray(order.statusHistory) ? order.statusHistory : Object.values(order.statusHistory))) || [];
 
-    const updates: Partial<Order> = {
-        status: selectedStatus,
-        courierId: selectedCourier?.id ?? order.courierId,
-        courierName: selectedCourier?.name ?? order.courierName,
-        salesCommission: salesComm,
-        deliveryCommission: deliveryComm,
-        statusHistory: [...currentHistory, newHistoryItem],
-        updatedAt: new Date().toISOString(),
-    };
+    updates[`/orders/${order.path}/${order.id}/status`] = newStatus;
+    updates[`/orders/${order.path}/${order.id}/updatedAt`] = now;
+    updates[`/orders/${order.path}/${order.id}/statusHistory`] = [...currentHistory, newHistoryItem];
+    if (courierId) {
+      const selectedCourier = couriers.find(c => c.id === courierId);
+      if(selectedCourier) {
+        updates[`/orders/${order.path}/${order.id}/courierId`] = selectedCourier.id;
+        updates[`/orders/${order.path}/${order.id}/courierName`] = selectedCourier.name;
+      }
+    }
     
-    await update(orderRef, updates);
+    // 4. Execute all updates
+    await update(ref(database), updates);
     onUpdate();
     
     toast({
       title: language === 'ar' ? 'تم تحديث الحالة' : 'Status Updated',
-      description: `${language === 'ar' ? 'تم تحديث حالة الطلب إلى' : 'Order status updated to'} ${selectedStatus}.`,
+      description: `${language === 'ar' ? 'تم تحديث حالة الطلب إلى' : 'Order status updated to'} ${newStatus}.`,
     });
     
     setIsModalOpen(false);
   };
+
+  const handleSaveWithValidation = () => {
+    if (!selectedStatus) {
+        toast({ variant: "destructive", title: language === 'ar' ? 'خطأ' : 'Error', description: language === 'ar' ? 'يرجى اختيار حالة جديدة.' : 'Please select a new status.' });
+        return;
+    }
+     if (selectedStatus === 'تم التسليم للمندوب' && !selectedCourierId) {
+      toast({ variant: "destructive", title: language === 'ar' ? 'خطأ' : 'Error', description: language === 'ar' ? 'يرجى اختيار مندوب.' : 'Please select a courier.' });
+      return;
+    }
+    handleStatusUpdate(selectedStatus, note, selectedCourierId);
+  }
 
   return (
     <>
@@ -231,7 +211,7 @@ export function RowActions({ order, onUpdate }: RowActionsProps) {
                     </SelectContent>
                 </Select>
 
-                {selectedStatus === "تم الارسال" && (
+                {selectedStatus === "تم التسليم للمندوب" && (
                     <div className="space-y-2 rounded-lg border p-4">
                         <h4 className="font-semibold text-sm">{language === 'ar' ? 'إسناد مندوب' : 'Assign Courier'}</h4>
                         <div className="relative">
@@ -277,7 +257,7 @@ export function RowActions({ order, onUpdate }: RowActionsProps) {
                 <DialogClose asChild>
                     <Button variant="outline">{language === 'ar' ? 'إلغاء' : 'Cancel'}</Button>
                 </DialogClose>
-                <Button onClick={handleSaveStatusChange}>{language === 'ar' ? 'حفظ التغيير' : 'Save Change'}</Button>
+                <Button onClick={handleSaveWithValidation}>{language === 'ar' ? 'حفظ التغيير' : 'Save Change'}</Button>
             </DialogFooter>
         </DialogContent>
       </Dialog>

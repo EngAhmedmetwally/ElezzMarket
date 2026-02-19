@@ -1,6 +1,4 @@
 
-
-
 export type UserRole = "Admin" | "Moderator" | "Courier";
 
 export type Permissions = {
@@ -27,9 +25,10 @@ export type User = {
 };
 
 export type OrderStatus =
-  | "تم الحجز"
-  | "تم الارسال"
-  | "تم التسليم"
+  | "تم التسجيل"
+  | "قيد التجهيز"
+  | "تم التسليم للمندوب"
+  | "تم التسليم للعميل"
   | "ملغي";
 
 export type OrderItem = {
@@ -57,8 +56,7 @@ export type Order = {
   status: OrderStatus;
   items: OrderItem[];
   total: number;
-  salesCommission?: number;
-  deliveryCommission?: number;
+  totalCommission?: number;
   moderatorId: string;
   moderatorName: string;
   courierId?: string;
@@ -69,12 +67,20 @@ export type Order = {
 };
 
 export type CommissionRule = {
-  id: string;
-  type: 'بيع' | 'تسليم';
+  id: string; // Corresponds to OrderStatus
   amount: number;
-  fromDate: string;
-  toDate: string;
 };
+
+export type Commission = {
+  id: string;
+  orderId: string;
+  userId: string; // Moderator or Courier ID
+  orderStatus: OrderStatus;
+  amount: number;
+  calculationDate: string;
+  paymentStatus: 'Calculated' | 'Paid';
+};
+
 
 export type Product = {
   id: string;

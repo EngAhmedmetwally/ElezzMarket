@@ -5,8 +5,6 @@ import * as React from "react"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
 import * as z from "zod"
-import { format } from "date-fns"
-import { ref, set } from "firebase/database"
 
 import { Button } from "@/components/ui/button"
 import { PageHeader } from "@/components/page-header";
@@ -16,128 +14,84 @@ import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast"
 import { useLanguage } from "@/components/language-provider"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { DatePicker } from "@/components/ui/datepicker"
-import { useIsMobile } from "@/hooks/use-mobile"
 import { useCollection, useDatabase, useMemoFirebase } from "@/firebase"
-import type { CommissionRule } from "@/lib/types"
+import type { CommissionRule, OrderStatus } from "@/lib/types"
+import { ref, set } from "firebase/database"
+
+const commissionableStatuses: OrderStatus[] = ["تم التسجيل", "قيد التجهيز", "تم التسليم للمندوب", "تم التسليم للعميل"];
 
 const commissionFormSchema = z.object({
-  sale: z.object({
-    amount: z.coerce.number({invalid_type_error: "Please enter a number."}).min(0),
-    fromDate: z.date({ required_error: "A from date is required." }),
-    toDate: z.date({ required_error: "A to date is required." }),
-  }),
-  delivery: z.object({
-    amount: z.coerce.number({invalid_type_error: "Please enter a number."}).min(0),
-    fromDate: z.date({ required_error: "A from date is required." }),
-    toDate: z.date({ required_error: "A to date is required." }),
-  }),
+  "تم التسجيل": z.coerce.number().min(0, "يجب أن يكون المبلغ 0 أو أكثر"),
+  "قيد التجهيز": z.coerce.number().min(0, "يجب أن يكون المبلغ 0 أو أكثر"),
+  "تم التسليم للمندوب": z.coerce.number().min(0, "يجب أن يكون المبلغ 0 أو أكثر"),
+  "تم التسليم للعميل": z.coerce.number().min(0, "يجب أن يكون المبلغ 0 أو أكثر"),
 });
 
 type CommissionFormValues = z.infer<typeof commissionFormSchema>;
 
-function CommissionSection({ form, type, title, titleAr }: { form: any, type: "sale" | "delivery", title: string, titleAr: string }) {
-  const { language } = useLanguage();
-  
-  return (
-    <div className="space-y-4 rounded-lg border p-4">
-      <h4 className="font-semibold">{language === 'ar' ? titleAr : title}</h4>
-       <div className="grid md:grid-cols-3 gap-4 items-start">
-        <FormField
-          control={form.control}
-          name={`${type}.amount`}
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>{language === 'ar' ? 'المبلغ' : 'Amount'}</FormLabel>
-              <FormControl>
-                <Input type="number" placeholder="50" {...field} value={field.value ?? ''} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-        <FormField
-          control={form.control}
-          name={`${type}.fromDate`}
-          render={({ field }) => (
-            <FormItem className="flex flex-col">
-              <FormLabel>{language === 'ar' ? 'من تاريخ' : 'From Date'}</FormLabel>
-               <DatePicker date={field.value} onDateChange={field.onChange} placeholder={language === 'ar' ? "اختر تاريخ البدء" : "Pick a start date"} />
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-        <FormField
-          control={form.control}
-          name={`${type}.toDate`}
-          render={({ field }) => (
-            <FormItem className="flex flex-col">
-              <FormLabel>{language === 'ar' ? 'إلى تاريخ' : 'To Date'}</FormLabel>
-               <DatePicker date={field.value} onDateChange={field.onChange} placeholder={language === 'ar' ? "اختر تاريخ الانتهاء" : "Pick an end date"} />
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-      </div>
-    </div>
-  )
-}
-
 export default function CommissionsPage() {
   const { toast } = useToast()
   const { language } = useLanguage();
-  const isMobile = useIsMobile();
   const database = useDatabase();
 
-  const rulesQuery = useMemoFirebase(() => database ? ref(database, "commission-rules") : null, [database]);
-  const { data: commissionRules } = useCollection<CommissionRule>(rulesQuery);
+  const rulesRef = useMemoFirebase(() => database ? ref(database, "commission-rules") : null, [database]);
+  const { data: commissionRulesData, isLoading } = useCollection<CommissionRule>(rulesRef);
   
   const form = useForm<CommissionFormValues>({
     resolver: zodResolver(commissionFormSchema),
+    defaultValues: {
+      "تم التسجيل": 0,
+      "قيد التجهيز": 0,
+      "تم التسليم للمندوب": 0,
+      "تم التسليم للعميل": 0,
+    }
   });
 
-  React.useEffect(() => {
-    if (commissionRules) {
-      const saleRule = commissionRules.find(r => r.id === 'sale');
-      const deliveryRule = commissionRules.find(r => r.id === 'delivery');
-      
-      form.reset({
-        sale: {
-          amount: saleRule?.amount || 0,
-          fromDate: saleRule?.fromDate ? new Date(saleRule.fromDate) : new Date(),
-          toDate: saleRule?.toDate ? new Date(saleRule.toDate) : new Date(),
-        },
-        delivery: {
-          amount: deliveryRule?.amount || 0,
-          fromDate: deliveryRule?.fromDate ? new Date(deliveryRule.fromDate) : new Date(),
-          toDate: deliveryRule?.toDate ? new Date(deliveryRule.toDate) : new Date(),
-        },
-      });
+  const commissionRules = React.useMemo(() => {
+    if (!commissionRulesData) return [];
+    // The hook returns an array, but our data is an object.
+    // Let's handle both cases for robustness.
+    if (Array.isArray(commissionRulesData)) {
+      return commissionRulesData;
     }
-  }, [commissionRules, form]);
+    return Object.entries(commissionRulesData).map(([id, value]) => ({ id, ...value as any }));
+  }, [commissionRulesData]);
+
+
+  React.useEffect(() => {
+    if (commissionRulesData) {
+      const initialValues: any = {};
+      
+      const rulesMap = new Map<string, number>();
+      // Handle if data is array or object
+      if(Array.isArray(commissionRulesData)) {
+        commissionRulesData.forEach(rule => rulesMap.set(rule.id, rule.amount));
+      } else if (typeof commissionRulesData === 'object' && commissionRulesData !== null) {
+        Object.entries(commissionRulesData).forEach(([id, rule]: [string, any]) => {
+          if(rule && typeof rule.amount === 'number') {
+            rulesMap.set(id, rule.amount);
+          }
+        });
+      }
+
+      commissionableStatuses.forEach(status => {
+        initialValues[status] = rulesMap.get(status) || 0;
+      });
+
+      form.reset(initialValues);
+    }
+  }, [commissionRulesData, form]);
 
   async function onSubmit(data: CommissionFormValues) {
     if (!database) return;
 
     try {
-        const saleRuleRef = ref(database, 'commission-rules/sale');
-        const deliveryRuleRef = ref(database, 'commission-rules/delivery');
+        const rulesToSave: { [key: string]: { amount: number } } = {};
+        commissionableStatuses.forEach(status => {
+            rulesToSave[status] = { amount: data[status] || 0 };
+        });
 
-        const newSaleRule: Omit<CommissionRule, 'id'> = {
-          type: 'بيع',
-          amount: data.sale.amount,
-          fromDate: data.sale.fromDate.toISOString(),
-          toDate: data.sale.toDate.toISOString(),
-        };
-        const newDeliveryRule: Omit<CommissionRule, 'id'> = {
-          type: 'تسليم',
-          amount: data.delivery.amount,
-          fromDate: data.delivery.fromDate.toISOString(),
-          toDate: data.delivery.toDate.toISOString(),
-        };
-        
-        await set(saleRuleRef, newSaleRule);
-        await set(deliveryRuleRef, newDeliveryRule);
+        await set(ref(database, 'commission-rules'), rulesToSave);
         
         toast({
           title: language === 'ar' ? 'تم تحديث العمولات' : "Commissions Updated",
@@ -162,17 +116,34 @@ export default function CommissionsPage() {
         <CardHeader>
           <CardTitle>{language === 'ar' ? 'إدارة نظام العمولات' : 'Commission System Management'}</CardTitle>
           <CardDescription>
-            {language === 'ar' ? 'قم بتعيين مبالغ العمولات ونطاقاتها الزمنية لأنواع الإجراءات المختلفة.' : 'Set commission amounts and their date ranges for different action types.'}
+            {language === 'ar' ? 'قم بتعيين مبالغ العمولات لكل حالة من حالات الطلب.' : 'Set commission amounts for each order status.'}
           </CardDescription>
         </CardHeader>
         <CardContent>
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-              <CommissionSection form={form} type="sale" title="Sale Commission" titleAr="عمولة البيع" />
-              <CommissionSection form={form} type="delivery" title="Delivery Commission" titleAr="عمولة التسليم" />
-
+              <div className="grid md:grid-cols-2 gap-8">
+                {commissionableStatuses.map(status => (
+                  <FormField
+                    key={status}
+                    control={form.control}
+                    name={status}
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>{status}</FormLabel>
+                        <FormControl>
+                          <Input type="number" placeholder="0" {...field} value={field.value ?? ''} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                ))}
+              </div>
               <div className="flex justify-end">
-                <Button type="submit">{language === 'ar' ? 'حفظ التغييرات' : 'Save Changes'}</Button>
+                <Button type="submit" disabled={form.formState.isSubmitting}>
+                  {language === 'ar' ? 'حفظ التغييرات' : 'Save Changes'}
+                </Button>
               </div>
             </form>
           </Form>
@@ -181,50 +152,30 @@ export default function CommissionsPage() {
 
        <Card>
         <CardHeader>
-          <CardTitle>{language === 'ar' ? 'قواعد العمولات المسجلة' : 'Registered Commission Rules'}</CardTitle>
-          <CardDescription>{language === 'ar' ? 'قائمة بقواعد العمولات الحالية.' : 'List of current commission rules.'}</CardDescription>
+          <CardTitle>{language === 'ar' ? 'قواعد العمولات الحالية' : 'Current Commission Rules'}</CardTitle>
+          <CardDescription>{language === 'ar' ? 'قائمة بمبالغ العمولات الحالية لكل حالة.' : 'List of current commission amounts per status.'}</CardDescription>
         </CardHeader>
         <CardContent>
-          {isMobile ? (
-             <div className="space-y-4">
-                {commissionRules?.map((rule) => (
-                    <Card key={rule.id}>
-                        <CardHeader className="p-4">
-                            <CardTitle className="text-lg">{rule.type}</CardTitle>
-                            <CardDescription>{language === 'ar' ? 'المبلغ:' : 'Amount:'} <span className="font-bold text-primary">{formatCurrency(rule.amount)}</span></CardDescription>
-                        </CardHeader>
-                        <CardContent className="p-4 pt-0 text-sm space-y-1">
-                            <div className="flex justify-between">
-                                <span className="text-muted-foreground">{language === 'ar' ? 'من تاريخ:' : 'From:'}</span>
-                                <span>{rule.fromDate ? format(new Date(rule.fromDate), "PPP") : '-'}</span>
-                            </div>
-                            <div className="flex justify-between">
-                                <span className="text-muted-foreground">{language === 'ar' ? 'إلى تاريخ:' : 'To:'}</span>
-                                <span>{rule.toDate ? format(new Date(rule.toDate), "PPP") : '-'}</span>
-                            </div>
-                        </CardContent>
-                    </Card>
-                ))}
-             </div>
+          {isLoading ? (
+            <p>{language === 'ar' ? 'جاري التحميل...' : 'Loading...'}</p>
           ) : (
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="text-start">{language === 'ar' ? 'النوع' : 'Type'}</TableHead>
+                  <TableHead>{language === 'ar' ? 'الحالة' : 'Status'}</TableHead>
                   <TableHead className="text-end">{language === 'ar' ? 'المبلغ' : 'Amount'}</TableHead>
-                  <TableHead className="text-center">{language === 'ar' ? 'من تاريخ' : 'From Date'}</TableHead>
-                  <TableHead className="text-center">{language === 'ar' ? 'إلى تاريخ' : 'To Date'}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {commissionRules?.map((rule) => (
-                  <TableRow key={rule.id}>
-                    <TableCell className="font-medium text-start">{rule.type}</TableCell>
-                    <TableCell className="text-end">{formatCurrency(rule.amount)}</TableCell>
-                    <TableCell className="text-center">{rule.fromDate ? format(new Date(rule.fromDate), "PPP") : '-'}</TableCell>
-                    <TableCell className="text-center">{rule.toDate ? format(new Date(rule.toDate), "PPP") : '-'}</TableCell>
-                  </TableRow>
-                ))}
+                {commissionableStatuses.map((status) => {
+                  const rule = commissionRules.find(r => r.id === status);
+                  return (
+                    <TableRow key={status}>
+                      <TableCell className="font-medium">{status}</TableCell>
+                      <TableCell className="text-end">{formatCurrency(rule?.amount || 0)}</TableCell>
+                    </TableRow>
+                  );
+                })}
               </TableBody>
             </Table>
           )}
