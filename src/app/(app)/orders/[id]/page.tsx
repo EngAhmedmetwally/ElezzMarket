@@ -26,6 +26,7 @@ import { ref, update, runTransaction, get, push, child, set } from "firebase/dat
 import { Skeleton } from "@/components/ui/skeleton";
 import { useCachedDoc } from "@/hooks/use-cached-doc";
 import { useCachedCollection } from "@/hooks/use-cached-collection";
+import { syncCollection } from "@/lib/data-sync";
 
 const allowedTransitions: Record<OrderStatus, OrderStatus[]> = {
     "تم التسجيل": ["قيد التجهيز", "ملغي"],
@@ -246,7 +247,7 @@ export default function OrderDetailsPage() {
         const commissionRules = commissionRulesSnap.val();
         const commissionAmount = commissionRules?.[newStatus]?.amount || 0;
 
-        await runTransaction(orderRef, (currentOrder) => {
+        const transactionResult = await runTransaction(orderRef, (currentOrder) => {
             if (currentOrder) {
                 const newHistoryKey = push(child(orderRef, 'statusHistory')).key;
                 if (!currentOrder.statusHistory) {
@@ -283,9 +284,11 @@ export default function OrderDetailsPage() {
             return currentOrder;
         });
 
+        // Force an immediate sync after the transaction
+        await syncCollection(database, 'orders', true);
+
         if (commissionAmount > 0) {
-            const latestOrderSnap = await get(orderRef);
-            const latestOrder = latestOrderSnap.val();
+            const latestOrder = transactionResult.snapshot.val();
             
             if (latestOrder) {
                 let recipientId: string | undefined;
@@ -306,6 +309,8 @@ export default function OrderDetailsPage() {
                     };
                     const newCommRef = push(ref(database, 'commissions'));
                     await set(newCommRef, newCommission);
+                    // Also sync commissions
+                    await syncCollection(database, 'commissions', true);
                 }
             }
         }
@@ -317,6 +322,8 @@ export default function OrderDetailsPage() {
                 return runTransaction(productSalesRef, (currentCount) => (currentCount || 0) - item.quantity);
             });
             await Promise.all(productSaleUpdatePromises);
+            // Also sync products
+            await syncCollection(database, 'products', true);
         }
 
         toast({
@@ -572,3 +579,5 @@ export default function OrderDetailsPage() {
     </>
   );
 }
+
+    
