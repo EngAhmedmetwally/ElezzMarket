@@ -67,7 +67,7 @@ export type Order = {
   courierName?: string;
   createdAt: string;
   updatedAt: string;
-  statusHistory: StatusHistoryItem[];
+  statusHistory: Record<string, StatusHistoryItem>;
 };
 
 export type CommissionRule = {

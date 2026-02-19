@@ -33,11 +33,11 @@ const allowedTransitions: Record<OrderStatus, OrderStatus[]> = {
     "ملغي": [],
 };
 
-function StatusHistoryTimeline({ history }: { history?: StatusHistoryItem[] }) {
+function StatusHistoryTimeline({ history }: { history?: Record<string, StatusHistoryItem> }) {
     const { language } = useLanguage();
     const sortedHistory = React.useMemo(() => {
         if (!history) return [];
-        const historyArray = Array.isArray(history) ? history : Object.values(history);
+        const historyArray = Object.values(history);
         return historyArray.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
     }, [history]);
     
@@ -227,85 +227,98 @@ export default function OrderDetailsPage() {
   const handleStatusUpdate = async (newStatus: OrderStatus, noteText: string, courierId?: string | null) => {
     if (!order || !database || !authUser || !orderRef) return;
     
-    let updates: any = {};
-    const now = new Date().toISOString();
-    
-    // 1. Handle Commission
-    const commissionRulesSnap = await get(ref(database, 'commission-rules'));
-    const commissionRules = commissionRulesSnap.val();
-    const commissionAmount = commissionRules?.[newStatus]?.amount || 0;
+    try {
+        let updates: any = {};
+        const now = new Date().toISOString();
+        
+        // 1. Handle Commission
+        const commissionRulesSnap = await get(ref(database, 'commission-rules'));
+        const commissionRules = commissionRulesSnap.val();
+        const commissionAmount = commissionRules?.[newStatus]?.amount || 0;
 
-    if (commissionAmount > 0) {
-        let recipientId: string | undefined;
-        if (["تم التسجيل", "قيد التجهيز"].includes(newStatus)) {
-            recipientId = order.moderatorId;
-        } else if (["تم الشحن", "مكتمل"].includes(newStatus)) {
-            recipientId = courierId || order.courierId;
+        if (commissionAmount > 0) {
+            let recipientId: string | undefined;
+            if (["تم التسجيل", "قيد التجهيز"].includes(newStatus)) {
+                recipientId = order.moderatorId;
+            } else if (["تم الشحن", "مكتمل"].includes(newStatus)) {
+                recipientId = courierId || order.courierId;
+            }
+
+            if (recipientId) {
+                const newCommissionRef = push(ref(database, 'commissions'));
+                const newCommission: Commission = {
+                    id: newCommissionRef.key!,
+                    orderId: order.id,
+                    userId: recipientId,
+                    orderStatus: newStatus,
+                    amount: commissionAmount,
+                    calculationDate: now,
+                    paymentStatus: 'Calculated',
+                };
+                updates[`/commissions/${newCommission.id}`] = newCommission;
+                updates[`/${orderRef.path}/totalCommission`] = (order.totalCommission || 0) + commissionAmount;
+            }
         }
 
-        if (recipientId) {
-            const newCommissionRef = push(ref(database, 'commissions'));
-            const newCommission: Commission = {
-                id: newCommissionRef.key!,
-                orderId: order.id,
-                userId: recipientId,
-                orderStatus: newStatus,
-                amount: commissionAmount,
-                calculationDate: now,
-                paymentStatus: 'Calculated',
-            };
-            updates[`/commissions/${newCommission.id}`] = newCommission;
-            updates[`/${orderRef.path}/totalCommission`] = (order.totalCommission || 0) + commissionAmount;
+        // 2. Handle Product Sales Count for Cancellation
+        if (newStatus === 'ملغي' && order.status !== 'ملغي') {
+            const productSaleUpdatePromises = (order.items || []).map(item => {
+                if (!item.productId) return Promise.resolve();
+                const productSalesRef = ref(database, `products/${item.productId}/salesCount`);
+                return runTransaction(productSalesRef, (currentCount) => (currentCount || 0) - item.quantity);
+            });
+            await Promise.all(productSaleUpdatePromises).catch(err => console.error("Failed to decrement sales count", err));
         }
-    }
 
-    // 2. Handle Product Sales Count for Cancellation
-    if (newStatus === 'ملغي' && order.status !== 'ملغي') {
-        const productSaleUpdatePromises = (order.items || []).map(item => {
-            if (!item.productId) return Promise.resolve();
-            const productSalesRef = ref(database, `products/${item.productId}/salesCount`);
-            return runTransaction(productSalesRef, (currentCount) => (currentCount || 0) - item.quantity);
+        // 3. Prepare Order Update
+        const newHistoryItem: StatusHistoryItem = {
+            status: newStatus,
+            notes: noteText,
+            createdAt: now,
+            userName: authUser.name || authUser.email || "مستخدم مسؤول",
+        };
+        
+        const newHistoryKey = push(ref(database, `${orderRef.path}/statusHistory`)).key;
+        const newStatusHistory = {
+            ...(order.statusHistory || {}),
+            [newHistoryKey!]: newHistoryItem
+        };
+
+        updates[`/${orderRef.path}/status`] = newStatus;
+        updates[`/${orderRef.path}/updatedAt`] = now;
+        updates[`/${orderRef.path}/statusHistory`] = newStatusHistory;
+
+        if (courierId) {
+          const selectedCourier = couriers.find(c => c.id === courierId);
+          if(selectedCourier) {
+            updates[`/${orderRef.path}/courierId`] = selectedCourier.id;
+            updates[`/${orderRef.path}/courierName`] = selectedCourier.name;
+          }
+        }
+        
+        // 4. Execute all updates
+        await update(ref(database), updates);
+
+        toast({
+            title: language === 'ar' ? 'تم تحديث الحالة' : 'Status Updated',
+            description: `${language === 'ar' ? 'تم تحديث حالة الطلب إلى' : 'Order status updated to'} ${newStatus}.`,
         });
-        await Promise.all(productSaleUpdatePromises).catch(err => console.error("Failed to decrement sales count", err));
+
+        // 5. Reset state
+        setIsNoteModalOpen(false);
+        setIsCourierModalOpen(false);
+        setNote("");
+        setSelectedStatus(null);
+        setSelectedCourierId(null);
+        setCourierSearch("");
+    } catch (e: any) {
+        console.error("Status update failed:", e);
+        toast({
+            variant: "destructive",
+            title: language === 'ar' ? 'فشل تحديث الحالة' : 'Status Update Failed',
+            description: e.message || (language === 'ar' ? 'حدث خطأ غير متوقع.' : 'An unexpected error occurred.'),
+        });
     }
-
-    // 3. Prepare Order Update
-    const newHistoryItem: StatusHistoryItem = {
-        status: newStatus,
-        notes: noteText,
-        createdAt: now,
-        userName: authUser.name || authUser.email || "مستخدم مسؤول",
-    };
-    
-    updates[`/${orderRef.path}/status`] = newStatus;
-    updates[`/${orderRef.path}/updatedAt`] = now;
-
-    const newHistoryRef = push(ref(database, `${orderRef.path}/statusHistory`));
-    updates[`/${orderRef.path}/statusHistory/${newHistoryRef.key}`] = newHistoryItem;
-
-    if (courierId) {
-      const selectedCourier = couriers.find(c => c.id === courierId);
-      if(selectedCourier) {
-        updates[`/${orderRef.path}/courierId`] = selectedCourier.id;
-        updates[`/${orderRef.path}/courierName`] = selectedCourier.name;
-      }
-    }
-    
-    // 4. Execute all updates
-    await update(ref(database), updates);
-
-    toast({
-        title: language === 'ar' ? 'تم تحديث الحالة' : 'Status Updated',
-        description: `${language === 'ar' ? 'تم تحديث حالة الطلب إلى' : 'Order status updated to'} ${newStatus}.`,
-    });
-
-    // 5. Reset state
-    setIsNoteModalOpen(false);
-    setIsCourierModalOpen(false);
-    setNote("");
-    setSelectedStatus(null);
-    setSelectedCourierId(null);
-    setCourierSearch("");
   }
 
 
