@@ -60,7 +60,7 @@ export default function StaffReportPage() {
   const { language } = useLanguage();
   const isMobile = useIsMobile();
   const database = useDatabase();
-  const [version] = React.useState(0);
+  const [version, setVersion] = React.useState(0);
   const [fromDate, setFromDate] = React.useState<Date | undefined>(undefined);
   const [toDate, setToDate] = React.useState<Date | undefined>(undefined);
   
@@ -132,7 +132,7 @@ export default function StaffReportPage() {
     const couriers = usersData.filter(u => u.role === "Courier");
     return couriers.map(cour => {
       const assignedOrders = filteredOrders.filter(o => o.courierId === cour.id);
-      const delivered = assignedOrders.filter(o => o.status === "تم التسليم" && o.courierId === cour.id).length;
+      const delivered = assignedOrders.filter(o => o.status === "تم التسليم للعميل" && o.courierId === cour.id).length;
       const cancelled = assignedOrders.filter(o => o.status === 'ملغي' && o.courierId === cour.id).length;
       const totalAttempted = delivered + cancelled;
       const completionRate = totalAttempted > 0 ? (delivered / totalAttempted) * 100 : 0;

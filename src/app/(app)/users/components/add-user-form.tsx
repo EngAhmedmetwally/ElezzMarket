@@ -318,37 +318,39 @@ export function AddUserForm({ onSuccess, userToEdit }: AddUserFormProps) {
           <AccordionItem value="permissions">
             <AccordionTrigger>{language === 'ar' ? 'الصلاحيات' : 'Permissions'}</AccordionTrigger>
             <AccordionContent>
-              <div className="grid grid-cols-6 gap-y-2 items-center">
-                <div className="font-medium text-muted-foreground">{language === 'ar' ? 'الشاشة' : 'Screen'}</div>
-                {allPerms.map(perm => (
-                  <div key={perm} className="font-medium text-muted-foreground text-center text-xs sm:text-sm">{language === 'ar' ? permLabels[perm].ar : permLabels[perm].en}</div>
-                ))}
+              <div className="overflow-x-auto pb-2">
+                <div className="grid grid-cols-6 gap-y-2 items-center min-w-[540px]">
+                  <div className="font-medium text-muted-foreground">{language === 'ar' ? 'الشاشة' : 'Screen'}</div>
+                  {allPerms.map(perm => (
+                    <div key={perm} className="font-medium text-muted-foreground text-center text-xs sm:text-sm">{language === 'ar' ? permLabels[perm].ar : permLabels[perm].en}</div>
+                  ))}
 
-                {screensConfig.map((screen) => (
-                  <React.Fragment key={screen.id}>
-                    <div className="font-medium">{language === 'ar' ? screen.arName : screen.name}</div>
-                    {allPerms.map(perm => (
-                      <div key={perm} className="flex justify-center">
-                        {screen.perms.includes(perm as any) ? (
-                          <FormField
-                            control={form.control}
-                            name={`permissions.${screen.id}.${perm as any}`}
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormControl>
-                                  <Checkbox
-                                    checked={field.value}
-                                    onCheckedChange={field.onChange}
-                                  />
-                                </FormControl>
-                              </FormItem>
-                            )}
-                          />
-                        ) : <span className="text-muted-foreground">-</span>}
-                      </div>
-                    ))}
-                  </React.Fragment>
-                ))}
+                  {screensConfig.map((screen) => (
+                    <React.Fragment key={screen.id}>
+                      <div className="font-medium">{language === 'ar' ? screen.arName : screen.name}</div>
+                      {allPerms.map(perm => (
+                        <div key={perm} className="flex justify-center">
+                          {screen.perms.includes(perm as any) ? (
+                            <FormField
+                              control={form.control}
+                              name={`permissions.${screen.id}.${perm as any}`}
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormControl>
+                                    <Checkbox
+                                      checked={field.value}
+                                      onCheckedChange={field.onChange}
+                                    />
+                                  </FormControl>
+                                </FormItem>
+                              )}
+                            />
+                          ) : <span className="text-muted-foreground">-</span>}
+                        </div>
+                      ))}
+                    </React.Fragment>
+                  ))}
+                </div>
               </div>
             </AccordionContent>
           </AccordionItem>
