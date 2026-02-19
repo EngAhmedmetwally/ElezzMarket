@@ -13,6 +13,7 @@ import { ref, get } from "firebase/database";
 import { Skeleton } from "@/components/ui/skeleton";
 import { StaffPerformanceChart } from "../components/staff-performance-chart";
 import { format } from "date-fns";
+import Link from "next/link";
 
 // Data structure for the report
 type DailyReportData = {
@@ -237,13 +238,23 @@ export default function DailyReportPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {productsSummary.map((row) => (
-                <TableRow key={row.name}>
-                  <TableCell className="font-medium">{row.name}</TableCell>
-                  <TableCell className="text-end">{row.totalQuantity}</TableCell>
-                  <TableCell className="text-end">{row.totalWeight.toFixed(2)}</TableCell>
-                </TableRow>
-              ))}
+              {productsSummary.map((row) => {
+                 const fromDateString = fromDate ? fromDate.toISOString() : '';
+                 const toDateString = toDate ? toDate.toISOString() : '';
+                 const href = `/reports/products/${encodeURIComponent(row.name)}?from=${fromDateString}&to=${toDateString}`;
+
+                return (
+                  <TableRow key={row.name}>
+                    <TableCell className="font-medium">
+                      <Link href={href} className="hover:underline text-primary">
+                        {row.name}
+                      </Link>
+                    </TableCell>
+                    <TableCell className="text-end">{row.totalQuantity}</TableCell>
+                    <TableCell className="text-end">{row.totalWeight.toFixed(2)}</TableCell>
+                  </TableRow>
+                )
+              })}
               {productsSummary.length === 0 && (
                 <TableRow>
                   <TableCell colSpan={3} className="h-24 text-center">
