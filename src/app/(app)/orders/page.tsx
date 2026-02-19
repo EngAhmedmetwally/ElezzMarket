@@ -30,7 +30,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useDatabase } from "@/firebase";
-import type { Order } from "@/lib/types";
+import type { Order, OrderStatus } from "@/lib/types";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ref, get } from "firebase/database";
 
@@ -99,6 +99,31 @@ export default function OrdersPage() {
     });
   }, [allOrders, fromDate, toDate]);
   
+  const uniqueOrderStatuses = React.useMemo(() => {
+    const definedStatuses: OrderStatus[] = ["تم التسجيل", "قيد التجهيز", "تم التسليم للمندوب", "تم التسليم للعميل", "ملغي"];
+    
+    if (!allOrders || allOrders.length === 0) {
+      return definedStatuses;
+    }
+    
+    const statusesFromData = new Set<OrderStatus>(allOrders.map(o => o.status).filter(Boolean));
+    definedStatuses.forEach(s => statusesFromData.add(s));
+
+    const statusOrderMap: Record<string, number> = {
+      "تم التسجيل": 1,
+      "قيد التجهيز": 2,
+      "تم التسليم للمندوب": 3,
+      "تم التسليم للعميل": 4,
+      "ملغي": 5,
+    };
+
+    return Array.from(statusesFromData).sort((a, b) => {
+        const orderA = statusOrderMap[a] || 99;
+        const orderB = statusOrderMap[b] || 99;
+        return orderA - orderB;
+    });
+  }, [allOrders]);
+
   const ordersByStatus = React.useMemo(() => {
     if (!filteredOrders) return [];
     const statusCounts = filteredOrders.reduce((acc, order) => {
@@ -251,7 +276,7 @@ export default function OrdersPage() {
             </div>
         </div>
       ) : (
-        <OrdersClient data={filteredOrders} columns={columns} onUpdate={() => setVersion(v => v + 1)} />
+        <OrdersClient data={filteredOrders} columns={columns} onUpdate={() => setVersion(v => v + 1)} statuses={uniqueOrderStatuses} />
       )}
     </div>
   );

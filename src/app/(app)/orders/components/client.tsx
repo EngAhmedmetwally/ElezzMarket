@@ -44,12 +44,14 @@ interface DataTableProps<TData extends Order, TValue> {
   columns: ColumnDef<TData, TValue>[];
   data: TData[];
   onUpdate: () => void;
+  statuses: OrderStatus[];
 }
 
 export function OrdersClient<TData extends Order, TValue>({
   columns,
   data,
-  onUpdate
+  onUpdate,
+  statuses
 }: DataTableProps<TData, TValue>) {
   const router = useRouter();
   const [sorting, setSorting] = React.useState<SortingState>([]);
@@ -85,8 +87,6 @@ export function OrdersClient<TData extends Order, TValue>({
     }
   });
 
-  const orderStatuses: OrderStatus[] = ["تم التسجيل", "قيد التجهيز", "تم التسليم للمندوب", "تم التسليم للعميل", "ملغي"];
-
   const filters = (
     <div className="flex flex-wrap items-center gap-4 py-4">
         <Input
@@ -106,7 +106,7 @@ export function OrdersClient<TData extends Order, TValue>({
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">{language === 'ar' ? "كل الحالات" : "All Statuses"}</SelectItem>
-            {orderStatuses.map((status) => (
+            {statuses.map((status) => (
               <SelectItem key={status} value={status}>
                 {status}
               </SelectItem>
