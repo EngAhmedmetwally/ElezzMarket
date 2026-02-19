@@ -28,6 +28,7 @@ import {
   Users2,
   CalendarDays,
   Truck,
+  Settings,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
@@ -42,6 +43,7 @@ const navItems = [
   { href: "/users", icon: Users, label: "Users", arLabel: "المستخدمون" },
   { href: "/shipping", icon: Truck, label: "Shipping", arLabel: "الشحن" },
   { href: "/commissions", icon: BadgePercent, label: "Commissions", arLabel: "العمولات" },
+  { href: "/settings", icon: Settings, label: "Settings", arLabel: "الإعدادات" },
   {
     label: "Reports",
     arLabel: "التقارير",

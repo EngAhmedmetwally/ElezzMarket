@@ -134,7 +134,6 @@
       font-weight: bold;
     }
     .receipt td:first-child, .receipt th:first-child {
-        width: 45%;
         padding-right: 1mm;
     }
     .receipt .text-center {

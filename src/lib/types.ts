@@ -111,3 +111,21 @@ export type ShippingZone = {
   name: string;
   cost: number;
 };
+
+export type ReceiptSettings = {
+  showLogo?: boolean;
+  headerText?: string;
+  showOrderId?: boolean;
+  showDate?: boolean;
+  showCustomerName?: boolean;
+  showCustomerPhone?: boolean;
+  showCustomerAddress?: boolean;
+  showItemsSubtotal?: boolean;
+  showShippingCost?: boolean;
+  showGrandTotal?: boolean;
+  footerText?: string;
+  // for items table
+  showItemPrice?: boolean;
+  showItemSubtotal?: boolean;
+  showItemWeight?: boolean;
+};

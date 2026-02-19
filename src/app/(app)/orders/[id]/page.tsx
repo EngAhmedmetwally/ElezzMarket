@@ -9,7 +9,7 @@ import { Separator } from "@/components/ui/separator";
 import { StatusBadge } from "@/components/status-badge";
 import { Printer, Search, Rocket } from "lucide-react";
 import { useLanguage } from "@/components/language-provider";
-import type { Order, OrderStatus, StatusHistoryItem, User, Commission, CommissionRule } from "@/lib/types";
+import type { Order, OrderStatus, StatusHistoryItem, User, Commission, CommissionRule, ReceiptSettings } from "@/lib/types";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
@@ -94,53 +94,71 @@ function OrderDetailsSkeleton() {
     )
 }
 
-function ReceiptView({ order, language }: { order: Order; language: "ar" | "en" }) {
+function ReceiptView({ order, language, settings }: { order: Order; language: "ar" | "en"; settings: ReceiptSettings | null }) {
   if (!order) return null;
 
   const orderItems = order.items ? (Array.isArray(order.items) ? order.items : Object.values(order.items)) : [];
   const itemsSubtotal = orderItems.reduce((acc, item) => acc + (item.price * item.quantity), 0);
 
+  // Set default settings if none are found in DB
+  const s = settings || {
+      showLogo: true, headerText: language === 'ar' ? 'سوق العز' : 'ElEzz Market',
+      showOrderId: true, showDate: true, showCustomerName: true, showCustomerPhone: true, showCustomerAddress: true,
+      showItemWeight: false, showItemPrice: true, showItemSubtotal: true,
+      showItemsSubtotal: true, showShippingCost: true, showGrandTotal: true,
+      footerText: language === 'ar' ? 'شكراً لتعاملكم معنا!' : 'Thank you!',
+  };
+
+
   return (
     <div className="receipt">
-      <div className="text-center mb-4">
-        <Rocket className="h-8 w-8 mx-auto text-black" />
-        <h2 className="font-bold text-lg mt-2">{language === 'ar' ? 'سوق العز' : 'ElEzz Market'}</h2>
-      </div>
-      <p>{language === 'ar' ? 'رقم الطلب:' : 'Order ID:'} {order.id}</p>
-      <p>{language === 'ar' ? 'التاريخ:' : 'Date:'} {format(new Date(order.createdAt), "dd/MM/yyyy HH:mm")}</p>
-      <hr />
-      <p><strong>{language === 'ar' ? 'العميل:' : 'Customer:'}</strong> {order.customerName}</p>
-      <p><strong>{language === 'ar' ? 'الهاتف:' : 'Phone:'}</strong> {order.customerPhone1}</p>
-      {order.customerAddress && <p><strong>{language === 'ar' ? 'العنوان:' : 'Address:'}</strong> {order.customerAddress}</p>}
-      <hr />
+      {s.showLogo && (
+        <div className="text-center mb-4">
+          <Rocket className="h-8 w-8 mx-auto text-black" />
+          {s.headerText && <h2 className="font-bold text-lg mt-2">{s.headerText}</h2>}
+        </div>
+      )}
+      {s.showOrderId && <p>{language === 'ar' ? 'رقم الطلب:' : 'Order ID:'} {order.id}</p>}
+      {s.showDate && <p>{language === 'ar' ? 'التاريخ:' : 'Date:'} {format(new Date(order.createdAt), "dd/MM/yyyy HH:mm")}</p>}
+      
+      {(s.showOrderId || s.showDate) && (s.showCustomerName || s.showCustomerPhone || s.showCustomerAddress) && <hr />}
+      
+      {s.showCustomerName && <p><strong>{language === 'ar' ? 'العميل:' : 'Customer:'}</strong> {order.customerName}</p>}
+      {s.showCustomerPhone && <p><strong>{language === 'ar' ? 'الهاتف:' : 'Phone:'}</strong> {order.customerPhone1}</p>}
+      {s.showCustomerAddress && order.customerAddress && <p><strong>{language === 'ar' ? 'العنوان:' : 'Address:'}</strong> {order.customerAddress}</p>}
+      
+      {(s.showCustomerName || s.showCustomerPhone || s.showCustomerAddress) && <hr />}
+      
       <table>
         <thead>
           <tr>
             <th>{language === 'ar' ? 'الصنف' : 'Item'}</th>
+            {s.showItemWeight && <th className="text-center">{language === 'ar' ? 'وزن' : 'Wt.'}</th>}
             <th className="text-center">{language === 'ar' ? 'كمية' : 'Qty'}</th>
-            <th className="text-right">{language === 'ar' ? 'سعر' : 'Price'}</th>
-            <th className="text-right">{language === 'ar' ? 'إجمالي' : 'Total'}</th>
+            {s.showItemPrice && <th className="text-right">{language === 'ar' ? 'سعر' : 'Price'}</th>}
+            {s.showItemSubtotal && <th className="text-right">{language === 'ar' ? 'إجمالي' : 'Total'}</th>}
           </tr>
         </thead>
         <tbody>
           {orderItems.map((item, index) => (
             <tr key={index}>
-              <td>{item.productName} {item.weight ? `(${item.weight}kg)` : ''}</td>
+              <td>{item.productName}</td>
+              {s.showItemWeight && <td className="text-center">{item.weight ? `${item.weight * item.quantity}kg` : '-'}</td>}
               <td className="text-center">{item.quantity}</td>
-              <td className="text-right">{item.price.toFixed(2)}</td>
-              <td className="text-right">{(item.price * item.quantity).toFixed(2)}</td>
+              {s.showItemPrice && <td className="text-right">{item.price.toFixed(2)}</td>}
+              {s.showItemSubtotal && <td className="text-right">{(item.price * item.quantity).toFixed(2)}</td>}
             </tr>
           ))}
         </tbody>
       </table>
       <hr />
       <div className="summary space-y-1">
-        <div><span>{language === 'ar' ? 'مجموع المنتجات' : 'Subtotal'}</span> <span>{itemsSubtotal.toFixed(2)}</span></div>
-        <div><span>{language === 'ar' ? 'تكلفة الشحن' : 'Shipping'}</span> <span>{(order.shippingCost || 0).toFixed(2)}</span></div>
-        <div className="font-bold text-base"><span>{language === 'ar' ? 'الإجمالي الكلي' : 'Total'}</span> <span>{order.total.toFixed(2)}</span></div>
+        {s.showItemsSubtotal && <div><span>{language === 'ar' ? 'مجموع المنتجات' : 'Subtotal'}</span> <span>{itemsSubtotal.toFixed(2)}</span></div>}
+        {s.showShippingCost && <div><span>{language === 'ar' ? 'تكلفة الشحن' : 'Shipping'}</span> <span>{(order.shippingCost || 0).toFixed(2)}</span></div>}
+        {s.showGrandTotal && <div className="font-bold text-base"><span>{language === 'ar' ? 'الإجمالي الكلي' : 'Total'}</span> <span>{order.total.toFixed(2)}</span></div>}
       </div>
-      <hr />
-      <p className="text-center">{language === 'ar' ? 'شكراً لتعاملكم معنا!' : 'Thank you!'}</p>
+      {(s.showItemsSubtotal || s.showShippingCost || s.showGrandTotal) && <hr />}
+      {s.footerText && <p className="text-center">{s.footerText}</p>}
     </div>
   );
 }
@@ -176,6 +194,9 @@ export default function OrderDetailsPage() {
   const usersRef = useMemoFirebase(() => database ? ref(database, `users`) : null, [database]);
   const { data: users, isLoading: isLoadingUsers } = useCollection<User>(usersRef);
   
+  const settingsRef = useMemoFirebase(() => database ? ref(database, 'receipt-settings') : null, [database]);
+  const { data: receiptSettings } = useDoc<ReceiptSettings>(settingsRef);
+
   const [isNoteModalOpen, setIsNoteModalOpen] = React.useState(false);
   const [isCourierModalOpen, setIsCourierModalOpen] = React.useState(false);
 
@@ -428,7 +449,7 @@ export default function OrderDetailsPage() {
       </div>
       
       <div className="hidden print:block receipt-container">
-        {order && <ReceiptView order={order} language={language} />}
+        {order && <ReceiptView order={order} language={language} settings={receiptSettings} />}
       </div>
 
       <Dialog open={isNoteModalOpen} onOpenChange={setIsNoteModalOpen}>
