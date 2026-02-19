@@ -25,7 +25,7 @@ import { ref, update, runTransaction, get, push } from "firebase/database";
 import { Skeleton } from "@/components/ui/skeleton";
 
 const allowedTransitions: Record<OrderStatus, OrderStatus[]> = {
-    "تم التسجيل": ["قيد التجهيز", "تم التسليم للمندوب", "ملغي"],
+    "تم التسجيل": ["تم التسليم للمندوب", "ملغي"],
     "قيد التجهيز": ["تم التسليم للمندوب", "ملغي"],
     "تم التسليم للمندوب": ["تم التسليم للعميل"],
     "تم التسليم للعميل": [],

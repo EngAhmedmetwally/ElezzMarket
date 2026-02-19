@@ -1,4 +1,3 @@
-
 "use client";
 
 import * as React from "react";
@@ -19,7 +18,7 @@ import { Separator } from "@/components/ui/separator";
 import { PlusCircle, Trash2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useLanguage } from "@/components/language-provider";
-import type { Customer, Product, OrderItem, ShippingZone } from "@/lib/types";
+import type { Customer, Product, OrderItem, ShippingZone, Commission } from "@/lib/types";
 import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { useCollection, useDatabase, useUser, useMemoFirebase } from "@/firebase";
@@ -164,6 +163,29 @@ export function OrderForm({ onSuccess }: OrderFormProps) {
     const updates: { [key: string]: any } = {};
 
     try {
+        const commissionRulesSnap = await get(ref(database, 'commission-rules'));
+        const commissionRules = commissionRulesSnap.val();
+        const registrationCommissionAmount = commissionRules?.["تم التسجيل"]?.amount || 0;
+        let totalCommission = 0;
+
+        if (registrationCommissionAmount > 0) {
+            const newCommissionRef = push(ref(database, 'commissions'));
+            const commissionId = newCommissionRef.key;
+            if (!commissionId) throw new Error("Could not create commission ID");
+
+            const newCommission: Commission = {
+                id: commissionId,
+                orderId: data.id,
+                userId: user.id, // The moderator creating it
+                orderStatus: "تم التسجيل",
+                amount: registrationCommissionAmount,
+                calculationDate: new Date().toISOString(),
+                paymentStatus: 'Calculated',
+            };
+            updates[`commissions/${commissionId}`] = newCommission;
+            totalCommission += registrationCommissionAmount;
+        }
+
         const resolvedItems: OrderItem[] = [];
 
         for (const item of data.items) {
@@ -221,7 +243,7 @@ export function OrderForm({ onSuccess }: OrderFormProps) {
                     userName: user.name || user.email || 'Unknown',
                 }
             ],
-            totalCommission: 0,
+            totalCommission: totalCommission,
         };
         updates[orderPath] = newOrder;
         
