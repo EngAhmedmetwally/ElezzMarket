@@ -99,3 +99,17 @@ export const idbBulkPut = async (storeName: string, values: any[]): Promise<void
         });
     });
 };
+
+export const idbClear = async (storeName: string): Promise<void> => {
+    const db = await openDB();
+    return new Promise((resolve, reject) => {
+        const transaction = db.transaction(storeName, 'readwrite');
+        const store = transaction.objectStore(storeName);
+        const request = store.clear();
+        request.onsuccess = () => resolve();
+        request.onerror = () => {
+            console.error(`Error clearing store ${storeName}:`, request.error);
+            reject(request.error);
+        };
+    });
+};

@@ -1,7 +1,7 @@
 
 'use client';
 import { ref, get, type Database } from "firebase/database";
-import { idbBulkPut, idbGet, idbPut } from './db';
+import { idbBulkPut, idbGet, idbPut, idbClear } from './db';
 import type { Order } from './types';
 import { syncEvents } from './sync-events';
 
@@ -69,6 +69,9 @@ export async function syncCollection(database: Database, collectionName: string,
                 const dataArray = objectToArray(data);
                 await idbBulkPut(collectionName, dataArray);
             }
+        } else {
+            // If the collection does not exist on Firebase, clear it from IndexedDB.
+            await idbClear(collectionName);
         }
         
         await idbPut('sync-timestamps', { collection: collectionName, timestamp: now });
