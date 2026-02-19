@@ -151,15 +151,14 @@
     background: #fff !important;
     -webkit-print-color-adjust: exact !important;
     color-adjust: exact !important;
+    box-sizing: border-box;
+    padding: 0 4mm;
   }
   .print-hidden {
     display: none !important;
   }
   .receipt-container {
     display: block !important;
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
+    position: static;
   }
 }
