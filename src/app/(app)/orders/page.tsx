@@ -63,7 +63,10 @@ export default function OrdersPage() {
 
     if (user) {
         const isAdmin = user.role === 'Admin';
-        const canSeeAll = user.orderVisibility === 'all';
+        // A user can see all if they are explicitly set to 'all'.
+        // Or if they are a Moderator and their visibility is NOT explicitly set to 'own'.
+        // This makes 'all' the default for moderators if the property is missing or not 'own'.
+        const canSeeAll = user.orderVisibility === 'all' || (user.role === 'Moderator' && user.orderVisibility !== 'own');
 
         if (!isAdmin && !canSeeAll) {
              if (user.role === 'Moderator') {
