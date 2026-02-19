@@ -7,7 +7,7 @@ import { ref } from "firebase/database";
 import { PageHeader } from "@/components/page-header";
 import { KpiCard } from "@/components/dashboard/kpi-card";
 import { SalesChart } from "@/components/dashboard/sales-chart";
-import { OrdersByStatusChart } from "@/components/dashboard/orders-by-status-chart";
+import { OrdersByStatusChart } from "./orders-by-status-chart";
 import {
   Card,
   CardContent,
@@ -18,7 +18,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useLanguage } from "@/components/language-provider";
 import { DatePicker } from "@/components/ui/datepicker";
 import { useCollection, useDatabase, useMemoFirebase } from "@/firebase";
-import type { Order, User } from "@/lib/types";
+import type { Order, User, UserRole } from "@/lib/types";
 import { Skeleton } from "@/components/ui/skeleton";
 import { fetchOrdersByDateRange } from "@/lib/data-fetching";
 
@@ -79,10 +79,40 @@ export default function DashboardPage() {
   const usersQuery = useMemoFirebase(() => database ? ref(database, "users") : null, [database]);
   const { data: usersData, isLoading: isLoadingUsers } = useCollection<User>(usersQuery);
 
+  const users: User[] = React.useMemo(() => {
+    if (!usersData) {
+      return [];
+    }
+    return usersData.map((userDoc: any): User => {
+      const name = userDoc.name || userDoc.fullName || "Unknown User";
+      const status: "نشط" | "معطل" = typeof userDoc.isActive === 'boolean' 
+        ? (userDoc.isActive ? 'نشط' : 'معطل') 
+        : (userDoc.status || 'معطل');
+      const role: UserRole = userDoc.role || 'Moderator';
+      const avatarUrl = userDoc.avatarUrl || `/avatars/0${(userDoc.id.charCodeAt(0) % 6) + 1}.png`;
+      const createdAt = userDoc.createdAt ? new Date(userDoc.createdAt).toISOString() : new Date().toISOString();
+      const username = userDoc.username || userDoc.email?.split('@')[0] || '';
+
+      return {
+        ...userDoc,
+        id: userDoc.id,
+        name,
+        username,
+        email: userDoc.email || '',
+        phone1: userDoc.phone1,
+        phone2: userDoc.phone2,
+        role,
+        avatarUrl,
+        status,
+        createdAt,
+      };
+    });
+  }, [usersData]);
+
   const totalSales = filteredOrders.reduce((acc, order) => acc + (order.total || 0), 0);
   const totalOrders = filteredOrders.length;
   const avgOrderValue = totalOrders > 0 ? totalSales / totalOrders : 0;
-  const activeUsersCount = usersData ? usersData.filter(u => u.status === 'نشط').length : 0;
+  const activeUsersCount = users ? users.filter(u => u.status === 'نشط').length : 0;
 
   const ordersByStatus = React.useMemo(() => {
     const statusCounts = filteredOrders.reduce((acc, order) => {
@@ -107,9 +137,9 @@ export default function DashboardPage() {
   }, [filteredOrders, language]);
 
   const topModerators = React.useMemo(() => {
-    if (!usersData || !filteredOrders) return [];
+    if (!users || !filteredOrders) return [];
     
-    const moderators = usersData.filter(u => u.role === 'Moderator');
+    const moderators = users.filter(u => u.role === 'Moderator');
     
     return moderators.map(moderator => {
       const moderatorSales = filteredOrders
@@ -125,7 +155,7 @@ export default function DashboardPage() {
     .sort((a, b) => b.sales - a.sales)
     .slice(0, 5);
 
-  }, [usersData, filteredOrders]);
+  }, [users, filteredOrders]);
 
   if (isLoadingOrders || isLoadingUsers) {
     return <DashboardSkeleton />;
