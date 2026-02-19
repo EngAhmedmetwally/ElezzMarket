@@ -87,6 +87,13 @@ export function OrdersClient<TData extends Order, TValue>({
     }
   });
 
+  const handleRowClick = (order: TData) => {
+    const url = order.path
+      ? `/orders/${order.id}?path=${encodeURIComponent(order.path)}`
+      : `/orders/${order.id}`;
+    router.push(url);
+  };
+
   const filters = (
     <div className="flex flex-wrap items-center gap-4 py-4">
         <Input
@@ -154,7 +161,7 @@ export function OrdersClient<TData extends Order, TValue>({
                   key={row.id} 
                   data-state={row.getIsSelected() && "selected"} 
                   className="data-[state=selected]:bg-muted/50 cursor-pointer"
-                  onClick={() => router.push(`/orders/${row.original.id}`)}
+                  onClick={() => handleRowClick(row.original)}
                 >
                   <CardHeader className="p-4">
                     <div className="flex items-center gap-4">
@@ -242,7 +249,7 @@ export function OrdersClient<TData extends Order, TValue>({
                   key={row.id}
                   data-state={row.getIsSelected() && "selected"}
                   className="cursor-pointer"
-                  onClick={() => router.push(`/orders/${row.original.id}`)}
+                  onClick={() => handleRowClick(row.original)}
                 >
                   {row.getVisibleCells().map((cell) => (
                     <TableCell 
@@ -278,5 +285,3 @@ export function OrdersClient<TData extends Order, TValue>({
     </div>
   );
 }
-
-    

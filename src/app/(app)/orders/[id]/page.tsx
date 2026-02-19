@@ -2,7 +2,7 @@
 "use client";
 
 import * as React from "react";
-import { useParams } from "next/navigation";
+import { useParams, useSearchParams } from "next/navigation";
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -50,11 +50,11 @@ function StatusHistoryTimeline({ history }: { history?: Record<string, StatusHis
             <CardContent>
                  {sortedHistory.length > 0 ? (
                     <div className="space-y-4">
-                        {sortedHistory.map((item) => (
+                        {sortedHistory.map((item, index) => (
                             <div key={item.id} className="flex gap-4">
                                 <div className="flex flex-col items-center">
                                     <div className="w-4 h-4 rounded-full bg-primary mt-1"></div>
-                                    {item.id !== sortedHistory[sortedHistory.length - 1].id && <div className="flex-1 w-0.5 bg-border"></div>}
+                                    {index < sortedHistory.length - 1 && <div className="flex-1 w-0.5 bg-border"></div>}
                                 </div>
                                 <div>
                                     <div className="flex items-center gap-2 flex-wrap">
@@ -171,7 +171,9 @@ function ReceiptView({ order, language, settings }: { order: Order; language: "a
 
 export default function OrderDetailsPage() {
   const params = useParams();
+  const searchParams = useSearchParams();
   const id = typeof params.id === 'string' ? params.id : '';
+  const pathFromQuery = searchParams.get('path');
   const { language } = useLanguage();
   const { toast } = useToast();
   const database = useDatabase();
@@ -180,18 +182,22 @@ export default function OrderDetailsPage() {
   const [orderPath, setOrderPath] = React.useState<string | null>(null);
 
   React.useEffect(() => {
+      if (pathFromQuery) {
+          setOrderPath(`orders/${decodeURIComponent(pathFromQuery)}/${id}`);
+          return;
+      }
       if (!database || !id) return;
+      
       const lookupRef = ref(database, `order-lookup/${id}`);
       get(lookupRef).then(snapshot => {
           if (snapshot.exists()) {
               const { path } = snapshot.val();
               setOrderPath(`orders/${path}/${id}`);
           } else {
-              console.error(`No path found for order ${id}`);
               setOrderPath(null);
           }
       });
-  }, [database, id]);
+  }, [database, id, pathFromQuery]);
   
   const orderRef = useMemoFirebase(() => (database && orderPath) ? ref(database, orderPath) : null, [database, orderPath]);
   const { data: order, isLoading: isLoadingOrder, error: orderError } = useDoc<Order>(orderRef);
@@ -231,10 +237,8 @@ export default function OrderDetailsPage() {
     try {
         const now = new Date().toISOString();
 
-        // Use a transaction to ensure atomic updates on the order object
         await runTransaction(orderRef, (currentOrder) => {
             if (currentOrder) {
-                // 1. Create the new history entry
                 const newHistoryItem: StatusHistoryItem = {
                     status: newStatus,
                     notes: noteText,
@@ -242,7 +246,6 @@ export default function OrderDetailsPage() {
                     userName: authUser.name || authUser.email || "مستخدم مسؤول",
                 };
 
-                // 2. Append to status history
                 if (!currentOrder.statusHistory) {
                     currentOrder.statusHistory = {};
                 }
@@ -251,11 +254,9 @@ export default function OrderDetailsPage() {
                     currentOrder.statusHistory[newHistoryKey] = newHistoryItem;
                 }
 
-                // 3. Update order status and timestamp
                 currentOrder.status = newStatus;
                 currentOrder.updatedAt = now;
 
-                // 4. Update courier
                 if (courierId) {
                     const selectedCourier = couriers.find(c => c.id === courierId);
                     if (selectedCourier) {
@@ -268,14 +269,12 @@ export default function OrderDetailsPage() {
         });
 
         // --- Handle side effects after the transaction is successful ---
-        
-        // 1. Commission Logic
         const commissionRulesSnap = await get(ref(database, 'commission-rules'));
         const commissionRules = commissionRulesSnap.val();
         const commissionAmount = commissionRules?.[newStatus]?.amount || 0;
 
         if (commissionAmount > 0) {
-            const latestOrderSnap = await get(orderRef); // Get the fresh order data
+            const latestOrderSnap = await get(orderRef);
             const latestOrder = latestOrderSnap.val();
             if (latestOrder) {
                 let recipientId: string | undefined;
@@ -286,7 +285,7 @@ export default function OrderDetailsPage() {
                 }
 
                 if (recipientId) {
-                    const newCommission: Omit<Commission, 'id'| 'id'> = {
+                    const newCommission: Omit<Commission, 'id'> = {
                         orderId: order.id,
                         userId: recipientId,
                         orderStatus: newStatus,
@@ -297,7 +296,6 @@ export default function OrderDetailsPage() {
                     const newCommRef = push(ref(database, 'commissions'));
                     await set(newCommRef, newCommission);
 
-                    // Also update the total on the order itself
                     const totalCommissionRef = ref(database, `${orderRef.path}/totalCommission`);
                     await runTransaction(totalCommissionRef, (currentTotal) => {
                         return (currentTotal || 0) + commissionAmount;
@@ -306,7 +304,6 @@ export default function OrderDetailsPage() {
             }
         }
         
-        // 2. Cancellation Logic
         if (newStatus === 'ملغي' && order.status !== 'ملغي') {
             const productSaleUpdatePromises = (order.items || []).map(item => {
                 if (!item.productId) return Promise.resolve();
@@ -316,7 +313,6 @@ export default function OrderDetailsPage() {
             await Promise.all(productSaleUpdatePromises);
         }
 
-        // --- UI Updates ---
         toast({
             title: language === 'ar' ? 'تم تحديث الحالة' : 'Status Updated',
             description: `${language === 'ar' ? 'تم تحديث حالة الطلب إلى' : 'Order status updated to'} ${newStatus}.`,
@@ -568,5 +564,3 @@ export default function OrderDetailsPage() {
     </>
   );
 }
-
-    
