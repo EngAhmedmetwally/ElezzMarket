@@ -80,7 +80,9 @@ export default function CustomerDetailsPage() {
     const firstOrder = orders[0];
     return {
       name: firstOrder.customerName,
-      phone: firstOrder.customerPhone,
+      facebookName: firstOrder.facebookName,
+      phone1: firstOrder.customerPhone1,
+      phone2: firstOrder.customerPhone2,
       address: firstOrder.customerAddress,
       zoning: firstOrder.zoning,
     }
@@ -130,7 +132,9 @@ export default function CustomerDetailsPage() {
                 <CardTitle>{language === 'ar' ? 'تفاصيل العميل' : 'Customer Details'}</CardTitle>
             </CardHeader>
             <CardContent className="space-y-2">
-                <p><span className="font-medium">{language === 'ar' ? 'الهاتف:' : 'Phone:'}</span> {customer.phone}</p>
+                {customer.facebookName && <p><span className="font-medium">{language === 'ar' ? 'اسم فيسبوك:' : 'Facebook Name:'}</span> {customer.facebookName}</p>}
+                <p><span className="font-medium">{language === 'ar' ? 'رقم الموبايل 1:' : 'Phone 1:'}</span> {customer.phone1}</p>
+                {customer.phone2 && <p><span className="font-medium">{language === 'ar' ? 'رقم الموبايل 2:' : 'Phone 2:'}</span> {customer.phone2}</p>}
                 <p><span className="font-medium">{language === 'ar' ? 'العنوان:' : 'Address:'}</span> {customer.address}</p>
                 <p><span className="font-medium">{language === 'ar' ? 'المنطقة:' : 'Zoning:'}</span> {customer.zoning}</p>
             </CardContent>
@@ -174,3 +178,5 @@ export default function CustomerDetailsPage() {
     </div>
   )
 }
+
+    

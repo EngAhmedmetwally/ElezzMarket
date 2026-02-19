@@ -12,7 +12,7 @@ import { CustomersClient } from "./components/client";
 import { getCustomerColumns } from "./components/columns";
 
 export type CustomerWithOrderCount = Customer & {
-  id: string; // using phone as id
+  id: string; // using phone1 as id
   orderCount: number;
   lastOrderDate: string;
 };
@@ -53,7 +53,7 @@ export default function CustomersPage() {
         const customerMap = new Map<string, CustomerWithOrderCount>();
         
         sortedOrders.forEach((order: any) => {
-          const phone = order.customerPhone;
+          const phone = order.customerPhone1;
           if (!phone) return;
 
           const orderDate = order.createdAt ? new Date(order.createdAt).toISOString() : new Date().toISOString();
@@ -68,7 +68,9 @@ export default function CustomersPage() {
             customerMap.set(phone, {
               id: phone,
               customerName: order.customerName,
-              customerPhone: order.customerPhone,
+              facebookName: order.facebookName,
+              customerPhone1: order.customerPhone1,
+              customerPhone2: order.customerPhone2,
               customerAddress: order.customerAddress,
               zoning: order.zoning,
               orderCount: 1,
@@ -109,3 +111,5 @@ export default function CustomersPage() {
     </div>
   );
 }
+
+    

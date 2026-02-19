@@ -173,7 +173,7 @@ export default function OrdersPage() {
         'رقم الاوردر': order.id,
         'التاريخ': order.createdAt ? new Date(order.createdAt).toLocaleDateString('ar-EG') : '',
         'اسم العميل': order.customerName,
-        'رقم التليفون': order.customerPhone,
+        'رقم التليفون': order.customerPhone1,
         'المنطقة': order.zoning,
         'العنوان بالتفصيل': order.customerAddress,
         'الطلبات': (order.items || []).map(i => `${i.productName} (x${i.quantity})`).join(', '),
@@ -281,3 +281,5 @@ export default function OrdersPage() {
     </div>
   );
 }
+
+    

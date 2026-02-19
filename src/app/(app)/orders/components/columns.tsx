@@ -39,12 +39,12 @@ export const getOrderColumns = (language: 'ar' | 'en', onUpdate: () => void): Co
   },
   {
     id: "customer",
-    accessorFn: (row) => `${row.customerName || ''} ${row.customerPhone || ''}`,
+    accessorFn: (row) => `${row.customerName || ''} ${row.customerPhone1 || ''} ${row.customerPhone2 || ''} ${row.facebookName || ''}`,
     header: language === 'ar' ? "العميل" : "Customer",
     cell: ({ row }) => (
       <div>
         <div className="font-medium">{row.original.customerName || '-'}</div>
-        <div className="text-sm text-muted-foreground">{row.original.customerPhone || ''}</div>
+        <div className="text-sm text-muted-foreground">{row.original.customerPhone1 || ''}</div>
       </div>
     )
   },
@@ -143,3 +143,5 @@ export const getOrderColumns = (language: 'ar' | 'en', onUpdate: () => void): Co
     },
   },
 ];
+
+    

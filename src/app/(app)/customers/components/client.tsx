@@ -120,7 +120,8 @@ export function CustomersClient<TData extends CustomerWithOrderCount, TValue>({
                     <div className="flex justify-between items-start">
                         <div>
                             <div className="font-bold">{customer.customerName}</div>
-                            <div className="text-sm text-muted-foreground">{customer.customerPhone}</div>
+                            <div className="text-sm text-muted-foreground">{customer.customerPhone1}</div>
+                            {customer.customerPhone2 && <div className="text-sm text-muted-foreground">{customer.customerPhone2}</div>}
                         </div>
                         <div className="text-right">
                             <div className="font-medium">{customer.orderCount} {language === 'ar' ? 'طلبات' : 'orders'}</div>
@@ -200,3 +201,5 @@ export function CustomersClient<TData extends CustomerWithOrderCount, TValue>({
     </div>
   );
 }
+
+    

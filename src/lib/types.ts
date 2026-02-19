@@ -50,7 +50,9 @@ export type Order = {
   id: string;
   path?: string;
   customerName: string;
-  customerPhone: string;
+  facebookName?: string;
+  customerPhone1: string;
+  customerPhone2?: string;
   customerAddress: string;
   zoning: string;
   status: OrderStatus;
@@ -95,7 +97,11 @@ export type Product = {
 
 export type Customer = {
   customerName: string;
-  customerPhone: string;
+  facebookName?: string;
+  customerPhone1: string;
+  customerPhone2?: string;
   customerAddress: string;
   zoning: string;
 };
+
+    

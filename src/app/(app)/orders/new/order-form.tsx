@@ -28,8 +28,10 @@ import { ref, get, update, push, set, runTransaction } from "firebase/database";
 const orderFormSchema = z.object({
   id: z.string().min(1, "رقم الطلب مطلوب"),
   customerName: z.string().min(1, "اسم العميل مطلوب"),
-  customerPhone: z.string().min(1, "رقم هاتف العميل مطلوب"),
-  customerAddress: z.string().min(1, "عنوان العميل مطلوب"),
+  facebookName: z.string().optional(),
+  customerPhone1: z.string().min(1, "رقم الموبايل 1 مطلوب"),
+  customerPhone2: z.string().optional(),
+  customerAddress: z.string().min(1, "العنوان بالتفصيل مطلوب"),
   zoning: z.string().min(1, "المنطقة مطلوبة"),
   items: z
     .array(
@@ -67,7 +69,9 @@ export function OrderForm({ onSuccess }: OrderFormProps) {
     defaultValues: {
       id: "",
       customerName: "",
-      customerPhone: "",
+      facebookName: "",
+      customerPhone1: "",
+      customerPhone2: "",
       customerAddress: "",
       zoning: "",
       items: [{ productId: "", productName: "", quantity: 1, price: 0, weight: undefined }],
@@ -85,14 +89,18 @@ export function OrderForm({ onSuccess }: OrderFormProps) {
   const filteredCustomers = React.useMemo(() => {
     if (!customerSearch) return [];
     return allCustomers.filter(
-      (c: any) => (c.customerName && c.customerName.toLowerCase().includes(customerSearch.toLowerCase())) ||
-           (c.customerPhone && c.customerPhone.toLowerCase().includes(customerSearch.toLowerCase()))
+      (c: any) =>
+        (c.customerName && c.customerName.toLowerCase().includes(customerSearch.toLowerCase())) ||
+        (c.customerPhone1 && c.customerPhone1.includes(customerSearch)) ||
+        (c.customerPhone2 && c.customerPhone2.includes(customerSearch))
     );
   }, [customerSearch, allCustomers]);
 
   const handleCustomerSelect = (customer: Customer & {id: string}) => {
     form.setValue("customerName", customer.customerName);
-    form.setValue("customerPhone", customer.customerPhone);
+    form.setValue("facebookName", customer.facebookName || "");
+    form.setValue("customerPhone1", customer.customerPhone1);
+    form.setValue("customerPhone2", customer.customerPhone2 || "");
     form.setValue("customerAddress", customer.customerAddress);
     form.setValue("zoning", customer.zoning);
     setCustomerSearch(""); 
@@ -160,7 +168,7 @@ export function OrderForm({ onSuccess }: OrderFormProps) {
             } else {
                 const newProductRef = push(ref(database, 'products'));
                 productId = newProductRef.key!;
-                const newProductData = {
+                const newProductData: Omit<Product, 'id'> & {salesCount: number} = {
                     name: item.productName,
                     price: item.price,
                     weight: item.weight,
@@ -182,7 +190,9 @@ export function OrderForm({ onSuccess }: OrderFormProps) {
         const newOrder = {
             id: data.id,
             customerName: data.customerName,
-            customerPhone: data.customerPhone,
+            facebookName: data.facebookName,
+            customerPhone1: data.customerPhone1,
+            customerPhone2: data.customerPhone2,
             customerAddress: data.customerAddress,
             zoning: data.zoning,
             items: resolvedItems,
@@ -204,18 +214,20 @@ export function OrderForm({ onSuccess }: OrderFormProps) {
         updates[orderPath] = newOrder;
         
         updates[`order-lookup/${data.id}`] = { path: datePath };
-        updates[`customer-orders/${data.customerPhone}/${data.id}`] = true;
+        updates[`customer-orders/${data.customerPhone1}/${data.id}`] = true;
 
-        const customerRef = ref(database, `customers/${data.customerPhone}`);
+        const customerRef = ref(database, `customers/${data.customerPhone1}`);
         const customerSnapshot = await get(customerRef);
         if (!customerSnapshot.exists()) {
             const newCustomer: Customer = {
                 customerName: data.customerName,
-                customerPhone: data.customerPhone,
+                facebookName: data.facebookName,
+                customerPhone1: data.customerPhone1,
+                customerPhone2: data.customerPhone2,
                 customerAddress: data.customerAddress,
                 zoning: data.zoning,
             };
-            updates[`customers/${data.customerPhone}`] = newCustomer; 
+            updates[`customers/${data.customerPhone1}`] = newCustomer; 
         }
 
         await update(ref(database), updates);
@@ -252,7 +264,7 @@ export function OrderForm({ onSuccess }: OrderFormProps) {
         <div>
             <h3 className="text-lg font-medium mb-4">{language === 'ar' ? 'تفاصيل العميل' : 'Customer Details'}</h3>
             <div className="grid md:grid-cols-2 gap-4">
-                 <div className="relative">
+                 <div className="relative md:col-span-2">
                     <FormField control={form.control} name="customerName" render={({ field }) => (
                         <FormItem>
                         <FormLabel>{language === 'ar' ? 'اسم العميل' : 'Customer Name'}</FormLabel>
@@ -276,25 +288,38 @@ export function OrderForm({ onSuccess }: OrderFormProps) {
                                         onClick={() => handleCustomerSelect(customer)}
                                     >
                                         <p className="font-medium">{customer.customerName}</p>
-                                        <p className="text-muted-foreground">{customer.customerPhone}</p>
+                                        <p className="text-muted-foreground">{customer.customerPhone1}</p>
                                     </div>
                                 ))}
                             </CardContent>
                         </Card>
                     )}
                  </div>
-
-                <FormField control={form.control} name="customerPhone" render={({ field }) => (
+                 <FormField control={form.control} name="facebookName" render={({ field }) => (
                     <FormItem>
-                    <FormLabel>{language === 'ar' ? 'رقم هاتف العميل' : 'Customer Phone'}</FormLabel>
-                    <FormControl><Input placeholder={language === 'ar' ? 'رقم الهاتف' : 'Phone Number'} {...field} /></FormControl>
+                    <FormLabel>{language === 'ar' ? 'اسم فيسبوك' : 'Facebook Name'}</FormLabel>
+                    <FormControl><Input placeholder={language === 'ar' ? 'اسم الملف الشخصي على فيسبوك' : 'Facebook profile name'} {...field} /></FormControl>
+                    <FormMessage />
+                    </FormItem>
+                )}/>
+                <FormField control={form.control} name="customerPhone1" render={({ field }) => (
+                    <FormItem>
+                    <FormLabel>{language === 'ar' ? 'رقم الموبايل 1' : 'Phone Number 1'}</FormLabel>
+                    <FormControl><Input placeholder={language === 'ar' ? 'رقم الموبايل الأساسي' : 'Primary phone number'} {...field} /></FormControl>
+                    <FormMessage />
+                    </FormItem>
+                )}/>
+                <FormField control={form.control} name="customerPhone2" render={({ field }) => (
+                    <FormItem>
+                    <FormLabel>{language === 'ar' ? 'رقم الموبايل 2 (اختياري)' : 'Phone Number 2 (Optional)'}</FormLabel>
+                    <FormControl><Input placeholder={language === 'ar' ? 'رقم موبايل إضافي' : 'Additional phone number'} {...field} /></FormControl>
                     <FormMessage />
                     </FormItem>
                 )}/>
                 <FormField control={form.control} name="customerAddress" render={({ field }) => (
                     <FormItem className="md:col-span-2">
-                    <FormLabel>{language === 'ar' ? 'العنوان' : 'Address'}</FormLabel>
-                    <FormControl><Input placeholder={language === 'ar' ? 'عنوان الشارع' : 'Street Address'} {...field} /></FormControl>
+                    <FormLabel>{language === 'ar' ? 'العنوان بالتفصيل' : 'Detailed Address'}</FormLabel>
+                    <FormControl><Input placeholder={language === 'ar' ? 'عنوان الشارع، رقم المبنى، إلخ.' : 'Street address, building no., etc.'} {...field} /></FormControl>
                     <FormMessage />
                     </FormItem>
                 )}/>
@@ -409,3 +434,5 @@ export function OrderForm({ onSuccess }: OrderFormProps) {
     </Form>
   );
 }
+
+    

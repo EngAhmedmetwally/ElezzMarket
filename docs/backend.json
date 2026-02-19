@@ -119,40 +119,27 @@
       "properties": {
         "id": {
           "type": "string",
-          "description": "Unique identifier for the Customer entity."
+          "description": "Unique identifier for the Customer entity, typically the primary phone number."
         },
-        "firstName": {
+        "customerName": {
           "type": "string",
-          "description": "The first name of the customer."
+          "description": "The full name of the customer."
         },
-        "lastName": {
+        "facebookName": {
           "type": "string",
-          "description": "The last name of the customer."
+          "description": "The customer's name or profile on Facebook."
         },
-        "email": {
-          "type": "string",
-          "description": "The email address of the customer (optional).",
-          "format": "email"
-        },
-        "phoneNumber": {
+        "customerPhone1": {
           "type": "string",
           "description": "The primary contact phone number for the customer."
         },
-        "address": {
+        "customerPhone2": {
           "type": "string",
-          "description": "The primary street address of the customer."
+          "description": "A secondary contact phone number for the customer."
         },
-        "city": {
+        "customerAddress": {
           "type": "string",
-          "description": "The city where the customer resides."
-        },
-        "state": {
-          "type": "string",
-          "description": "The state or region where the customer resides (optional)."
-        },
-        "zipCode": {
-          "type": "string",
-          "description": "The postal code for the customer's address (optional)."
+          "description": "The detailed street address of the customer."
         },
         "zoning": {
           "type": "string",
@@ -166,11 +153,9 @@
       },
       "required": [
         "id",
-        "firstName",
-        "lastName",
-        "phoneNumber",
-        "address",
-        "city",
+        "customerName",
+        "customerPhone1",
+        "customerAddress",
         "zoning",
         "createdAt"
       ]
@@ -602,3 +587,5 @@
     ]
   }
 }
+
+    

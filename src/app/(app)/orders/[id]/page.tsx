@@ -338,7 +338,9 @@ export default function OrderDetailsPage() {
                   </CardHeader>
                   <CardContent className="space-y-2">
                       <p className="font-medium">{order.customerName}</p>
-                      <p className="text-sm text-muted-foreground">{order.customerPhone}</p>
+                      {order.facebookName && <p className="text-sm text-muted-foreground"><span className="font-medium">{language === 'ar' ? 'فيسبوك:' : 'Facebook:'}</span> {order.facebookName}</p>}
+                      <p className="text-sm text-muted-foreground"><span className="font-medium">{language === 'ar' ? 'موبايل 1:' : 'Phone 1:'}</span> {order.customerPhone1}</p>
+                      {order.customerPhone2 && <p className="text-sm text-muted-foreground"><span className="font-medium">{language === 'ar' ? 'موبايل 2:' : 'Phone 2:'}</span> {order.customerPhone2}</p>}
                       <p className="text-sm text-muted-foreground">{order.customerAddress}</p>
                        <p className="text-sm text-muted-foreground">{language === 'ar' ? 'المنطقة:' : 'Zoning:'} {order.zoning}</p>
                   </CardContent>
@@ -438,3 +440,5 @@ export default function OrderDetailsPage() {
     </>
   );
 }
+
+    

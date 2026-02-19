@@ -90,7 +90,7 @@ export function OrdersClient<TData extends Order, TValue>({
   const filters = (
     <div className="flex flex-wrap items-center gap-4 py-4">
         <Input
-          placeholder={language === 'ar' ? 'بحث (رقم طلب, عميل, هاتف)...' : 'Search (ID, customer, phone)...'}
+          placeholder={language === 'ar' ? 'بحث (رقم طلب, عميل, هاتف, فيسبوك)...' : 'Search (ID, customer, phone, facebook)...'}
           value={globalFilter ?? ""}
           onChange={(event) => setGlobalFilter(event.target.value)}
           className="max-w-sm"
@@ -174,7 +174,7 @@ export function OrdersClient<TData extends Order, TValue>({
                   <CardContent className="p-4 pt-0 space-y-4">
                     <div>
                       <div className="font-medium">{row.original.customerName}</div>
-                      <div className="text-sm text-muted-foreground">{row.original.customerPhone}</div>
+                      <div className="text-sm text-muted-foreground">{row.original.customerPhone1}</div>
                     </div>
                     <div className="flex justify-between items-end">
                       <div className="flex gap-4 items-end">
@@ -278,3 +278,5 @@ export function OrdersClient<TData extends Order, TValue>({
     </div>
   );
 }
+
+    

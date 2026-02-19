@@ -21,12 +21,19 @@ export const getCustomerColumns = (language: 'ar' | 'en'): ColumnDef<CustomerWit
       )
     },
     cell: ({ row }) => (
-      <div className="font-medium">{row.original.customerName}</div>
+      <div>
+        <div className="font-medium">{row.original.customerName}</div>
+        {row.original.facebookName && <div className="text-xs text-muted-foreground">{row.original.facebookName}</div>}
+      </div>
     )
   },
   {
-    accessorKey: "customerPhone",
-    header: language === 'ar' ? 'رقم الهاتف' : 'Phone Number',
+    accessorKey: "customerPhone1",
+    header: language === 'ar' ? 'رقم الموبايل 1' : 'Phone 1',
+  },
+  {
+    accessorKey: "customerPhone2",
+    header: language === 'ar' ? 'رقم الموبايل 2' : 'Phone 2',
   },
   {
     accessorKey: "zoning",
@@ -63,3 +70,5 @@ export const getCustomerColumns = (language: 'ar' | 'en'): ColumnDef<CustomerWit
     cell: ({ row }) => new Date(row.getValue("lastOrderDate")).toLocaleDateString(language === 'ar' ? 'ar-EG' : 'en-US'),
   },
 ];
+
+    
