@@ -91,18 +91,61 @@
     @apply font-arabic;
   }
 
+  @page {
+    size: 80mm auto;
+    margin: 0mm;
+  }
+  
   @media print {
-    .peer, header {
-      display: none !important;
+    body {
+      -webkit-print-color-adjust: exact !important;
+      color-adjust: exact !important;
+      background: #fff;
     }
 
-    main {
-      display: block !important;
-      overflow: visible !important;
-      height: auto !important;
-      min-height: initial !important;
-      padding: 0 !important;
-      margin: 0 !important;
+    .receipt {
+      font-family: 'Courier New', Courier, monospace;
+      font-size: 10pt;
+      color: black;
+    }
+    .receipt h2 {
+      font-size: 14pt;
+      margin: 0;
+    }
+    .receipt p {
+      margin: 1mm 0;
+    }
+    .receipt hr {
+      border: none;
+      border-top: 1px dashed black;
+      margin: 2mm 0;
+    }
+    .receipt table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    .receipt th, .receipt td {
+      padding: 1mm 0;
+      text-align: left;
+      font-size: 9pt;
+      word-break: break-all;
+    }
+     .receipt th {
+      font-weight: bold;
+    }
+    .receipt td:first-child, .receipt th:first-child {
+        width: 45%;
+        padding-right: 1mm;
+    }
+    .receipt .text-center {
+        text-align: center;
+    }
+    .receipt .text-right {
+        text-align: right;
+    }
+    .receipt .summary div {
+        display: flex;
+        justify-content: space-between;
     }
   }
 }

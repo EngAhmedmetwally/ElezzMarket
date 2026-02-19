@@ -1,4 +1,3 @@
-
 "use client";
 
 import * as React from "react";
@@ -8,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { StatusBadge } from "@/components/status-badge";
-import { Printer, Search } from "lucide-react";
+import { Printer, Search, Rocket } from "lucide-react";
 import { useLanguage } from "@/components/language-provider";
 import type { Order, OrderStatus, StatusHistoryItem, User, Commission, CommissionRule } from "@/lib/types";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -93,6 +92,57 @@ function OrderDetailsSkeleton() {
             </div>
         </div>
     )
+}
+
+function ReceiptView({ order, language }: { order: Order; language: "ar" | "en" }) {
+  if (!order) return null;
+
+  const orderItems = order.items ? (Array.isArray(order.items) ? order.items : Object.values(order.items)) : [];
+  const itemsSubtotal = orderItems.reduce((acc, item) => acc + (item.price * item.quantity), 0);
+
+  return (
+    <div className="receipt">
+      <div className="text-center mb-4">
+        <Rocket className="h-8 w-8 mx-auto text-black" />
+        <h2 className="font-bold text-lg mt-2">{language === 'ar' ? 'سوق العز' : 'ElEzz Market'}</h2>
+      </div>
+      <p>{language === 'ar' ? 'رقم الطلب:' : 'Order ID:'} {order.id}</p>
+      <p>{language === 'ar' ? 'التاريخ:' : 'Date:'} {format(new Date(order.createdAt), "dd/MM/yyyy HH:mm")}</p>
+      <hr />
+      <p><strong>{language === 'ar' ? 'العميل:' : 'Customer:'}</strong> {order.customerName}</p>
+      <p><strong>{language === 'ar' ? 'الهاتف:' : 'Phone:'}</strong> {order.customerPhone1}</p>
+      {order.customerAddress && <p><strong>{language === 'ar' ? 'العنوان:' : 'Address:'}</strong> {order.customerAddress}</p>}
+      <hr />
+      <table>
+        <thead>
+          <tr>
+            <th>{language === 'ar' ? 'الصنف' : 'Item'}</th>
+            <th className="text-center">{language === 'ar' ? 'كمية' : 'Qty'}</th>
+            <th className="text-right">{language === 'ar' ? 'سعر' : 'Price'}</th>
+            <th className="text-right">{language === 'ar' ? 'إجمالي' : 'Total'}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {orderItems.map((item, index) => (
+            <tr key={index}>
+              <td>{item.productName} {item.weight ? `(${item.weight}kg)` : ''}</td>
+              <td className="text-center">{item.quantity}</td>
+              <td className="text-right">{item.price.toFixed(2)}</td>
+              <td className="text-right">{(item.price * item.quantity).toFixed(2)}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      <hr />
+      <div className="summary space-y-1">
+        <div><span>{language === 'ar' ? 'مجموع المنتجات' : 'Subtotal'}</span> <span>{itemsSubtotal.toFixed(2)}</span></div>
+        <div><span>{language === 'ar' ? 'تكلفة الشحن' : 'Shipping'}</span> <span>{(order.shippingCost || 0).toFixed(2)}</span></div>
+        <div className="font-bold text-base"><span>{language === 'ar' ? 'الإجمالي الكلي' : 'Total'}</span> <span>{order.total.toFixed(2)}</span></div>
+      </div>
+      <hr />
+      <p className="text-center">{language === 'ar' ? 'شكراً لتعاملكم معنا!' : 'Thank you!'}</p>
+    </div>
+  );
 }
 
 
@@ -270,8 +320,8 @@ export default function OrderDetailsPage() {
 
   return (
     <>
-      <div className="print:p-8">
-        <PageHeader title={`${language === 'ar' ? 'طلب' : 'Order'} ${order.id}`} className="print:hidden">
+      <div className="print:hidden">
+        <PageHeader title={`${language === 'ar' ? 'طلب' : 'Order'} ${order.id}`}>
           <Button onClick={handlePrint}>
             <Printer className="me-2 h-4 w-4" />
             {language === 'ar' ? 'طباعة الفاتورة' : 'Print Invoice'}
@@ -375,6 +425,10 @@ export default function OrderDetailsPage() {
               </Card>
           </div>
         </div>
+      </div>
+      
+      <div className="hidden print:block receipt-container">
+        {order && <ReceiptView order={order} language={language} />}
       </div>
 
       <Dialog open={isNoteModalOpen} onOpenChange={setIsNoteModalOpen}>
