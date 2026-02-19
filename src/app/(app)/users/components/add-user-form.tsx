@@ -29,7 +29,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import type { User } from "@/lib/types";
 import { useDatabase } from "@/firebase";
-import { ref, set, push, update } from "firebase/database";
+import { ref, set, push, update, get } from "firebase/database";
 
 
 const permissionsSchema = z.object({
@@ -198,6 +198,18 @@ export function AddUserForm({ onSuccess, userToEdit }: AddUserFormProps) {
         });
     } else {
         try {
+          if (data.role !== 'Courier') {
+            const usersRef = ref(database, 'users');
+            const usersSnapshot = await get(usersRef);
+            if (usersSnapshot.exists()) {
+                const users = usersSnapshot.val();
+                const nonCourierUsersCount = Object.values(users).filter((u: any) => u.role !== 'Courier').length;
+                if (nonCourierUsersCount >= 25) {
+                    throw new Error(language === 'ar' ? "لا يمكنك إضافة المزيد من المستخدمين (غير المناديب)." : "You cannot add more users (non-couriers).");
+                }
+            }
+          }
+
           const newUserRef = push(ref(database, 'users'));
           const newUserId = newUserRef.key;
 

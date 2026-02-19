@@ -51,6 +51,11 @@ export default function SettingsPage() {
   const usersQuery = useMemoFirebase(() => database ? ref(database, 'users') : null, [database]);
   const { data: usersData, isLoading: isLoadingUsers } = useCollection<User>(usersQuery);
 
+  const nonCourierUsersCount = React.useMemo(() => {
+    if (!usersData) return 0;
+    return usersData.filter(u => u.role !== 'Courier').length;
+  }, [usersData]);
+
   const form = useForm<SettingsFormValues>({
     resolver: zodResolver(settingsFormSchema),
     defaultValues: {
@@ -137,8 +142,8 @@ export default function SettingsPage() {
                 <Users className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-                <div className="text-2xl font-bold">{usersData?.length || 0} / 25</div>
-                <p className="text-xs text-muted-foreground">{language === 'ar' ? 'عدد المستخدمين المسجلين في النظام' : 'Registered users in the system'}</p>
+                <div className="text-2xl font-bold">{nonCourierUsersCount} / 25</div>
+                <p className="text-xs text-muted-foreground">{language === 'ar' ? 'عدد المستخدمين (غير المناديب) المسجلين في النظام' : 'Registered users (non-couriers) in the system'}</p>
             </CardContent>
         </Card>
       )}
