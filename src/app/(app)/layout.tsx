@@ -38,6 +38,7 @@ import { useUser } from "@/firebase";
 import { LanguageToggle } from "@/components/language-toggle";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { UserNav } from "@/components/user-nav";
+import { DataSyncProvider } from "@/components/data-sync-provider";
 
 const navItems = [
   { href: "/dashboard", icon: LayoutDashboard, label: "Dashboard", arLabel: "لوحة التحكم" },
@@ -159,7 +160,9 @@ export default function AppLayout({ children }: { children: ReactNode }) {
         <div className="flex h-full flex-col">
           <AppHeader />
           <main className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8 min-w-0">
-            {children}
+            <DataSyncProvider>
+              {children}
+            </DataSyncProvider>
           </main>
         </div>
       </SidebarInset>
