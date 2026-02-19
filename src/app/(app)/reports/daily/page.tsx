@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useLanguage } from "@/components/language-provider";
 import { DatePicker } from "@/components/ui/datepicker";
-import { useCachedCollection } from "@/hooks/use-cached-collection";
+import { useRealtimeCachedCollection } from "@/hooks/use-realtime-cached-collection";
 import type { Order } from "@/lib/types";
 import { Skeleton } from "@/components/ui/skeleton";
 import { StaffPerformanceChart } from "../components/staff-performance-chart";
@@ -55,7 +55,7 @@ export default function DailyReportPage() {
   );
   const [toDate, setToDate] = React.useState<Date | undefined>(new Date());
   
-  const { data: allOrders, isLoading } = useCachedCollection<Order>('orders');
+  const { data: allOrders, isLoading } = useRealtimeCachedCollection<Order>('orders');
 
   const filteredOrders = React.useMemo(() => {
     if (!allOrders || !fromDate || !toDate) return [];

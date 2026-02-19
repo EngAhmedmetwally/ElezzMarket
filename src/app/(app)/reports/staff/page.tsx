@@ -11,7 +11,7 @@ import { Progress } from "@/components/ui/progress";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { StaffPerformanceChart } from "../components/staff-performance-chart";
 import { DatePicker } from "@/components/ui/datepicker";
-import { useCachedCollection } from "@/hooks/use-cached-collection";
+import { useRealtimeCachedCollection } from "@/hooks/use-realtime-cached-collection";
 import type { Order, User } from "@/lib/types";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -61,8 +61,8 @@ export default function StaffReportPage() {
   const [fromDate, setFromDate] = React.useState<Date | undefined>(new Date(new Date().getFullYear(), new Date().getMonth(), 1));
   const [toDate, setToDate] = React.useState<Date | undefined>(new Date());
   
-  const { data: allOrders, isLoading: isLoadingOrders } = useCachedCollection<Order>('orders');
-  const { data: usersData, isLoading: isLoadingUsers } = useCachedCollection<User>('users');
+  const { data: allOrders, isLoading: isLoadingOrders } = useRealtimeCachedCollection<Order>('orders');
+  const { data: usersData, isLoading: isLoadingUsers } = useRealtimeCachedCollection<User>('users');
 
   const filteredOrders = React.useMemo(() => {
     if (!allOrders || !fromDate || !toDate) return [];

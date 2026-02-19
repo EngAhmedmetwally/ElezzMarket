@@ -8,7 +8,7 @@ import { useLanguage } from "@/components/language-provider";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { StaffPerformanceChart } from "../components/staff-performance-chart";
 import { Progress } from "@/components/ui/progress";
-import { useCachedCollection } from "@/hooks/use-cached-collection";
+import { useRealtimeCachedCollection } from "@/hooks/use-realtime-cached-collection";
 import type { Order } from "@/lib/types";
 import { Skeleton } from "@/components/ui/skeleton";
 import { DatePicker } from "@/components/ui/datepicker";
@@ -51,7 +51,7 @@ export default function ProductsReportPage() {
   const [fromDate, setFromDate] = React.useState<Date | undefined>(new Date(new Date().getFullYear(), new Date().getMonth(), 1));
   const [toDate, setToDate] = React.useState<Date | undefined>(new Date());
 
-  const { data: allOrders, isLoading } = useCachedCollection<Order>('orders');
+  const { data: allOrders, isLoading } = useRealtimeCachedCollection<Order>('orders');
 
   const filteredOrders = React.useMemo(() => {
     if (!allOrders || !fromDate || !toDate) return [];

@@ -25,12 +25,11 @@ import { useDatabase, useUser as useAuthUser } from "@/firebase";
 import { ref, update, runTransaction, get, push, child, set } from "firebase/database";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useCachedDoc } from "@/hooks/use-cached-doc";
-import { useCachedCollection } from "@/hooks/use-cached-collection";
-import { syncCollection } from "@/lib/data-sync";
+import { useRealtimeCachedCollection } from "@/hooks/use-realtime-cached-collection";
 import { Logo } from "@/components/icons/logo";
 import { idbPut } from "@/lib/db";
 import { syncEvents } from "@/lib/sync-events";
-import { useIsMobile } from "@/hooks/use-mobile";
+import { useIsMobile } from "@/hooks/use-is-mobile";
 
 const allowedTransitions: Record<OrderStatus, OrderStatus[]> = {
     "تم التسجيل": ["قيد التجهيز", "ملغي"],
@@ -205,8 +204,8 @@ export default function OrderDetailsPage() {
   const isMobile = useIsMobile();
   
   const { data: order, isLoading: isLoadingOrder } = useCachedDoc<Order>('orders', id);
-  const { data: users, isLoading: isLoadingUsers } = useCachedCollection<User>('users');
-  const { data: receiptSettingsCollection, isLoading: isLoadingSettings } = useCachedCollection<ReceiptSettings>('receipt-settings');
+  const { data: users, isLoading: isLoadingUsers } = useRealtimeCachedCollection<User>('users');
+  const { data: receiptSettingsCollection, isLoading: isLoadingSettings } = useRealtimeCachedCollection<ReceiptSettings>('receipt-settings');
 
   const receiptSettings = React.useMemo(() => {
     if (!receiptSettingsCollection || receiptSettingsCollection.length === 0) return null;
@@ -321,8 +320,7 @@ export default function OrderDetailsPage() {
                        };
                        const newCommRef = push(ref(database, 'commissions'));
                        await set(newCommRef, newCommission);
-                       // Also sync commissions
-                       await syncCollection(database, 'commissions', true);
+                       // Realtime hook will handle sync
                    }
                }
            }
@@ -334,8 +332,7 @@ export default function OrderDetailsPage() {
                    return runTransaction(productSalesRef, (currentCount) => (currentCount || 0) - item.quantity);
                });
                await Promise.all(productSaleUpdatePromises);
-               // Also sync products
-               await syncCollection(database, 'products', true);
+                // Realtime hook will handle sync
            }
 
            toast({
@@ -615,5 +612,3 @@ export default function OrderDetailsPage() {
     </>
   );
 }
-
-    

@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useLanguage } from "@/components/language-provider";
 import { DatePicker } from "@/components/ui/datepicker";
-import { useCachedCollection } from "@/hooks/use-cached-collection";
+import { useRealtimeCachedCollection } from "@/hooks/use-realtime-cached-collection";
 import type { Order, User } from "@/lib/types";
 import { Skeleton } from "@/components/ui/skeleton";
 import { StaffPerformanceChart } from "../components/staff-performance-chart";
@@ -46,8 +46,8 @@ export default function ShippingReportPage() {
   );
   const [toDate, setToDate] = React.useState<Date | undefined>(new Date());
   
-  const { data: allOrders, isLoading: isLoadingOrders } = useCachedCollection<Order>('orders');
-  const { data: usersData, isLoading: isLoadingUsers } = useCachedCollection<User>('users');
+  const { data: allOrders, isLoading: isLoadingOrders } = useRealtimeCachedCollection<Order>('orders');
+  const { data: usersData, isLoading: isLoadingUsers } = useRealtimeCachedCollection<User>('users');
 
   const filteredOrders = React.useMemo(() => {
     if (!allOrders || !fromDate || !toDate) return [];

@@ -5,7 +5,7 @@ import * as React from 'react';
 import { useParams, useSearchParams, useRouter } from 'next/navigation';
 import { PageHeader } from '@/components/page-header';
 import { useLanguage } from '@/components/language-provider';
-import { useCachedCollection } from '@/hooks/use-cached-collection';
+import { useRealtimeCachedCollection } from '@/hooks/use-realtime-cached-collection';
 import type { Order } from '@/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -74,7 +74,7 @@ export default function ProductOrdersPage() {
     return to ? new Date(to) : new Date();
   }, [searchParams]);
 
-  const { data: allOrders, isLoading } = useCachedCollection<Order>('orders');
+  const { data: allOrders, isLoading } = useRealtimeCachedCollection<Order>('orders');
 
   const productOrders = React.useMemo(() => {
     if (!allOrders || !productName || !fromDate || !toDate) return [];
