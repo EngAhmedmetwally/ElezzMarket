@@ -1,4 +1,3 @@
-
 "use client";
 
 import {
@@ -92,7 +91,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
   return (
     <SidebarProvider side={side}>
       {showSidebar && (
-        <Sidebar side={side} collapsible="icon">
+        <Sidebar side={side} collapsible="icon" className="print:hidden">
           <SidebarHeader className="p-4">
             <Link href="/home" className="flex items-center gap-2">
               <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary text-primary-foreground">
