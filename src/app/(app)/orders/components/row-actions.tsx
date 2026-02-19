@@ -2,13 +2,10 @@
 "use client";
 
 import * as React from "react";
-import { MoreHorizontal, Search } from "lucide-react";
+import { MoreHorizontal } from "lucide-react";
 import Link from "next/link";
 import { useLanguage } from "@/components/language-provider";
-import { useToast } from "@/hooks/use-toast";
-import type { Order, OrderStatus, User, StatusHistoryItem, Commission, CommissionRule } from "@/lib/types";
-import { cn } from "@/lib/utils";
-import { ref, update, runTransaction, get, push } from "firebase/database";
+import type { Order } from "@/lib/types";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -19,154 +16,14 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose, DialogDescription } from "@/components/ui/dialog";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Textarea } from "@/components/ui/textarea";
-import { Input } from "@/components/ui/input";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { useDatabase, useCollection, useMemoFirebase, useUser as useAuthUser } from "@/firebase";
 
 interface RowActionsProps {
   order: Order;
   onUpdate: () => void;
 }
 
-const allowedTransitions: Record<OrderStatus, OrderStatus[]> = {
-    "تم التسجيل": ["قيد التجهيز", "تم التسليم للمندوب", "ملغي"],
-    "قيد التجهيز": ["تم التسليم للمندوب", "ملغي"],
-    "تم التسليم للمندوب": ["تم التسليم للعميل", "ملغي"],
-    "تم التسليم للعميل": [],
-    "ملغي": [],
-};
-
 export function RowActions({ order, onUpdate }: RowActionsProps) {
   const { language } = useLanguage();
-  const { toast } = useToast();
-  const database = useDatabase();
-  const { user: authUser } = useAuthUser();
-
-  const [isModalOpen, setIsModalOpen] = React.useState(false);
-  
-  const [selectedStatus, setSelectedStatus] = React.useState<OrderStatus | undefined>(undefined);
-  const [note, setNote] = React.useState("");
-  const [courierSearch, setCourierSearch] = React.useState("");
-  const [selectedCourierId, setSelectedCourierId] = React.useState<string | null>(order.courierId ?? null);
-  
-  const usersRef = useMemoFirebase(() => database ? ref(database, `users`) : null, [database]);
-  const { data: users } = useCollection<User>(usersRef);
-  
-  const couriers = React.useMemo(() => users?.filter(u => u.role === 'Courier') || [], [users]);
-  const filteredCouriers = couriers.filter(c => c.name.toLowerCase().includes(courierSearch.toLowerCase()));
-  
-  const canEditStatus = authUser?.role === 'Admin' || authUser?.permissions?.orders?.editStatus;
-  const canCancelOrder = authUser?.role === 'Admin' || authUser?.permissions?.orders?.cancel;
-
-  let availableStatuses = (order && order.status && allowedTransitions[order.status]) ? allowedTransitions[order.status] : [];
-  if (!canCancelOrder) {
-      availableStatuses = availableStatuses.filter(s => s !== 'ملغي');
-  }
-
-  const handleOpenModal = () => {
-    setSelectedStatus(undefined);
-    setSelectedCourierId(order.courierId ?? null);
-    setNote("");
-    setCourierSearch("");
-    setIsModalOpen(true);
-  };
-  
-   const handleStatusUpdate = async (newStatus: OrderStatus, noteText: string, courierId?: string | null) => {
-    if (!order || !database || !authUser || !order.path) {
-        toast({ variant: "destructive", title: language === 'ar' ? 'خطأ' : 'Error', description: "Order data is incomplete."});
-        return;
-    }
-    
-    let updates: any = {};
-    const now = new Date().toISOString();
-    const orderRef = ref(database, `orders/${order.path}/${order.id}`);
-
-    // 1. Handle Commission
-    const commissionRulesSnap = await get(ref(database, 'commission-rules'));
-    const commissionRules = commissionRulesSnap.val();
-    const commissionAmount = commissionRules?.[newStatus]?.amount || 0;
-
-    if (commissionAmount > 0) {
-        let recipientId: string | undefined;
-        if (["تم التسجيل", "قيد التجهيز"].includes(newStatus)) {
-            recipientId = order.moderatorId;
-        } else if (["تم التسليم للمندوب", "تم التسليم للعميل"].includes(newStatus)) {
-            recipientId = courierId || order.courierId;
-        }
-
-        if (recipientId) {
-            const newCommissionRef = push(ref(database, 'commissions'));
-            const newCommission: Commission = {
-                id: newCommissionRef.key!,
-                orderId: order.id,
-                userId: recipientId,
-                orderStatus: newStatus,
-                amount: commissionAmount,
-                calculationDate: now,
-                paymentStatus: 'Calculated',
-            };
-            updates[`/commissions/${newCommission.id}`] = newCommission;
-            updates[`/orders/${order.path}/${order.id}/totalCommission`] = (order.totalCommission || 0) + commissionAmount;
-        }
-    }
-
-    // 2. Handle Product Sales Count for Cancellation
-    if (newStatus === 'ملغي' && order.status !== 'ملغي') {
-        const productSaleUpdatePromises = (order.items || []).map(item => {
-            if (!item.productId) return Promise.resolve();
-            const productSalesRef = ref(database, `products/${item.productId}/salesCount`);
-            return runTransaction(productSalesRef, (currentCount) => (currentCount || 0) - item.quantity);
-        });
-        await Promise.all(productSaleUpdatePromises).catch(err => console.error("Failed to decrement sales count", err));
-    }
-    
-    // 3. Prepare Order Update
-    const newHistoryItem: StatusHistoryItem = {
-        status: newStatus,
-        notes: noteText,
-        createdAt: now,
-        userName: authUser.name || "مستخدم مسؤول",
-    };
-    const currentHistory = (order.statusHistory && (Array.isArray(order.statusHistory) ? order.statusHistory : Object.values(order.statusHistory))) || [];
-
-    updates[`/orders/${order.path}/${order.id}/status`] = newStatus;
-    updates[`/orders/${order.path}/${order.id}/updatedAt`] = now;
-    updates[`/orders/${order.path}/${order.id}/statusHistory`] = [...currentHistory, newHistoryItem];
-    if (courierId) {
-      const selectedCourier = couriers.find(c => c.id === courierId);
-      if(selectedCourier) {
-        updates[`/orders/${order.path}/${order.id}/courierId`] = selectedCourier.id;
-        updates[`/orders/${order.path}/${order.id}/courierName`] = selectedCourier.name;
-      }
-    }
-    
-    // 4. Execute all updates
-    await update(ref(database), updates);
-    onUpdate();
-    
-    toast({
-      title: language === 'ar' ? 'تم تحديث الحالة' : 'Status Updated',
-      description: `${language === 'ar' ? 'تم تحديث حالة الطلب إلى' : 'Order status updated to'} ${newStatus}.`,
-    });
-    
-    setIsModalOpen(false);
-  };
-
-  const handleSaveWithValidation = () => {
-    if (!selectedStatus) {
-        toast({ variant: "destructive", title: language === 'ar' ? 'خطأ' : 'Error', description: language === 'ar' ? 'يرجى اختيار حالة جديدة.' : 'Please select a new status.' });
-        return;
-    }
-     if (selectedStatus === 'تم التسليم للمندوب' && !selectedCourierId) {
-      toast({ variant: "destructive", title: language === 'ar' ? 'خطأ' : 'Error', description: language === 'ar' ? 'يرجى اختيار مندوب.' : 'Please select a courier.' });
-      return;
-    }
-    handleStatusUpdate(selectedStatus, note, selectedCourierId);
-  }
 
   return (
     <>
@@ -186,82 +43,8 @@ export function RowActions({ order, onUpdate }: RowActionsProps) {
           <DropdownMenuItem asChild>
             <Link href={`/orders/${order.id}`}>{language === 'ar' ? 'عرض التفاصيل' : 'View details'}</Link>
           </DropdownMenuItem>
-          <DropdownMenuItem onSelect={handleOpenModal} disabled={availableStatuses.length === 0 || !canEditStatus}>
-            {language === 'ar' ? 'تحديث الحالة' : 'Update status'}
-          </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
-
-      <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
-        <DialogContent className="sm:max-w-md">
-            <DialogHeader>
-                <DialogTitle>{language === 'ar' ? 'تحديث حالة الطلب' : 'Update Order Status'}</DialogTitle>
-                <DialogDescription>{language === 'ar' ? `تغيير حالة الطلب رقم ${order.id}` : `Change status for order ${order.id}`}</DialogDescription>
-            </DialogHeader>
-            <div className="py-4 space-y-4">
-                <Select value={selectedStatus} onValueChange={(val: OrderStatus) => setSelectedStatus(val)}>
-                    <SelectTrigger>
-                        <SelectValue placeholder={language === 'ar' ? "اختر الحالة الجديدة" : "Select new status"} />
-                    </SelectTrigger>
-                    <SelectContent>
-                        {availableStatuses.map((status) => (
-                        <SelectItem key={status} value={status}>
-                            {status}
-                        </SelectItem>
-                        ))}
-                    </SelectContent>
-                </Select>
-
-                {selectedStatus === "تم التسليم للمندوب" && (
-                    <div className="space-y-2 rounded-lg border p-4">
-                        <h4 className="font-semibold text-sm">{language === 'ar' ? 'إسناد مندوب' : 'Assign Courier'}</h4>
-                        <div className="relative">
-                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                            <Input 
-                                placeholder={language === 'ar' ? 'ابحث عن مندوب...' : 'Search for courier...'} 
-                                className="pl-9"
-                                value={courierSearch}
-                                onChange={(e) => setCourierSearch(e.target.value)}
-                            />
-                        </div>
-                        <ScrollArea className="h-32">
-                            <div className="space-y-2 pr-2">
-                                {filteredCouriers.map(courier => (
-                                    <div 
-                                        key={courier.id}
-                                        onClick={() => setSelectedCourierId(courier.id)}
-                                        className={cn(
-                                            "flex items-center gap-3 rounded-md p-2 cursor-pointer transition-colors",
-                                            selectedCourierId === courier.id ? "bg-primary text-primary-foreground" : "hover:bg-muted"
-                                        )}
-                                    >
-                                        <Avatar className="h-8 w-8">
-                                            <AvatarImage src={courier.avatarUrl} alt={courier.name} data-ai-hint="avatar" />
-                                            <AvatarFallback>{courier.name.charAt(0)}</AvatarFallback>
-                                        </Avatar>
-                                        <div className="text-sm">
-                                            <p className="font-medium">{courier.name}</p>
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                        </ScrollArea>
-                    </div>
-                )}
-                 <Textarea
-                    placeholder={language === 'ar' ? 'أضف ملاحظة (اختياري)...' : 'Add a note (optional)...'}
-                    value={note}
-                    onChange={(e) => setNote(e.target.value)}
-                />
-            </div>
-            <DialogFooter>
-                <DialogClose asChild>
-                    <Button variant="outline">{language === 'ar' ? 'إلغاء' : 'Cancel'}</Button>
-                </DialogClose>
-                <Button onClick={handleSaveWithValidation}>{language === 'ar' ? 'حفظ التغيير' : 'Save Change'}</Button>
-            </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </>
   );
 }

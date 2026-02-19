@@ -44,7 +44,9 @@ export default function OrdersPage() {
   const [toDate, setToDate] = React.useState<Date | undefined>(undefined);
   const database = useDatabase();
 
-  const columns = getOrderColumns(language, () => setVersion(v => v + 1));
+  const handleUpdate = () => setVersion(v => v + 1);
+
+  const columns = getOrderColumns(language, handleUpdate);
   
   const [allOrders, setAllOrders] = React.useState<Order[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
@@ -192,6 +194,10 @@ export default function OrdersPage() {
     saveAs(data, "orders_export.xlsx");
   }
 
+  const handleNewOrderSuccess = () => {
+    setIsNewOrderOpen(false);
+    handleUpdate();
+  };
 
   return (
     <div>
@@ -211,7 +217,7 @@ export default function OrdersPage() {
               </DialogDescription>
             </DialogHeader>
             <div className="py-4">
-              <OrderForm onSuccess={() => setIsNewOrderOpen(false)} />
+              <OrderForm onSuccess={handleNewOrderSuccess} />
             </div>
           </DialogContent>
         </Dialog>
@@ -276,10 +282,8 @@ export default function OrdersPage() {
             </div>
         </div>
       ) : (
-        <OrdersClient data={filteredOrders} columns={columns} onUpdate={() => setVersion(v => v + 1)} statuses={uniqueOrderStatuses} />
+        <OrdersClient data={filteredOrders} columns={columns} onUpdate={handleUpdate} statuses={uniqueOrderStatuses} />
       )}
     </div>
   );
 }
-
-    
