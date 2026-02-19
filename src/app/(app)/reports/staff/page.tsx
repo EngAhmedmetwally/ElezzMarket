@@ -11,11 +11,9 @@ import { Progress } from "@/components/ui/progress";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { StaffPerformanceChart } from "../components/staff-performance-chart";
 import { DatePicker } from "@/components/ui/datepicker";
-import { useCollection, useDatabase, useMemoFirebase } from "@/firebase";
-import { ref } from "firebase/database";
+import { useCachedCollection } from "@/hooks/use-cached-collection";
 import type { Order, User } from "@/lib/types";
 import { Skeleton } from "@/components/ui/skeleton";
-import { fetchOrdersByDateRange } from "@/lib/data-fetching";
 
 
 function StaffReportSkeleton() {
@@ -60,28 +58,22 @@ function StaffReportSkeleton() {
 export default function StaffReportPage() {
   const { language } = useLanguage();
   const isMobile = useIsMobile();
-  const database = useDatabase();
-  const [version, setVersion] = React.useState(0);
   const [fromDate, setFromDate] = React.useState<Date | undefined>(new Date(new Date().getFullYear(), new Date().getMonth(), 1));
   const [toDate, setToDate] = React.useState<Date | undefined>(new Date());
   
-  const [filteredOrders, setFilteredOrders] = React.useState<Order[]>([]);
-  const [isLoadingOrders, setIsLoadingOrders] = React.useState(true);
+  const { data: allOrders, isLoading: isLoadingOrders } = useCachedCollection<Order>('orders');
+  const { data: usersData, isLoading: isLoadingUsers } = useCachedCollection<User>('users');
 
-  React.useEffect(() => {
-    if (!database || !fromDate || !toDate) return;
-    setIsLoadingOrders(true);
-    fetchOrdersByDateRange(database, fromDate, toDate).then(fetchedOrders => {
-        setFilteredOrders(fetchedOrders);
-        setIsLoadingOrders(false);
-    }).catch(error => {
-        console.error("Error fetching all orders for staff report:", error);
-        setIsLoadingOrders(false);
+  const filteredOrders = React.useMemo(() => {
+    if (!allOrders || !fromDate || !toDate) return [];
+    const from = fromDate.getTime();
+    const to = new Date(toDate).setHours(23, 59, 59, 999);
+    return allOrders.filter(order => {
+        if (!order.createdAt) return false;
+        const orderDate = new Date(order.createdAt).getTime();
+        return orderDate >= from && orderDate <= to;
     });
-  }, [database, version, fromDate, toDate]);
-
-  const usersQuery = useMemoFirebase(() => database ? ref(database, "users") : null, [database]);
-  const { data: usersData, isLoading: isLoadingUsers } = useCollection<User>(usersQuery);
+  }, [allOrders, fromDate, toDate]);
 
   const moderatorsReport = React.useMemo(() => {
     if (!usersData) return [];

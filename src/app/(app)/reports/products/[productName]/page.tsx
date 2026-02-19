@@ -5,8 +5,7 @@ import * as React from 'react';
 import { useParams, useSearchParams, useRouter } from 'next/navigation';
 import { PageHeader } from '@/components/page-header';
 import { useLanguage } from '@/components/language-provider';
-import { useDatabase } from '@/firebase';
-import { ref, get } from 'firebase/database';
+import { useCachedCollection } from '@/hooks/use-cached-collection';
 import type { Order } from '@/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -19,7 +18,6 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { format } from 'date-fns';
-import { fetchOrdersByDateRange } from '@/lib/data-fetching';
 
 type ProductOrder = {
   orderId: string;
@@ -60,7 +58,6 @@ export default function ProductOrdersPage() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const { language } = useLanguage();
-  const database = useDatabase();
 
   const productName = React.useMemo(() => {
     const name = params.productName;
@@ -77,41 +74,41 @@ export default function ProductOrdersPage() {
     return to ? new Date(to) : new Date();
   }, [searchParams]);
 
-  const [productOrders, setProductOrders] = React.useState<ProductOrder[]>([]);
-  const [isLoading, setIsLoading] = React.useState(true);
+  const { data: allOrders, isLoading } = useCachedCollection<Order>('orders');
 
-  React.useEffect(() => {
-    if (!database || !productName || !fromDate || !toDate) return;
-    setIsLoading(true);
+  const productOrders = React.useMemo(() => {
+    if (!allOrders || !productName || !fromDate || !toDate) return [];
+    
+    const from = fromDate.getTime();
+    const to = new Date(toDate).setHours(23, 59, 59, 999);
 
-    fetchOrdersByDateRange(database, fromDate, toDate)
-      .then(allOrdersInRange => {
-        const filtered = allOrdersInRange.filter(order => {
-          const itemsArray = order.items ? (Array.isArray(order.items) ? order.items : Object.values(order.items)) : [];
-          return itemsArray.some(item => item.productName === productName);
-        });
+    const allOrdersInRange = allOrders.filter(order => {
+        if (!order.createdAt) return false;
+        const orderDate = new Date(order.createdAt).getTime();
+        return orderDate >= from && orderDate <= to;
+    });
 
-        const result: ProductOrder[] = filtered.map(order => {
-          const itemsArray = order.items ? (Array.isArray(order.items) ? order.items : Object.values(order.items)) : [];
-          const relevantItem = itemsArray.find(item => item.productName === productName)!;
-          return {
-            orderId: order.id,
-            customerName: order.customerName,
-            customerPhone1: order.customerPhone1,
-            createdAt: order.createdAt,
-            quantity: relevantItem.quantity,
-            weight: relevantItem.weight,
-          };
-        }).sort((a,b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    const filtered = allOrdersInRange.filter(order => {
+      const itemsArray = order.items ? (Array.isArray(order.items) ? order.items : Object.values(order.items)) : [];
+      return itemsArray.some(item => item.productName === productName);
+    });
 
-        setProductOrders(result);
-        setIsLoading(false);
-      }).catch(error => {
-        console.error("Error fetching orders for product report:", error);
-        setIsLoading(false);
-      });
+    const result: ProductOrder[] = filtered.map(order => {
+      const itemsArray = order.items ? (Array.isArray(order.items) ? order.items : Object.values(order.items)) : [];
+      const relevantItem = itemsArray.find(item => item.productName === productName)!;
+      return {
+        orderId: order.id,
+        customerName: order.customerName,
+        customerPhone1: order.customerPhone1,
+        createdAt: order.createdAt,
+        quantity: relevantItem.quantity,
+        weight: relevantItem.weight,
+      };
+    }).sort((a,b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
-  }, [database, productName, fromDate, toDate]);
+    return result;
+
+  }, [allOrders, productName, fromDate, toDate]);
 
   const totalQuantity = productOrders.reduce((sum, order) => sum + order.quantity, 0);
   const totalWeight = productOrders.reduce((sum, order) => sum + ((order.weight || 0) * order.quantity), 0);

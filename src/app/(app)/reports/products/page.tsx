@@ -8,11 +8,10 @@ import { useLanguage } from "@/components/language-provider";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { StaffPerformanceChart } from "../components/staff-performance-chart";
 import { Progress } from "@/components/ui/progress";
-import { useDatabase } from "@/firebase";
+import { useCachedCollection } from "@/hooks/use-cached-collection";
 import type { Order } from "@/lib/types";
 import { Skeleton } from "@/components/ui/skeleton";
 import { DatePicker } from "@/components/ui/datepicker";
-import { fetchOrdersByDateRange } from "@/lib/data-fetching";
 
 function ProductsReportSkeleton() {
   return (
@@ -49,25 +48,21 @@ function ProductsReportSkeleton() {
 export default function ProductsReportPage() {
   const { language } = useLanguage();
   const isMobile = useIsMobile();
-  const database = useDatabase();
-  const [version, setVersion] = React.useState(0);
   const [fromDate, setFromDate] = React.useState<Date | undefined>(new Date(new Date().getFullYear(), new Date().getMonth(), 1));
   const [toDate, setToDate] = React.useState<Date | undefined>(new Date());
 
-  const [filteredOrders, setFilteredOrders] = React.useState<Order[]>([]);
-  const [isLoading, setIsLoading] = React.useState(true);
+  const { data: allOrders, isLoading } = useCachedCollection<Order>('orders');
 
-  React.useEffect(() => {
-    if (!database || !fromDate || !toDate) return;
-    setIsLoading(true);
-    fetchOrdersByDateRange(database, fromDate, toDate).then(fetchedOrders => {
-        setFilteredOrders(fetchedOrders);
-        setIsLoading(false);
-    }).catch(error => {
-        console.error("Error fetching orders for products report:", error);
-        setIsLoading(false);
+  const filteredOrders = React.useMemo(() => {
+    if (!allOrders || !fromDate || !toDate) return [];
+    const from = fromDate.getTime();
+    const to = new Date(toDate).setHours(23, 59, 59, 999);
+    return allOrders.filter(order => {
+        if (!order.createdAt) return false;
+        const orderDate = new Date(order.createdAt).getTime();
+        return orderDate >= from && orderDate <= to;
     });
-  }, [database, version, fromDate, toDate]);
+  }, [allOrders, fromDate, toDate]);
 
 
   const productsSales = React.useMemo(() => {

@@ -3,7 +3,6 @@
 
 import * as React from "react";
 import { DollarSign, Package, Users, BarChart } from "lucide-react";
-import { ref } from "firebase/database";
 import { PageHeader } from "@/components/page-header";
 import { KpiCard } from "@/components/dashboard/kpi-card";
 import { SalesChart } from "@/components/dashboard/sales-chart";
@@ -17,10 +16,9 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useLanguage } from "@/components/language-provider";
 import { DatePicker } from "@/components/ui/datepicker";
-import { useCollection, useDatabase, useMemoFirebase } from "@/firebase";
+import { useCachedCollection } from "@/hooks/use-cached-collection";
 import type { Order, User, UserRole } from "@/lib/types";
 import { Skeleton } from "@/components/ui/skeleton";
-import { fetchOrdersByDateRange } from "@/lib/data-fetching";
 
 function DashboardSkeleton() {
   const { language } = useLanguage();
@@ -56,29 +54,21 @@ export default function DashboardPage() {
   const { language } = useLanguage();
   const [fromDate, setFromDate] = React.useState<Date | undefined>(new Date(new Date().getFullYear(), new Date().getMonth(), 1));
   const [toDate, setToDate] = React.useState<Date | undefined>(new Date());
-  const database = useDatabase();
-  const [version] = React.useState(0);
 
-  const [filteredOrders, setFilteredOrders] = React.useState<Order[]>([]);
-  const [isLoadingOrders, setIsLoadingOrders] = React.useState(true);
+  const { data: allOrders, isLoading: isLoadingOrders } = useCachedCollection<Order>('orders');
+  const { data: usersData, isLoading: isLoadingUsers } = useCachedCollection<User>('users');
 
-  React.useEffect(() => {
-    if (!database || !fromDate || !toDate) return;
-    
-    setIsLoadingOrders(true);
-    fetchOrdersByDateRange(database, fromDate, toDate)
-      .then(setFilteredOrders)
-      .catch(error => {
-        console.error("Error fetching orders for dashboard:", error);
-      })
-      .finally(() => {
-        setIsLoadingOrders(false);
-      });
-  }, [database, version, fromDate, toDate]);
+  const filteredOrders = React.useMemo(() => {
+    if (!allOrders || !fromDate || !toDate) return [];
+    const from = fromDate.getTime();
+    const to = new Date(toDate).setHours(23, 59, 59, 999);
+    return allOrders.filter(order => {
+        if (!order.createdAt) return false;
+        const orderDate = new Date(order.createdAt).getTime();
+        return orderDate >= from && orderDate <= to;
+    });
+  }, [allOrders, fromDate, toDate]);
   
-  const usersQuery = useMemoFirebase(() => database ? ref(database, "users") : null, [database]);
-  const { data: usersData, isLoading: isLoadingUsers } = useCollection<User>(usersQuery);
-
   const users: User[] = React.useMemo(() => {
     if (!usersData) {
       return [];

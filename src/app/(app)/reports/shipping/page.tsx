@@ -7,13 +7,11 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useLanguage } from "@/components/language-provider";
 import { DatePicker } from "@/components/ui/datepicker";
-import { useDatabase, useCollection, useMemoFirebase } from "@/firebase";
-import { ref } from "firebase/database";
+import { useCachedCollection } from "@/hooks/use-cached-collection";
 import type { Order, User } from "@/lib/types";
 import { Skeleton } from "@/components/ui/skeleton";
 import { StaffPerformanceChart } from "../components/staff-performance-chart";
 import { Separator } from "@/components/ui/separator";
-import { fetchOrdersByDateRange } from "@/lib/data-fetching";
 
 function ShippingReportSkeleton() {
   return (
@@ -43,40 +41,34 @@ function ShippingReportSkeleton() {
 
 export default function ShippingReportPage() {
   const { language } = useLanguage();
-  const database = useDatabase();
-  const [version, setVersion] = React.useState(0);
   const [fromDate, setFromDate] = React.useState<Date | undefined>(
     new Date(new Date().getFullYear(), new Date().getMonth(), 1)
   );
   const [toDate, setToDate] = React.useState<Date | undefined>(new Date());
   
-  const [allOrders, setAllOrders] = React.useState<Order[]>([]);
-  const [isLoadingOrders, setIsLoadingOrders] = React.useState(true);
+  const { data: allOrders, isLoading: isLoadingOrders } = useCachedCollection<Order>('orders');
+  const { data: usersData, isLoading: isLoadingUsers } = useCachedCollection<User>('users');
 
-  React.useEffect(() => {
-    if (!database || !fromDate || !toDate) return;
-    setIsLoadingOrders(true);
-    fetchOrdersByDateRange(database, fromDate, toDate).then(fetchedOrders => {
-        setAllOrders(fetchedOrders);
-        setIsLoadingOrders(false);
-    }).catch(error => {
-        console.error("Error fetching all orders for shipping report:", error);
-        setIsLoadingOrders(false);
+  const filteredOrders = React.useMemo(() => {
+    if (!allOrders || !fromDate || !toDate) return [];
+    const from = fromDate.getTime();
+    const to = new Date(toDate).setHours(23, 59, 59, 999);
+    return allOrders.filter(order => {
+        if (!order.createdAt) return false;
+        const orderDate = new Date(order.createdAt).getTime();
+        return orderDate >= from && orderDate <= to;
     });
-  }, [database, version, fromDate, toDate]);
-
-  const usersQuery = useMemoFirebase(() => database ? ref(database, "users") : null, [database]);
-  const { data: usersData, isLoading: isLoadingUsers } = useCollection<User>(usersQuery);
+  }, [allOrders, fromDate, toDate]);
 
   const revenueOrders = React.useMemo(() => {
-    if (!allOrders) return [];
-    return allOrders.filter(order => order.status !== 'ملغي'); // Exclude cancelled orders
-  }, [allOrders]);
+    if (!filteredOrders) return [];
+    return filteredOrders.filter(order => order.status !== 'ملغي'); // Exclude cancelled orders
+  }, [filteredOrders]);
 
   const performanceOrders = React.useMemo(() => {
-    if (!allOrders) return [];
-    return allOrders.filter(order => order.status === "مكتمل"); 
-  }, [allOrders]);
+    if (!filteredOrders) return [];
+    return filteredOrders.filter(order => order.status === "مكتمل"); 
+  }, [filteredOrders]);
 
   const zoneShippingRevenue = React.useMemo(() => {
     const zoneMap = new Map<string, number>();

@@ -29,56 +29,57 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { useDatabase, useUser } from "@/firebase";
+import { useUser } from "@/firebase";
+import { useCachedCollection } from "@/hooks/use-cached-collection";
 import type { Order, OrderStatus } from "@/lib/types";
 import { Skeleton } from "@/components/ui/skeleton";
-import { fetchOrdersByDateRange } from "@/lib/data-fetching";
 
 
 export default function OrdersPage() {
   const [isNewOrderOpen, setIsNewOrderOpen] = React.useState(false);
   const { language } = useLanguage();
   const { toast } = useToast();
-  const [version, setVersion] = React.useState(0);
+  const { user } = useUser();
+  const { data: allOrders, isLoading, refetch } = useCachedCollection<Order>('orders');
+  
   const [fromDate, setFromDate] = React.useState<Date | undefined>(new Date(new Date().getFullYear(), new Date().getMonth(), 1));
   const [toDate, setToDate] = React.useState<Date | undefined>(new Date());
-  const database = useDatabase();
-  const { user } = useUser();
 
-  const handleUpdate = () => setVersion(v => v + 1);
+  const handleUpdate = () => refetch();
 
   const columns = getOrderColumns(language, handleUpdate);
   
-  const [allOrders, setAllOrders] = React.useState<Order[]>([]);
-  const [isLoading, setIsLoading] = React.useState(true);
+  const filteredOrders = React.useMemo(() => {
+    if (!allOrders || !fromDate || !toDate) return [];
+    
+    const from = fromDate.getTime();
+    const to = new Date(toDate).setHours(23, 59, 59, 999);
+    
+    let dateFiltered = allOrders.filter(order => {
+        if (!order.createdAt) return false;
+        const orderDate = new Date(order.createdAt).getTime();
+        return orderDate >= from && orderDate <= to;
+    });
 
-  React.useEffect(() => {
-    if (!database || !fromDate || !toDate || !user) return;
-    setIsLoading(true);
-    fetchOrdersByDateRange(database, fromDate, toDate).then(fetchedOrders => {
-        let userOrders = fetchedOrders;
-
+    if (user) {
         const isAdmin = user.role === 'Admin';
         const canSeeAll = user.orderVisibility === 'all';
 
         if (!isAdmin && !canSeeAll) {
              if (user.role === 'Moderator') {
-                 userOrders = fetchedOrders.filter(order => order.moderatorId === user.id);
+                 dateFiltered = dateFiltered.filter(order => order.moderatorId === user.id);
              } else if (user.role === 'Courier') {
-                 userOrders = fetchedOrders.filter(order => order.courierId === user.id);
+                 dateFiltered = dateFiltered.filter(order => order.courierId === user.id);
              } else {
-                 userOrders = [];
+                 dateFiltered = [];
              }
         }
-        
-        const sorted = [...userOrders].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-        setAllOrders(sorted);
-        setIsLoading(false);
-    }).catch(error => {
-        console.error("Error fetching all orders:", error);
-        setIsLoading(false);
-    });
-  }, [database, user, version, fromDate, toDate]);
+    } else {
+        dateFiltered = [];
+    }
+    
+    return [...dateFiltered].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  }, [allOrders, user, fromDate, toDate]);
 
   
   const uniqueOrderStatuses = React.useMemo(() => {
@@ -87,7 +88,7 @@ export default function OrdersPage() {
   }, []);
 
   const ordersByStatus = React.useMemo(() => {
-    const statusCounts = allOrders.reduce((acc, order) => {
+    const statusCounts = filteredOrders.reduce((acc, order) => {
         if (order.status) {
           acc[order.status] = (acc[order.status] || 0) + 1;
         }
@@ -95,7 +96,7 @@ export default function OrdersPage() {
     }, {} as Record<string, number>);
 
     return Object.entries(statusCounts).map(([name, value]) => ({ name, value }));
-  }, [allOrders]);
+  }, [filteredOrders]);
 
 
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -129,8 +130,8 @@ export default function OrdersPage() {
   };
 
   const handleFileDownload = () => {
-    if (!allOrders) return;
-    const sheetData = allOrders.map(order => ({
+    if (!filteredOrders) return;
+    const sheetData = filteredOrders.map(order => ({
         'رقم الاوردر': order.id,
         'التاريخ': order.createdAt ? new Date(order.createdAt).toLocaleDateString('ar-EG') : '',
         'اسم العميل': order.customerName,
@@ -241,7 +242,7 @@ export default function OrdersPage() {
             </div>
         </div>
       ) : (
-        <OrdersClient data={allOrders} columns={columns} onUpdate={handleUpdate} statuses={uniqueOrderStatuses} />
+        <OrdersClient data={filteredOrders} columns={columns} onUpdate={handleUpdate} statuses={uniqueOrderStatuses} />
       )}
     </div>
   );
