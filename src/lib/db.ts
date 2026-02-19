@@ -1,8 +1,8 @@
 'use client';
 
 const DB_NAME = 'ElEzzMarketDB';
-const DB_VERSION = 1;
-const STORES = ['orders', 'users', 'products', 'shipping-zones', 'commission-rules', 'customers', 'app-settings', 'sync-timestamps', 'commissions'];
+const DB_VERSION = 2;
+const STORES = ['orders', 'users', 'products', 'shipping-zones', 'commission-rules', 'customers', 'app-settings', 'receipt-settings', 'sync-timestamps', 'commissions'];
 
 let db: IDBDatabase | null = null;
 
@@ -36,7 +36,7 @@ const openDB = (): Promise<IDBDatabase> => {
                  dbInstance.createObjectStore(storeName, { keyPath: 'id' });
             } else if (storeName === 'sync-timestamps') {
                 dbInstance.createObjectStore(storeName, { keyPath: 'collection' });
-            } else if (storeName === 'app-settings') {
+            } else if (storeName === 'app-settings' || storeName === 'receipt-settings') {
                 dbInstance.createObjectStore(storeName, { keyPath: 'id' });
             }
              else {
