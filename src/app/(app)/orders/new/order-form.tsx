@@ -1,3 +1,4 @@
+
 "use client";
 
 import * as React from "react";
@@ -182,7 +183,7 @@ export function OrderForm({ onSuccess }: OrderFormProps) {
                 calculationDate: new Date().toISOString(),
                 paymentStatus: 'Calculated',
             };
-            updates[`commissions/${commissionId}`] = newCommission;
+            updates[`/commissions/${commissionId}`] = newCommission;
             totalCommission += registrationCommissionAmount;
         }
 
