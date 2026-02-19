@@ -10,10 +10,11 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import * as React from "react";
 import { useToast } from "@/hooks/use-toast";
-import { useDatabase, useDoc, useMemoFirebase } from "@/firebase";
+import { useDatabase, useDoc, useMemoFirebase, useUser, useCollection } from "@/firebase";
 import { ref, update } from "firebase/database";
-import type { ReceiptSettings } from "@/lib/types";
+import type { ReceiptSettings, User } from "@/lib/types";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Users } from "lucide-react";
 
 
 const settingsFormSchema = z.object({
@@ -41,10 +42,15 @@ export default function SettingsPage() {
   const { language } = useLanguage();
   const { toast } = useToast();
   const database = useDatabase();
+  const { user } = useUser();
+  const isAdmin = user?.role === 'Admin';
 
   const settingsRef = useMemoFirebase(() => database ? ref(database, 'receipt-settings') : null, [database]);
   const { data: currentSettings, isLoading } = useDoc<ReceiptSettings>(settingsRef);
   
+  const usersQuery = useMemoFirebase(() => database ? ref(database, 'users') : null, [database]);
+  const { data: usersData, isLoading: isLoadingUsers } = useCollection<User>(usersQuery);
+
   const form = useForm<SettingsFormValues>({
     resolver: zodResolver(settingsFormSchema),
     defaultValues: {
@@ -85,7 +91,7 @@ export default function SettingsPage() {
     }
   }
 
-  if (isLoading) {
+  if (isLoading || isLoadingUsers) {
     return (
         <div className="space-y-8">
             <PageHeader title={language === 'ar' ? 'الإعدادات' : 'Settings'} />
@@ -123,6 +129,20 @@ export default function SettingsPage() {
   return (
     <div className="space-y-8">
       <PageHeader title={language === 'ar' ? 'الإعدادات' : 'Settings'} />
+
+      {isAdmin && (
+         <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">{language === 'ar' ? 'خطة المستخدمين' : 'User Plan'}</CardTitle>
+                <Users className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+                <div className="text-2xl font-bold">{usersData?.length || 0} / 25</div>
+                <p className="text-xs text-muted-foreground">{language === 'ar' ? 'عدد المستخدمين المسجلين في النظام' : 'Registered users in the system'}</p>
+            </CardContent>
+        </Card>
+      )}
+
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
         <Card className="lg:col-span-2">
             <CardHeader>

@@ -8,14 +8,19 @@ import { useLanguage } from "@/components/language-provider";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { StaffPerformanceChart } from "../components/staff-performance-chart";
 import { Progress } from "@/components/ui/progress";
-import { useCollection, useDatabase, useMemoFirebase } from "@/firebase";
-import { ref } from "firebase/database";
-import type { Product } from "@/lib/types";
+import { useDatabase } from "@/firebase";
+import { ref, get } from "firebase/database";
+import type { Order } from "@/lib/types";
 import { Skeleton } from "@/components/ui/skeleton";
+import { DatePicker } from "@/components/ui/datepicker";
 
 function ProductsReportSkeleton() {
   return (
     <div className="space-y-8">
+      <div className="flex items-center gap-4">
+        <Skeleton className="h-10 w-40" />
+        <Skeleton className="h-10 w-40" />
+      </div>
       <div className="grid lg:grid-cols-3 gap-8">
         <div className="lg:col-span-3">
           <Skeleton className="h-[350px] w-full" />
@@ -45,23 +50,72 @@ export default function ProductsReportPage() {
   const { language } = useLanguage();
   const isMobile = useIsMobile();
   const database = useDatabase();
+  const [version, setVersion] = React.useState(0);
+  const [fromDate, setFromDate] = React.useState<Date | undefined>(undefined);
+  const [toDate, setToDate] = React.useState<Date | undefined>(undefined);
 
-  const productsQuery = useMemoFirebase(() => 
-    database 
-      ? ref(database, 'products')
-      : null, 
-    [database]
-  );
-  const { data: productsData, isLoading } = useCollection<Product>(productsQuery);
+  const [allOrders, setAllOrders] = React.useState<Order[]>([]);
+  const [isLoading, setIsLoading] = React.useState(true);
+
+  React.useEffect(() => {
+    if (!database) return;
+    setIsLoading(true);
+    const ordersRef = ref(database, 'orders');
+    get(ordersRef).then(snapshot => {
+        const fetchedOrders: Order[] = [];
+        if (snapshot.exists()) {
+            const ordersByMonthYear = snapshot.val();
+            Object.keys(ordersByMonthYear).forEach(monthYear => {
+                const ordersByDay = ordersByMonthYear[monthYear];
+                Object.keys(ordersByDay).forEach(day => {
+                    const orders = ordersByDay[day];
+                    Object.keys(orders).forEach(orderId => {
+                        fetchedOrders.push({ ...orders[orderId], id: orderId });
+                    });
+                });
+            });
+        }
+        setAllOrders(fetchedOrders);
+        setIsLoading(false);
+    }).catch(error => {
+        console.error("Error fetching all orders for products report:", error);
+        setIsLoading(false);
+    });
+  }, [database, version]);
+
+
+  const filteredOrders = React.useMemo(() => {
+    return allOrders.filter(order => {
+        if (!order.createdAt) return false;
+        const orderDate = new Date(order.createdAt);
+        if (fromDate) {
+            const fromDateStart = new Date(fromDate);
+            fromDateStart.setHours(0, 0, 0, 0);
+            if (orderDate < fromDateStart) return false;
+        }
+        if (toDate) {
+            const toDateEnd = new Date(toDate);
+            toDateEnd.setHours(23, 59, 59, 999);
+            if (orderDate > toDateEnd) return false;
+        }
+        return true;
+    });
+  }, [allOrders, fromDate, toDate]);
 
   const productsSales = React.useMemo(() => {
-    if (!productsData) return [];
+    const productMap = new Map<string, { name: string; count: number }>();
     
-    const sales = productsData
-        .map(product => ({ 
-            name: product.name, 
-            count: product.salesCount || 0 
-        }))
+    filteredOrders.forEach(order => {
+        if (order.status === 'ملغي') return;
+        const items = Array.isArray(order.items) ? order.items : Object.values(order.items);
+        items.forEach(item => {
+            const existing = productMap.get(item.productName) || { name: item.productName, count: 0 };
+            existing.count += item.quantity;
+            productMap.set(item.productName, existing);
+        });
+    });
+
+    const sales = Array.from(productMap.values())
         .filter(p => p.count > 0)
         .sort((a, b) => b.count - a.count);
 
@@ -71,7 +125,7 @@ export default function ProductsReportPage() {
         ...item, 
         percentage: totalSoldCount > 0 ? (item.count / totalSoldCount) * 100 : 0 
     }));
-  }, [productsData]);
+  }, [filteredOrders]);
 
   const topProductsChartData = productsSales.slice(0, 10).map(p => ({ name: p.name, value: p.count }));
 
@@ -87,6 +141,12 @@ export default function ProductsReportPage() {
   return (
     <div className="space-y-8">
       <PageHeader title={language === 'ar' ? 'تقرير المنتجات' : 'Products Report'} />
+
+      <div className="flex flex-col sm:flex-row items-center gap-4">
+        <DatePicker date={fromDate} onDateChange={setFromDate} placeholder={language === 'ar' ? 'من تاريخ' : 'From date'} />
+        <DatePicker date={toDate} onDateChange={setToDate} placeholder={language === 'ar' ? 'إلى تاريخ' : 'To date'} />
+      </div>
+
       <div className="grid lg:grid-cols-3 gap-8">
         <div className="lg:col-span-3">
              <StaffPerformanceChart 
@@ -124,8 +184,8 @@ export default function ProductsReportPage() {
                         <TableHeader>
                         <TableRow>
                             <TableHead>{language === 'ar' ? 'المنتج' : 'Product'}</TableHead>
-                            <TableHead className="text-end">{language === 'ar' ? 'الكمية المباعة' : 'Quantity Sold'}</TableHead>
-                            <TableHead className="w-[150px] text-end">{language === 'ar' ? 'نسبة المبيعات' : 'Sales Percentage'}</TableHead>
+                            <TableHead className="w-[150px] text-end">{language === 'ar' ? 'الكمية المباعة' : 'Quantity Sold'}</TableHead>
+                            <TableHead className="w-[200px] text-end">{language === 'ar' ? 'نسبة المبيعات' : 'Sales Percentage'}</TableHead>
                         </TableRow>
                         </TableHeader>
                         <TableBody>
@@ -135,7 +195,7 @@ export default function ProductsReportPage() {
                                 <TableCell className="text-end font-bold">{product.count}</TableCell>
                                 <TableCell className="text-end">
                                     <div className="flex items-center justify-end gap-2">
-                                        <span className="text-xs text-muted-foreground">{product.percentage.toFixed(1)}%</span>
+                                        <span className="text-xs text-muted-foreground w-12">{product.percentage.toFixed(1)}%</span>
                                         <Progress value={product.percentage} className="h-2 w-24" />
                                     </div>
                                 </TableCell>
@@ -143,6 +203,11 @@ export default function ProductsReportPage() {
                         ))}
                         </TableBody>
                     </Table>
+                )}
+                {productsSales.length === 0 && !isLoading && (
+                    <div className="flex items-center justify-center h-48 text-muted-foreground">
+                        {language === 'ar' ? 'لا توجد بيانات مبيعات في الفترة المحددة.' : 'No sales data for the selected period.'}
+                    </div>
                 )}
                 </CardContent>
             </Card>

@@ -44,10 +44,10 @@ const orderPermissionsSchema = permissionsSchema.extend({
     cancel: z.boolean().default(false),
 });
 
-const userFormSchema = z.object({
+const getUserFormSchema = (isEditMode: boolean) => z.object({
   fullName: z.string().min(1, "الاسم الكامل مطلوب"),
-  username: z.string().min(1, "اسم المستخدم مطلوب"),
-  password: z.string().min(6, "كلمة المرور يجب أن لا تقل عن 6 أحرف"),
+  username: z.string().optional(),
+  password: z.string().optional(),
   role: z.enum(["Admin", "Moderator", "Courier"]),
   phone1: z.string().optional(),
   phone2: z.string().optional(),
@@ -60,13 +60,34 @@ const userFormSchema = z.object({
     commissions: permissionsSchema,
     reports: permissionsSchema.pick({ view: true }),
   }).optional(),
+}).superRefine((data, ctx) => {
+    if (data.role !== 'Courier') {
+        if (!data.username || data.username.length < 1) {
+            ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                message: "اسم المستخدم مطلوب",
+                path: ['username'],
+            });
+        }
+        if (!isEditMode && (!data.password || data.password.length < 6)) {
+             ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                message: "كلمة المرور يجب أن لا تقل عن 6 أحرف",
+                path: ['password'],
+            });
+        }
+        if (isEditMode && data.password && data.password.length > 0 && data.password.length < 6) {
+             ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                message: "كلمة المرور يجب أن لا تقل عن 6 أحرف",
+                path: ['password'],
+            });
+        }
+    }
 });
 
-const editUserFormSchema = userFormSchema.extend({
-  password: z.string().min(6, "كلمة المرور يجب أن لا تقل عن 6 أحرف").optional().or(z.literal('')),
-});
 
-type UserFormValues = z.infer<typeof userFormSchema>;
+type UserFormValues = z.infer<ReturnType<typeof getUserFormSchema>>;
 
 const screensConfig = [
   { id: 'dashboard', name: 'Dashboard', arName: 'لوحة التحكم', perms: ['view'] },
@@ -97,9 +118,11 @@ export function AddUserForm({ onSuccess, userToEdit }: AddUserFormProps) {
   const { language } = useLanguage();
   const database = useDatabase();
   const isEditMode = !!userToEdit;
+  
+  const formSchema = getUserFormSchema(isEditMode);
 
   const form = useForm<UserFormValues>({
-    resolver: zodResolver(isEditMode ? editUserFormSchema : userFormSchema),
+    resolver: zodResolver(formSchema),
     defaultValues: {
       fullName: userToEdit?.name || "",
       username: userToEdit?.username || "",
@@ -148,10 +171,14 @@ export function AddUserForm({ onSuccess, userToEdit }: AddUserFormProps) {
     
     if (isEditMode && userToEdit) {
         const userRef = ref(database, `users/${userToEdit.id}`);
+        
+        const username = data.role === 'Courier' ? userToEdit.username : data.username!;
+        const email = data.role === 'Courier' ? userToEdit.email : `${username}@elezz.com`;
+        
         const userDataToUpdate: Partial<User> = {
           name: data.fullName,
-          username: data.username,
-          email: `${data.username}@elezz.com`,
+          username: username,
+          email: email,
           role: data.role,
           phone1: data.phone1,
           phone2: data.phone2,
@@ -177,16 +204,26 @@ export function AddUserForm({ onSuccess, userToEdit }: AddUserFormProps) {
           if (!newUserId) {
             throw new Error("Could not generate a new user ID.");
           }
-          if (!data.password) {
-            throw new Error("Password is required for new user.");
+
+          let username = data.username;
+          let password = data.password;
+          
+          if(data.role === 'Courier') {
+              username = data.fullName.toLowerCase().replace(/\s+/g, '.') + '.' + Math.random().toString(36).substring(2, 5);
+              password = Math.random().toString(36).slice(-12) + Math.random().toString(36).slice(-12);
           }
+          
+          if (!username || !password) {
+             throw new Error("Username and password are required.");
+          }
+
 
           const newUser: User = {
             id: newUserId,
             name: data.fullName,
-            username: data.username,
-            email: `${data.username}@elezz.com`,
-            password: data.password,
+            username: username,
+            email: `${username}@elezz.com`,
+            password: password,
             role: data.role,
             phone1: data.phone1,
             phone2: data.phone2,
@@ -243,32 +280,36 @@ export function AddUserForm({ onSuccess, userToEdit }: AddUserFormProps) {
             </FormItem>
           )}
         />
-        <FormField
-          control={form.control}
-          name="username"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>{language === 'ar' ? 'اسم المستخدم' : 'Username'}</FormLabel>
-              <FormControl>
-                <Input placeholder={language === 'ar' ? 'مثال: ali.hassan' : 'e.g. ali.hassan'} {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-        <FormField
-          control={form.control}
-          name="password"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>{language === 'ar' ? 'كلمة المرور' : 'Password'}</FormLabel>
-              <FormControl>
-                <Input type="password" placeholder={isEditMode ? (language === 'ar' ? 'اتركه فارغًا لعدم التغيير' : 'Leave blank to not change') : "********"} {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+        {role !== 'Courier' && (
+            <>
+                <FormField
+                control={form.control}
+                name="username"
+                render={({ field }) => (
+                    <FormItem>
+                    <FormLabel>{language === 'ar' ? 'اسم المستخدم' : 'Username'}</FormLabel>
+                    <FormControl>
+                        <Input placeholder={language === 'ar' ? 'مثال: ali.hassan' : 'e.g. ali.hassan'} {...field} value={field.value || ''} />
+                    </FormControl>
+                    <FormMessage />
+                    </FormItem>
+                )}
+                />
+                <FormField
+                control={form.control}
+                name="password"
+                render={({ field }) => (
+                    <FormItem>
+                    <FormLabel>{language === 'ar' ? 'كلمة المرور' : 'Password'}</FormLabel>
+                    <FormControl>
+                        <Input type="password" placeholder={isEditMode ? (language === 'ar' ? 'اتركه فارغًا لعدم التغيير' : 'Leave blank to not change') : "********"} {...field} value={field.value || ''} />
+                    </FormControl>
+                    <FormMessage />
+                    </FormItem>
+                )}
+                />
+            </>
+        )}
         <FormField
           control={form.control}
           name="role"
@@ -301,7 +342,7 @@ export function AddUserForm({ onSuccess, userToEdit }: AddUserFormProps) {
                 <FormItem>
                   <FormLabel>{language === 'ar' ? 'رقم الهاتف 1' : 'Phone 1'}</FormLabel>
                   <FormControl>
-                    <Input placeholder={language === 'ar' ? 'رقم الهاتف الأساسي' : 'Primary phone number'} {...field} />
+                    <Input placeholder={language === 'ar' ? 'رقم الهاتف الأساسي' : 'Primary phone number'} {...field} value={field.value || ''}/>
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -314,7 +355,7 @@ export function AddUserForm({ onSuccess, userToEdit }: AddUserFormProps) {
                 <FormItem>
                   <FormLabel>{language === 'ar' ? 'رقم الهاتف 2 (اختياري)' : 'Phone 2 (Optional)'}</FormLabel>
                   <FormControl>
-                    <Input placeholder={language === 'ar' ? 'رقم هاتف إضافي' : 'Additional phone number'} {...field} />
+                    <Input placeholder={language === 'ar' ? 'رقم هاتف إضافي' : 'Additional phone number'} {...field} value={field.value || ''} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -322,83 +363,88 @@ export function AddUserForm({ onSuccess, userToEdit }: AddUserFormProps) {
             />
           </div>
         )}
-
-        <FormField
-          control={form.control}
-          name="orderVisibility"
-          render={({ field }) => (
-            <FormItem className="space-y-3">
-              <FormLabel>{language === 'ar' ? 'صلاحية عرض الطلبات' : 'Order Visibility'}</FormLabel>
-              <FormControl>
-                <RadioGroup
-                  onValueChange={field.onChange}
-                  value={field.value}
-                  className="flex gap-4"
-                >
-                  <FormItem className="flex items-center space-x-2 space-y-0">
-                    <FormControl>
-                      <RadioGroupItem value="own" />
-                    </FormControl>
-                    <FormLabel className="font-normal">
-                      {language === 'ar' ? 'عرض طلباته فقط' : 'View Own Orders Only'}
-                    </FormLabel>
-                  </FormItem>
-                  <FormItem className="flex items-center space-x-2 space-y-0">
-                    <FormControl>
-                      <RadioGroupItem value="all" />
-                    </FormControl>
-                    <FormLabel className="font-normal">
-                      {language === 'ar' ? 'عرض كل الطلبات' : 'View All Orders'}
-                    </FormLabel>
-                  </FormItem>
-                </RadioGroup>
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
         
-        <Accordion type="single" collapsible className="w-full">
-          <AccordionItem value="permissions">
-            <AccordionTrigger>{language === 'ar' ? 'الصلاحيات' : 'Permissions'}</AccordionTrigger>
-            <AccordionContent>
-              <div className="overflow-x-auto pb-2">
-                <div className="grid grid-cols-7 gap-y-2 items-center min-w-[620px]">
-                  <div className="font-medium text-muted-foreground">{language === 'ar' ? 'الشاشة' : 'Screen'}</div>
-                  {allPerms.map(perm => (
-                    <div key={perm} className="font-medium text-muted-foreground text-center text-xs sm:text-sm">{language === 'ar' ? permLabels[perm].ar : permLabels[perm].en}</div>
-                  ))}
+        {role !== 'Courier' && (
+        <>
+            <FormField
+            control={form.control}
+            name="orderVisibility"
+            render={({ field }) => (
+                <FormItem className="space-y-3">
+                <FormLabel>{language === 'ar' ? 'صلاحية عرض الطلبات' : 'Order Visibility'}</FormLabel>
+                <FormControl>
+                    <RadioGroup
+                    onValueChange={field.onChange}
+                    value={field.value}
+                    className="flex gap-4"
+                    >
+                    <FormItem className="flex items-center space-x-2 space-y-0">
+                        <FormControl>
+                        <RadioGroupItem value="own" />
+                        </FormControl>
+                        <FormLabel className="font-normal">
+                        {language === 'ar' ? 'عرض طلباته فقط' : 'View Own Orders Only'}
+                        </FormLabel>
+                    </FormItem>
+                    <FormItem className="flex items-center space-x-2 space-y-0">
+                        <FormControl>
+                        <RadioGroupItem value="all" />
+                        </FormControl>
+                        <FormLabel className="font-normal">
+                        {language === 'ar' ? 'عرض كل الطلبات' : 'View All Orders'}
+                        </FormLabel>
+                    </FormItem>
+                    </RadioGroup>
+                </FormControl>
+                <FormMessage />
+                </FormItem>
+            )}
+            />
+            
+            <Accordion type="single" collapsible className="w-full">
+            <AccordionItem value="permissions">
+                <AccordionTrigger>{language === 'ar' ? 'الصلاحيات' : 'Permissions'}</AccordionTrigger>
+                <AccordionContent>
+                <div className="overflow-x-auto pb-2">
+                    <div className="grid grid-cols-7 gap-y-2 items-center min-w-[620px]">
+                    <div className="font-medium text-muted-foreground">{language === 'ar' ? 'الشاشة' : 'Screen'}</div>
+                    {allPerms.map(perm => (
+                        <div key={perm} className="font-medium text-muted-foreground text-center text-xs sm:text-sm">{language === 'ar' ? permLabels[perm].ar : permLabels[perm].en}</div>
+                    ))}
 
-                  {screensConfig.map((screen) => (
-                    <React.Fragment key={screen.id}>
-                      <div className="font-medium">{language === 'ar' ? screen.arName : screen.name}</div>
-                      {allPerms.map(perm => (
-                        <div key={perm} className="flex justify-center">
-                          {screen.perms.includes(perm as any) ? (
-                            <FormField
-                              control={form.control}
-                              name={`permissions.${screen.id}.${perm as any}`}
-                              render={({ field }) => (
-                                <FormItem>
-                                  <FormControl>
-                                    <Checkbox
-                                      checked={field.value}
-                                      onCheckedChange={field.onChange}
-                                    />
-                                  </FormControl>
-                                </FormItem>
-                              )}
-                            />
-                          ) : <span className="text-muted-foreground">-</span>}
-                        </div>
-                      ))}
-                    </React.Fragment>
-                  ))}
+                    {screensConfig.map((screen) => (
+                        <React.Fragment key={screen.id}>
+                        <div className="font-medium">{language === 'ar' ? screen.arName : screen.name}</div>
+                        {allPerms.map(perm => (
+                            <div key={perm} className="flex justify-center">
+                            {screen.perms.includes(perm as any) ? (
+                                <FormField
+                                control={form.control}
+                                name={`permissions.${screen.id}.${perm as any}`}
+                                render={({ field }) => (
+                                    <FormItem>
+                                    <FormControl>
+                                        <Checkbox
+                                        checked={field.value}
+                                        onCheckedChange={field.onChange}
+                                        />
+                                    </FormControl>
+                                    </FormItem>
+                                )}
+                                />
+                            ) : <span className="text-muted-foreground">-</span>}
+                            </div>
+                        ))}
+                        </React.Fragment>
+                    ))}
+                    </div>
                 </div>
-              </div>
-            </AccordionContent>
-          </AccordionItem>
-        </Accordion>
+                </AccordionContent>
+            </AccordionItem>
+            </Accordion>
+        </>
+        )}
+
 
         <div className="flex justify-end">
           <Button type="submit" disabled={isSubmitting}>
