@@ -16,9 +16,9 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useLanguage } from "@/components/language-provider";
 import { DatePicker } from "@/components/ui/datepicker";
-import { useCachedCollection } from "@/hooks/use-cached-collection";
 import type { Order, User, UserRole } from "@/lib/types";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useRealtimeCachedCollection } from "@/hooks/use-realtime-cached-collection";
 
 function DashboardSkeleton() {
   const { language } = useLanguage();
@@ -55,8 +55,8 @@ export default function DashboardPage() {
   const [fromDate, setFromDate] = React.useState<Date | undefined>(new Date(new Date().getFullYear(), new Date().getMonth(), 1));
   const [toDate, setToDate] = React.useState<Date | undefined>(new Date());
 
-  const { data: allOrders, isLoading: isLoadingOrders } = useCachedCollection<Order>('orders');
-  const { data: usersData, isLoading: isLoadingUsers } = useCachedCollection<User>('users');
+  const { data: allOrders, isLoading: isLoadingOrders } = useRealtimeCachedCollection<Order>('orders');
+  const { data: users, isLoading: isLoadingUsers } = useRealtimeCachedCollection<User>('users');
 
   const filteredOrders = React.useMemo(() => {
     if (!allOrders || !fromDate || !toDate) return [];
@@ -68,36 +68,6 @@ export default function DashboardPage() {
         return orderDate >= from && orderDate <= to;
     });
   }, [allOrders, fromDate, toDate]);
-  
-  const users: User[] = React.useMemo(() => {
-    if (!usersData) {
-      return [];
-    }
-    return usersData.map((userDoc: any): User => {
-      const name = userDoc.name || userDoc.fullName || "Unknown User";
-      const status: "نشط" | "معطل" = typeof userDoc.isActive === 'boolean' 
-        ? (userDoc.isActive ? 'نشط' : 'معطل') 
-        : (userDoc.status || 'معطل');
-      const role: UserRole = userDoc.role || 'Moderator';
-      const avatarUrl = userDoc.avatarUrl || `/avatars/0${(userDoc.id.charCodeAt(0) % 6) + 1}.png`;
-      const createdAt = userDoc.createdAt ? new Date(userDoc.createdAt).toISOString() : new Date().toISOString();
-      const username = userDoc.username || userDoc.email?.split('@')[0] || '';
-
-      return {
-        ...userDoc,
-        id: userDoc.id,
-        name,
-        username,
-        email: userDoc.email || '',
-        phone1: userDoc.phone1,
-        phone2: userDoc.phone2,
-        role,
-        avatarUrl,
-        status,
-        createdAt,
-      };
-    });
-  }, [usersData]);
 
   const totalSales = filteredOrders.reduce((acc, order) => acc + (order.total || 0), 0);
   const totalOrders = filteredOrders.length;

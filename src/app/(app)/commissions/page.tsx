@@ -14,9 +14,10 @@ import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast"
 import { useLanguage } from "@/components/language-provider"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { useCollection, useDatabase, useMemoFirebase } from "@/firebase"
+import { useDatabase } from "@/firebase"
 import type { CommissionRule, OrderStatus } from "@/lib/types"
 import { ref, set } from "firebase/database"
+import { useRealtimeCachedCollection } from "@/hooks/use-realtime-cached-collection"
 
 const commissionableStatuses: OrderStatus[] = ["تم التسجيل", "قيد التجهيز", "تم الشحن", "مكتمل"];
 
@@ -34,8 +35,7 @@ export default function CommissionsPage() {
   const { language } = useLanguage();
   const database = useDatabase();
 
-  const rulesRef = useMemoFirebase(() => database ? ref(database, "commission-rules") : null, [database]);
-  const { data: commissionRulesData, isLoading } = useCollection<CommissionRule>(rulesRef);
+  const { data: commissionRulesData, isLoading } = useRealtimeCachedCollection<CommissionRule>('commission-rules');
   
   const form = useForm<CommissionFormValues>({
     resolver: zodResolver(commissionFormSchema),
@@ -47,33 +47,13 @@ export default function CommissionsPage() {
     }
   });
 
-  const commissionRules = React.useMemo(() => {
-    if (!commissionRulesData) return [];
-    // The hook returns an array, but our data is an object.
-    // Let's handle both cases for robustness.
-    if (Array.isArray(commissionRulesData)) {
-      return commissionRulesData;
-    }
-    return Object.entries(commissionRulesData).map(([id, value]) => ({ id, ...value as any }));
-  }, [commissionRulesData]);
-
-
   React.useEffect(() => {
     if (commissionRulesData) {
       const initialValues: any = {};
       
       const rulesMap = new Map<string, number>();
-      // Handle if data is array or object
-      if(Array.isArray(commissionRulesData)) {
-        commissionRulesData.forEach(rule => rulesMap.set(rule.id, rule.amount));
-      } else if (typeof commissionRulesData === 'object' && commissionRulesData !== null) {
-        Object.entries(commissionRulesData).forEach(([id, rule]: [string, any]) => {
-          if(rule && typeof rule.amount === 'number') {
-            rulesMap.set(id, rule.amount);
-          }
-        });
-      }
-
+      commissionRulesData.forEach(rule => rulesMap.set(rule.id, rule.amount));
+      
       commissionableStatuses.forEach(status => {
         initialValues[status] = rulesMap.get(status) || 0;
       });
@@ -168,7 +148,7 @@ export default function CommissionsPage() {
               </TableHeader>
               <TableBody>
                 {commissionableStatuses.map((status) => {
-                  const rule = commissionRules.find(r => r.id === status);
+                  const rule = commissionRulesData?.find(r => r.id === status);
                   return (
                     <TableRow key={status}>
                       <TableCell className="font-medium">{status}</TableCell>

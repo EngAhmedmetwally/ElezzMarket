@@ -8,7 +8,7 @@ import * as z from "zod";
 import { PlusCircle, MoreHorizontal, Trash2, Edit } from "lucide-react";
 import { useLanguage } from "@/components/language-provider";
 import { useToast } from "@/hooks/use-toast";
-import { useCollection, useDatabase, useMemoFirebase } from "@/firebase";
+import { useDatabase } from "@/firebase";
 import { ref, set, push, update, remove } from "firebase/database";
 import type { ShippingZone } from "@/lib/types";
 
@@ -51,6 +51,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
+import { useRealtimeCachedCollection } from "@/hooks/use-realtime-cached-collection";
 
 const zoneFormSchema = z.object({
   name: z.string().min(1, "اسم المنطقة مطلوب"),
@@ -62,13 +63,11 @@ export default function ShippingPage() {
   const { language } = useLanguage();
   const { toast } = useToast();
   const database = useDatabase();
-  const [version, setVersion] = React.useState(0);
   const [dialogOpen, setDialogOpen] = React.useState(false);
   const [deleteAlertOpen, setDeleteAlertOpen] = React.useState(false);
   const [selectedZone, setSelectedZone] = React.useState<ShippingZone | null>(null);
 
-  const zonesQuery = useMemoFirebase(() => database ? ref(database, 'shipping-zones') : null, [database, version]);
-  const { data: zones, isLoading } = useCollection<ShippingZone>(zonesQuery);
+  const { data: zones, isLoading } = useRealtimeCachedCollection<ShippingZone>('shipping-zones');
 
   const form = useForm<ZoneFormValues>({
     resolver: zodResolver(zoneFormSchema),
@@ -106,7 +105,6 @@ export default function ShippingPage() {
         await set(newZoneRef, data);
         toast({ title: language === 'ar' ? 'تمت إضافة المنطقة' : 'Zone Added' });
       }
-      setVersion(v => v + 1);
       setDialogOpen(false);
     } catch (error) {
       toast({ variant: 'destructive', title: language === 'ar' ? 'خطأ' : 'Error', description: (error as Error).message });
@@ -118,7 +116,6 @@ export default function ShippingPage() {
     try {
       await remove(ref(database, `shipping-zones/${selectedZone.id}`));
       toast({ title: language === 'ar' ? 'تم حذف المنطقة' : 'Zone Deleted' });
-      setVersion(v => v + 1);
       setDeleteAlertOpen(false);
     } catch (error) {
        toast({ variant: 'destructive', title: language === 'ar' ? 'خطأ' : 'Error', description: (error as Error).message });

@@ -10,9 +10,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { StatusBadge } from "@/components/status-badge";
 import { format } from "date-fns";
-import { useCachedCollection } from "@/hooks/use-cached-collection";
 import { Badge } from "@/components/ui/badge";
 import { Star, Truck } from "lucide-react";
+import { useRealtimeCachedCollection } from "@/hooks/use-realtime-cached-collection";
 
 export default function CustomerDetailsPage() {
   const params = useParams();
@@ -20,7 +20,7 @@ export default function CustomerDetailsPage() {
   const phone = typeof params.phone === 'string' ? params.phone : '';
   const { language } = useLanguage();
 
-  const { data: allOrders, isLoading } = useCachedCollection<Order>('orders');
+  const { data: allOrders, isLoading } = useRealtimeCachedCollection<Order>('orders');
   
   const { customerOrders, customerDetails } = React.useMemo(() => {
     if (!allOrders || !phone) {

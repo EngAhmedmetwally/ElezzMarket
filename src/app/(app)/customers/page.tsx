@@ -4,12 +4,12 @@
 import * as React from "react";
 import { PageHeader } from "@/components/page-header";
 import { useLanguage } from "@/components/language-provider";
-import { useCachedCollection } from "@/hooks/use-cached-collection";
 import type { Order, Customer } from "@/lib/types";
 import { Skeleton } from "@/components/ui/skeleton";
 import { CustomersClient } from "./components/client";
 import { getCustomerColumns } from "./components/columns";
 import { DatePicker } from "@/components/ui/datepicker";
+import { useRealtimeCachedCollection } from "@/hooks/use-realtime-cached-collection";
 
 export type CustomerWithOrderCount = Customer & {
   id: string; // using phone1 as id
@@ -22,8 +22,8 @@ export default function CustomersPage() {
   const [fromDate, setFromDate] = React.useState<Date | undefined>(new Date(new Date().getFullYear(), new Date().getMonth(), 1));
   const [toDate, setToDate] = React.useState<Date | undefined>(new Date());
 
-  const { data: allCustomers, isLoading: isLoadingCustomers } = useCachedCollection<Customer & {id: string}>('customers');
-  const { data: allOrders, isLoading: isLoadingOrders } = useCachedCollection<Order>('orders');
+  const { data: allCustomers, isLoading: isLoadingCustomers } = useRealtimeCachedCollection<Customer & {id: string}>('customers');
+  const { data: allOrders, isLoading: isLoadingOrders } = useRealtimeCachedCollection<Order>('orders');
   const isLoading = isLoadingCustomers || isLoadingOrders;
 
   const customers: CustomerWithOrderCount[] = React.useMemo(() => {

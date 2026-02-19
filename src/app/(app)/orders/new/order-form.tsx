@@ -22,10 +22,11 @@ import { useLanguage } from "@/components/language-provider";
 import type { Customer, Product, OrderItem, ShippingZone, Commission } from "@/lib/types";
 import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
-import { useCollection, useDatabase, useUser, useMemoFirebase } from "@/firebase";
+import { useDatabase, useUser } from "@/firebase";
 import { ref, get, update, push, set, runTransaction, child } from "firebase/database";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useRealtimeCachedCollection } from "@/hooks/use-realtime-cached-collection";
 
 const orderFormSchema = z.object({
   id: z.string().min(1, "رقم الطلب مطلوب"),
@@ -60,14 +61,9 @@ export function OrderForm({ onSuccess }: OrderFormProps) {
   const database = useDatabase();
   const { user } = useUser();
 
-  const customersQuery = useMemoFirebase(() => database ? ref(database, 'customers') : null, [database]);
-  const { data: customers } = useCollection<Customer>(customersQuery);
-
-  const productsQuery = useMemoFirebase(() => database ? ref(database, 'products') : null, [database]);
-  const { data: products } = useCollection<Product>(productsQuery);
-  
-  const shippingZonesQuery = useMemoFirebase(() => database ? ref(database, 'shipping-zones') : null, [database]);
-  const { data: shippingZones, isLoading: isLoadingZones } = useCollection<ShippingZone>(shippingZonesQuery);
+  const { data: customers } = useRealtimeCachedCollection<Customer>('customers');
+  const { data: products } = useRealtimeCachedCollection<Product>('products');
+  const { data: shippingZones, isLoading: isLoadingZones } = useRealtimeCachedCollection<ShippingZone>('shipping-zones');
 
   const [selectedZone, setSelectedZone] = React.useState<ShippingZone | null>(null);
 

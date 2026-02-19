@@ -30,9 +30,9 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useUser } from "@/firebase";
-import { useCachedCollection } from "@/hooks/use-cached-collection";
 import type { Order, OrderStatus } from "@/lib/types";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useRealtimeCachedCollection } from "@/hooks/use-realtime-cached-collection";
 
 
 export default function OrdersPage() {
@@ -40,14 +40,12 @@ export default function OrdersPage() {
   const { language } = useLanguage();
   const { toast } = useToast();
   const { user } = useUser();
-  const { data: allOrders, isLoading, refetch } = useCachedCollection<Order>('orders');
+  const { data: allOrders, isLoading } = useRealtimeCachedCollection<Order>('orders');
   
   const [fromDate, setFromDate] = React.useState<Date | undefined>(new Date(new Date().getFullYear(), new Date().getMonth(), 1));
   const [toDate, setToDate] = React.useState<Date | undefined>(new Date());
 
-  const handleUpdate = () => refetch();
-
-  const columns = getOrderColumns(language, handleUpdate);
+  const columns = getOrderColumns(language);
   
   const filteredOrders = React.useMemo(() => {
     if (!allOrders || !fromDate || !toDate) return [];
@@ -63,9 +61,6 @@ export default function OrdersPage() {
 
     if (user) {
         const isAdmin = user.role === 'Admin';
-        // A user can see all if they are explicitly set to 'all'.
-        // Or if they are a Moderator and their visibility is NOT explicitly set to 'own'.
-        // This makes 'all' the default for moderators if the property is missing or not 'own'.
         const canSeeAll = user.orderVisibility === 'all' || (user.role === 'Moderator' && user.orderVisibility !== 'own');
 
         if (!isAdmin && !canSeeAll) {
@@ -159,7 +154,6 @@ export default function OrdersPage() {
 
   const handleNewOrderSuccess = () => {
     setIsNewOrderOpen(false);
-    handleUpdate();
   };
 
   return (
@@ -245,7 +239,7 @@ export default function OrdersPage() {
             </div>
         </div>
       ) : (
-        <OrdersClient data={filteredOrders} columns={columns} onUpdate={handleUpdate} statuses={uniqueOrderStatuses} />
+        <OrdersClient data={filteredOrders} columns={columns} statuses={uniqueOrderStatuses} />
       )}
     </div>
   );

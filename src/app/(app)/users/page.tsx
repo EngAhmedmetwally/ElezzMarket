@@ -16,61 +16,21 @@ import {
 } from "@/components/ui/dialog";
 import { AddUserForm } from "./components/add-user-form";
 import { useLanguage } from "@/components/language-provider";
-import { useCollection, useDatabase, useMemoFirebase } from "@/firebase";
-import { ref } from "firebase/database";
-import type { User, UserRole } from "@/lib/types";
+import type { User } from "@/lib/types";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useRealtimeCachedCollection } from "@/hooks/use-realtime-cached-collection";
 
 export default function UsersPage() {
   const [isAddUserOpen, setIsAddUserOpen] = React.useState(false);
   const { language } = useLanguage();
-  const database = useDatabase();
-  const [version, setVersion] = React.useState(0); // To force re-render
 
   const handleSuccess = () => {
     setIsAddUserOpen(false);
-    setVersion(v => v + 1); // Trigger a refetch
   }
   
   const columns = getUserColumns(language, handleSuccess);
 
-  const usersQuery = useMemoFirebase(() => {
-    if (!database) return null;
-    return ref(database, 'users');
-  }, [database, version]);
-
-  const { data: usersData, isLoading } = useCollection<any>(usersQuery);
-
-  const users: User[] = React.useMemo(() => {
-    if (!usersData) {
-      return [];
-    }
-    return usersData.map((userDoc: any): User => {
-      const name = userDoc.name || userDoc.fullName || "Unknown User";
-      const status: "نشط" | "معطل" = typeof userDoc.isActive === 'boolean' 
-        ? (userDoc.isActive ? 'نشط' : 'معطل') 
-        : (userDoc.status || 'معطل');
-      const role: UserRole = userDoc.role || 'Moderator';
-      const avatarUrl = userDoc.avatarUrl || `/avatars/0${(userDoc.id.charCodeAt(0) % 6) + 1}.png`;
-      const createdAt = userDoc.createdAt ? new Date(userDoc.createdAt).toISOString() : new Date().toISOString();
-      const username = userDoc.username || userDoc.email?.split('@')[0] || '';
-
-      return {
-        ...userDoc, // Pass through all original data
-        id: userDoc.id,
-        name,
-        username,
-        email: userDoc.email || '',
-        phone1: userDoc.phone1,
-        phone2: userDoc.phone2,
-        role,
-        avatarUrl,
-        status,
-        createdAt,
-      };
-    });
-  }, [usersData]);
-
+  const { data: users, isLoading } = useRealtimeCachedCollection<User>('users');
 
   return (
     <div>
@@ -107,7 +67,7 @@ export default function UsersPage() {
             </div>
         </div>
       ) : (
-        <UsersClient data={users} columns={columns} onUpdate={handleSuccess} />
+        <UsersClient data={users || []} columns={columns} onUpdate={handleSuccess} />
       )}
     </div>
   );
