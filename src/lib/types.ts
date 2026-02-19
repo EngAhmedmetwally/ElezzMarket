@@ -128,4 +128,5 @@ export type ReceiptSettings = {
   showItemPrice?: boolean;
   showItemSubtotal?: boolean;
   showItemWeight?: boolean;
+  showCourierName?: boolean;
 };

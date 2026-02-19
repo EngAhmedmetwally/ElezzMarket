@@ -76,6 +76,16 @@ export function ReceiptSettingsForm({ form, onSubmit }: ReceiptSettingsFormProps
                 )}/>
             </div>
 
+            <h4 className="text-md font-medium">{language === 'ar' ? 'بيانات الموظفين' : 'Staff Info'}</h4>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-center pl-4 border-l-2 md:border-r-2 rtl:border-r-2 rtl:border-l-0">
+                <FormField control={form.control} name="showCourierName" render={({ field }) => (
+                    <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                    <div className="space-y-0.5"><FormLabel className="text-base">{language === 'ar' ? 'إظهار اسم المندوب' : 'Show Courier Name'}</FormLabel></div>
+                    <FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl>
+                    </FormItem>
+                )}/>
+            </div>
+
             <h4 className="text-md font-medium">{language === 'ar' ? 'جدول الأصناف' : 'Items Table'}</h4>
              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-center pl-4 border-l-2 md:border-r-2 rtl:border-r-2 rtl:border-l-0">
                 <FormField control={form.control} name="showItemWeight" render={({ field }) => (

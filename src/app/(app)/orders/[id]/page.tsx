@@ -107,6 +107,7 @@ function ReceiptView({ order, language, settings }: { order: Order; language: "a
       showItemWeight: false, showItemPrice: true, showItemSubtotal: true,
       showItemsSubtotal: true, showShippingCost: true, showGrandTotal: true,
       footerText: language === 'ar' ? 'شكراً لتعاملكم معنا!' : 'Thank you!',
+      showCourierName: false,
   };
 
 
@@ -121,13 +122,15 @@ function ReceiptView({ order, language, settings }: { order: Order; language: "a
       {s.showOrderId && <p>{language === 'ar' ? 'رقم الطلب:' : 'Order ID:'} {order.id}</p>}
       {s.showDate && <p>{language === 'ar' ? 'التاريخ:' : 'Date:'} {format(new Date(order.createdAt), "dd/MM/yyyy HH:mm")}</p>}
       
-      {(s.showOrderId || s.showDate) && (s.showCustomerName || s.showCustomerPhone || s.showCustomerAddress) && <hr />}
+      {(s.showOrderId || s.showDate) && (s.showCustomerName || s.showCustomerPhone || s.showCustomerAddress || s.showCourierName) && <hr />}
       
       {s.showCustomerName && <p><strong>{language === 'ar' ? 'العميل:' : 'Customer:'}</strong> {order.customerName}</p>}
       {s.showCustomerPhone && <p><strong>{language === 'ar' ? 'الهاتف:' : 'Phone:'}</strong> {order.customerPhone1}</p>}
       {s.showCustomerAddress && order.customerAddress && <p><strong>{language === 'ar' ? 'العنوان:' : 'Address:'}</strong> {order.customerAddress}</p>}
       
-      {(s.showCustomerName || s.showCustomerPhone || s.showCustomerAddress) && <hr />}
+      {s.showCourierName && order.courierName && <p><strong>{language === 'ar' ? 'المندوب:' : 'Courier:'}</strong> {order.courierName}</p>}
+
+      {(s.showCustomerName || s.showCustomerPhone || s.showCustomerAddress || s.showCourierName) && <hr />}
       
       <table>
         <thead>

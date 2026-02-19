@@ -31,6 +31,7 @@ const settingsFormSchema = z.object({
   showItemWeight: z.boolean().default(false),
   showItemPrice: z.boolean().default(true),
   showItemSubtotal: z.boolean().default(true),
+  showCourierName: z.boolean().default(false),
 });
 
 type SettingsFormValues = z.infer<typeof settingsFormSchema>;
@@ -61,6 +62,7 @@ export default function SettingsPage() {
       showItemWeight: false,
       showItemPrice: true,
       showItemSubtotal: true,
+      showCourierName: false,
     },
   });
 
