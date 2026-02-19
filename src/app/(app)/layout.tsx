@@ -51,7 +51,8 @@ const navItems = [
       { href: "/reports", label: "Commissions", arLabel: "العمولات" },
       { href: "/reports/products", label: "Products", arLabel: "المنتجات" },
       { href: "/reports/staff", label: "Staff", arLabel: "الموظفون" },
-      { href: "/reports/daily", icon: CalendarDays, label: "Daily", arLabel: "اليومي" },
+      { href: "/reports/daily", label: "Daily", arLabel: "اليومي" },
+      { href: "/reports/shipping", label: "Shipping", arLabel: "الشحن" },
     ],
   },
 ];
@@ -145,7 +146,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
       <SidebarInset>
         <div className="flex h-full flex-col">
           <AppHeader />
-          <main className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8">
+          <main className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8 min-w-0">
             {children}
           </main>
         </div>
