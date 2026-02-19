@@ -3,7 +3,7 @@
 
 import * as React from "react";
 import { PageHeader } from "@/components/page-header";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useLanguage } from "@/components/language-provider";
 import { DatePicker } from "@/components/ui/datepicker";
@@ -86,10 +86,10 @@ export default function DailyReportPage() {
     });
   }, [database, version]);
 
-  const dailyReportData = React.useMemo(() => {
+  const filteredOrders = React.useMemo(() => {
     if (!allOrders) return [];
 
-    const filtered = allOrders.filter(order => {
+    return allOrders.filter(order => {
       if (!order.createdAt) return false;
       const orderDate = new Date(order.createdAt);
       if (fromDate) {
@@ -104,10 +104,14 @@ export default function DailyReportPage() {
       }
       return true;
     });
+  }, [allOrders, fromDate, toDate]);
+
+  const dailyReportData = React.useMemo(() => {
+    if (!filteredOrders) return [];
 
     const dailyMap = new Map<string, { totalOrders: number; totalItems: number; totalWeight: number }>();
 
-    filtered.forEach(order => {
+    filteredOrders.forEach(order => {
       if (!order.createdAt) return;
       const dateStr = format(new Date(order.createdAt), "yyyy-MM-dd");
       
@@ -125,7 +129,33 @@ export default function DailyReportPage() {
       .map(([date, data]) => ({ date, ...data }))
       .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
-  }, [allOrders, fromDate, toDate]);
+  }, [filteredOrders]);
+
+  const productsSummary = React.useMemo(() => {
+    if (!filteredOrders) return [];
+
+    const productMap = new Map<string, { totalQuantity: number; totalWeight: number }>();
+
+    filteredOrders.forEach(order => {
+        const itemsArray = order.items ? (Array.isArray(order.items) ? order.items : Object.values(order.items)) : [];
+        itemsArray.forEach(item => {
+            const productName = item.productName;
+            if (!productName) return;
+            
+            const productData = productMap.get(productName) || { totalQuantity: 0, totalWeight: 0 };
+            
+            productData.totalQuantity += item.quantity || 0;
+            productData.totalWeight += (item.weight || 0) * (item.quantity || 1);
+
+            productMap.set(productName, productData);
+        });
+    });
+
+    return Array.from(productMap.entries())
+      .map(([name, data]) => ({ name, ...data }))
+      .sort((a, b) => b.totalQuantity - a.totalQuantity);
+
+  }, [filteredOrders]);
 
   const chartData = dailyReportData.map(d => ({ 
     name: format(new Date(d.date), "MMM d"), 
@@ -191,6 +221,41 @@ export default function DailyReportPage() {
           </Table>
         </CardContent>
       </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>{language === 'ar' ? 'ملخص الأصناف' : 'Items Summary'}</CardTitle>
+          <CardDescription>{language === 'ar' ? 'إجمالي الكميات والأوزان لكل صنف في الفترة المحددة' : 'Total quantities and weights for each item in the selected period'}</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>{language === 'ar' ? 'الصنف' : 'Item'}</TableHead>
+                <TableHead className="text-end">{language === 'ar' ? 'إجمالي الكمية' : 'Total Quantity'}</TableHead>
+                <TableHead className="text-end">{language === 'ar' ? 'إجمالي الوزن (كجم)' : 'Total Weight (kg)'}</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {productsSummary.map((row) => (
+                <TableRow key={row.name}>
+                  <TableCell className="font-medium">{row.name}</TableCell>
+                  <TableCell className="text-end">{row.totalQuantity}</TableCell>
+                  <TableCell className="text-end">{row.totalWeight.toFixed(2)}</TableCell>
+                </TableRow>
+              ))}
+              {productsSummary.length === 0 && (
+                <TableRow>
+                  <TableCell colSpan={3} className="h-24 text-center">
+                    {language === 'ar' ? 'لا توجد بيانات للعرض.' : 'No data to display.'}
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
+
     </div>
   );
 }
