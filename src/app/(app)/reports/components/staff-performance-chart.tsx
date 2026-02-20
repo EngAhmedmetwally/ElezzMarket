@@ -17,11 +17,13 @@ interface StaffPerformanceChartProps {
     barDataKey: string;
     barLabel: string;
     formatter?: (value: number) => string;
+    layout?: 'vertical' | 'horizontal'; // vertical = vertical bars, horizontal = horizontal bars
 }
 
-export function StaffPerformanceChart({ data, title, barDataKey, barLabel, formatter }: StaffPerformanceChartProps) {
+export function StaffPerformanceChart({ data, title, barDataKey, barLabel, formatter, layout = 'vertical' }: StaffPerformanceChartProps) {
   const isMobile = useIsMobile();
   const { language } = useLanguage();
+  const isHorizontalLayout = layout === 'horizontal';
 
   const chartConfig = {
     [barDataKey]: {
@@ -30,9 +32,18 @@ export function StaffPerformanceChart({ data, title, barDataKey, barLabel, forma
     },
   };
   
-  const yAxisFormatter = (value: number) => {
-    if (formatter && formatter(value).includes('%')) return formatter(value);
+  const valueFormatter = (value: number) => {
+    if (formatter) {
+      if (formatter(value).includes('%')) return formatter(value);
+    }
     return new Intl.NumberFormat(language === 'ar' ? 'ar-EG' : 'en-US', { notation: 'compact', compactDisplay: 'short' }).format(value);
+  }
+
+  const tooltipValueFormatter = (value: number) => {
+    if (formatter) {
+      return formatter(value);
+    }
+    return new Intl.NumberFormat(language === 'ar' ? 'ar-EG' : 'en-US').format(value);
   }
 
   return (
@@ -41,38 +52,53 @@ export function StaffPerformanceChart({ data, title, barDataKey, barLabel, forma
         <CardTitle>{title}</CardTitle>
       </CardHeader>
       <CardContent>
-        <ChartContainer config={chartConfig} className="h-[300px] w-full">
+        <ChartContainer config={chartConfig} className="h-[350px] w-full">
           <BarChart 
             accessibilityLayer 
             data={data} 
-            margin={{ top: 20, right: isMobile ? 10 : 20, left: isMobile ? -12 : -10, bottom: isMobile ? 10 : 0 }}
+            layout={isHorizontalLayout ? 'vertical' : 'horizontal'}
+            margin={ isHorizontalLayout 
+                ? { top: 5, right: 20, left: isMobile ? 5 : 20, bottom: 0 }
+                : { top: 20, right: isMobile ? 10 : 20, left: isMobile ? -12 : -10, bottom: isMobile ? 10 : 0 }
+            }
           >
-            <CartesianGrid vertical={false} />
-            <XAxis
-              dataKey="name"
-              tickLine={false}
-              tickMargin={10}
-              axisLine={false}
-              tick={{ fontSize: isMobile ? 10 : 12 }}
-              angle={isMobile && data.length > 4 ? -45 : 0}
-              textAnchor={isMobile && data.length > 4 ? "end" : "middle"}
-              height={isMobile && data.length > 4 ? 60 : 30}
-              interval={0}
-            />
-            <YAxis 
-                tick={{ fontSize: isMobile ? 10 : 12 }}
-                tickLine={false}
-                axisLine={false}
-                tickFormatter={yAxisFormatter}
-            />
+            <CartesianGrid horizontal={isHorizontalLayout} vertical={!isHorizontalLayout} />
+            
+            {isHorizontalLayout ? (
+                <>
+                    <XAxis type="number" tickLine={false} axisLine={false} tickMargin={10} tickFormatter={valueFormatter} tick={{ fontSize: isMobile ? 10 : 12 }} />
+                    <YAxis dataKey="name" type="category" tickLine={false} tickMargin={5} axisLine={false} width={isMobile ? 80 : 120} tick={{ fontSize: isMobile ? 10 : 12, fill: 'hsl(var(--foreground))' }} interval={0} />
+                </>
+            ) : (
+                <>
+                    <XAxis
+                        dataKey="name"
+                        tickLine={false}
+                        tickMargin={10}
+                        axisLine={false}
+                        tick={{ fontSize: isMobile ? 10 : 12, fill: 'hsl(var(--foreground))' }}
+                        angle={isMobile && data.length > 4 ? -45 : 0}
+                        textAnchor={isMobile && data.length > 4 ? "end" : "middle"}
+                        height={isMobile && data.length > 4 ? 60 : 30}
+                        interval={0}
+                    />
+                    <YAxis 
+                        tick={{ fontSize: isMobile ? 10 : 12, fill: 'hsl(var(--foreground))' }}
+                        tickLine={false}
+                        axisLine={false}
+                        tickFormatter={valueFormatter}
+                    />
+                </>
+            )}
+            
             <Tooltip
-              cursor={false}
+              cursor={{ fill: 'hsl(var(--muted))' }}
               content={<ChartTooltipContent 
                 indicator="dot" 
-                formatter={formatter ? (value) => formatter(Number(value)) : undefined}
+                formatter={(value) => tooltipValueFormatter(Number(value))}
                 />}
             />
-            <Bar dataKey="value" name={barLabel} fill={`var(--color-${barDataKey})`} radius={4} />
+            <Bar dataKey="value" name={barLabel} fill={`var(--color-${barDataKey})`} radius={isHorizontalLayout ? [0, 4, 4, 0] : [4, 4, 0, 0]} />
           </BarChart>
         </ChartContainer>
       </CardContent>

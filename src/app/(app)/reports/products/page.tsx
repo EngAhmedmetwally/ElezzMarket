@@ -1,4 +1,3 @@
-
 "use client";
 import * as React from "react";
 import { PageHeader } from "@/components/page-header";
@@ -93,7 +92,7 @@ export default function ProductsReportPage() {
     }));
   }, [filteredOrders]);
 
-  const topProductsChartData = productsSales.slice(0, isMobile ? 5 : 10).map(p => ({ name: p.name, value: p.count }));
+  const topProductsChartData = productsSales.slice(0, 10).map(p => ({ name: p.name, value: p.count })).reverse();
   const fromDateString = fromDate ? fromDate.toISOString() : '';
   const toDateString = toDate ? toDate.toISOString() : '';
 
@@ -122,6 +121,7 @@ export default function ProductsReportPage() {
                 title={language === 'ar' ? 'المنتجات الأكثر مبيعًا' : 'Top Selling Products'}
                 barDataKey="products"
                 barLabel={language === 'ar' ? 'الكمية المباعة' : 'Quantity Sold'}
+                layout="horizontal"
             />
         </div>
         <div className="lg:col-span-3">
