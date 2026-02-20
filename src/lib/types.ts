@@ -4,9 +4,11 @@ export type UserRole = "Admin" | "Moderator" | "Courier";
 export type Permissions = {
   dashboard: { view: boolean };
   orders: { view: boolean; add: boolean; edit: boolean; delete: boolean; editStatus: boolean; cancel: boolean; };
+  customers: { view: boolean; };
   users: { view: boolean; add: boolean; edit: boolean; delete: boolean; };
-  returns: { view: boolean; };
-  commissions: { view: boolean; add: boolean; edit: boolean; delete: boolean; };
+  shipping: { view: boolean; add: boolean; edit: boolean; delete: boolean; };
+  commissions: { view: boolean; edit: boolean; };
+  settings: { view: boolean; edit: boolean; };
   reports: { view: boolean; };
 }
 

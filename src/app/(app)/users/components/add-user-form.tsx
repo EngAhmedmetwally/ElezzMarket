@@ -27,7 +27,7 @@ import { useLanguage } from "@/components/language-provider";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Checkbox } from "@/components/ui/checkbox";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import type { User, AppSettings } from "@/lib/types";
+import type { User, AppSettings, Permissions } from "@/lib/types";
 import { useDatabase, useDoc, useMemoFirebase } from "@/firebase";
 import { ref, set, push, update, get } from "firebase/database";
 
@@ -55,9 +55,11 @@ const getUserFormSchema = (isEditMode: boolean) => z.object({
   permissions: z.object({
     dashboard: permissionsSchema.pick({ view: true }),
     orders: orderPermissionsSchema,
+    customers: permissionsSchema.pick({ view: true }),
     users: permissionsSchema,
-    returns: permissionsSchema.pick({ view: true }),
-    commissions: permissionsSchema,
+    shipping: permissionsSchema,
+    commissions: permissionsSchema.pick({ view: true, edit: true }),
+    settings: permissionsSchema.pick({ view: true, edit: true }),
     reports: permissionsSchema.pick({ view: true }),
   }).optional(),
 }).superRefine((data, ctx) => {
@@ -92,9 +94,11 @@ type UserFormValues = z.infer<ReturnType<typeof getUserFormSchema>>;
 const screensConfig = [
   { id: 'dashboard', name: 'Dashboard', arName: 'لوحة التحكم', perms: ['view'] },
   { id: 'orders', name: 'Orders', arName: 'الطلبات', perms: ['view', 'add', 'edit', 'delete', 'editStatus', 'cancel'] },
+  { id: 'customers', name: 'Customers', arName: 'العملاء', perms: ['view'] },
   { id: 'users', name: 'Users', arName: 'المستخدمون', perms: ['view', 'add', 'edit', 'delete'] },
-  { id: 'returns', name: 'Returns', arName: 'المرتجعات', perms: ['view'] },
-  { id: 'commissions', name: 'Commissions', arName: 'العمولات', perms: ['view', 'add', 'edit', 'delete'] },
+  { id: 'shipping', name: 'Shipping', arName: 'الشحن', perms: ['view', 'add', 'edit', 'delete'] },
+  { id: 'commissions', name: 'Commissions', arName: 'العمولات', perms: ['view', 'edit'] },
+  { id: 'settings', name: 'Settings', arName: 'الإعدادات', perms: ['view', 'edit'] },
   { id: 'reports', name: 'Reports', arName: 'التقارير', perms: ['view'] }
 ] as const;
 
@@ -137,9 +141,11 @@ export function AddUserForm({ onSuccess, userToEdit }: AddUserFormProps) {
       permissions: userToEdit?.permissions || {
         dashboard: { view: true },
         orders: { view: true, add: true, edit: false, delete: false, editStatus: true, cancel: false },
+        customers: { view: true },
         users: { view: false, add: false, edit: false, delete: false },
-        returns: { view: true },
-        commissions: { view: true, add: false, edit: false, delete: false },
+        shipping: { view: true, add: true, edit: true, delete: false },
+        commissions: { view: true, edit: true },
+        settings: { view: false, edit: false },
         reports: { view: true },
       }
     },
@@ -172,6 +178,20 @@ export function AddUserForm({ onSuccess, userToEdit }: AddUserFormProps) {
         return;
     }
     
+    let finalPermissions: Permissions | undefined = data.permissions;
+    if (data.role === 'Courier') {
+        finalPermissions = {
+            dashboard: { view: true },
+            orders: { view: true, add: false, edit: false, delete: false, editStatus: true, cancel: false },
+            customers: { view: false },
+            users: { view: false, add: false, edit: false, delete: false },
+            shipping: { view: true, add: false, edit: false, delete: false },
+            commissions: { view: true, edit: false },
+            settings: { view: false, edit: false },
+            reports: { view: false },
+        };
+    }
+
     if (isEditMode && userToEdit) {
         const userRef = ref(database, `users/${userToEdit.id}`);
         
@@ -186,7 +206,7 @@ export function AddUserForm({ onSuccess, userToEdit }: AddUserFormProps) {
           phone1: data.phone1,
           phone2: data.phone2,
           orderVisibility: data.orderVisibility,
-          permissions: data.permissions,
+          permissions: finalPermissions,
         };
 
         if(data.password) {
@@ -244,7 +264,7 @@ export function AddUserForm({ onSuccess, userToEdit }: AddUserFormProps) {
             phone1: data.phone1,
             phone2: data.phone2,
             orderVisibility: data.orderVisibility || 'own',
-            permissions: data.permissions,
+            permissions: finalPermissions,
             createdAt: new Date().toISOString(),
             status: "نشط",
             avatarUrl: `/avatars/0${(newUserId.charCodeAt(0) % 6) + 1}.png`

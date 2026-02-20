@@ -40,18 +40,19 @@ import { ThemeToggle } from "@/components/theme-toggle";
 import { UserNav } from "@/components/user-nav";
 
 const navItems = [
-  { href: "/dashboard", icon: LayoutDashboard, label: "Dashboard", arLabel: "لوحة التحكم" },
-  { href: "/orders", icon: Package, label: "Orders", arLabel: "الطلبات" },
-  { href: "/customers", icon: Users2, label: "Customers", arLabel: "العملاء" },
-  { href: "/users", icon: Users, label: "Users", arLabel: "المستخدمون" },
-  { href: "/shipping", icon: Truck, label: "Shipping", arLabel: "الشحن" },
-  { href: "/commissions", icon: BadgePercent, label: "Commissions", arLabel: "العمولات" },
-  { href: "/settings", icon: Settings, label: "Settings", arLabel: "الإعدادات" },
+  { href: "/dashboard", icon: LayoutDashboard, label: "Dashboard", arLabel: "لوحة التحكم", id: "dashboard" },
+  { href: "/orders", icon: Package, label: "Orders", arLabel: "الطلبات", id: "orders" },
+  { href: "/customers", icon: Users2, label: "Customers", arLabel: "العملاء", id: "customers" },
+  { href: "/users", icon: Users, label: "Users", arLabel: "المستخدمون", id: "users" },
+  { href: "/shipping", icon: Truck, label: "Shipping", arLabel: "الشحن", id: "shipping" },
+  { href: "/commissions", icon: BadgePercent, label: "Commissions", arLabel: "العمولات", id: "commissions" },
+  { href: "/settings", icon: Settings, label: "Settings", arLabel: "الإعدادات", id: "settings" },
   {
     label: "Reports",
     arLabel: "التقارير",
     icon: FileText,
     href: "/reports",
+    id: "reports",
     children: [
       { href: "/reports", label: "Commissions", arLabel: "العمولات" },
       { href: "/reports/products", label: "Products", arLabel: "المنتجات" },
@@ -72,6 +73,24 @@ export default function AppLayout({ children }: { children: ReactNode }) {
   const isHomePage = pathname === '/home';
   const isAdmin = user?.email === 'emergency.admin@elezz.com';
   const showSidebar = isAdmin || !isHomePage;
+
+  const visibleNavItems = React.useMemo(() => {
+    if (isAdmin) {
+      return navItems;
+    }
+    if (!user?.permissions) {
+      return [];
+    }
+
+    const permissions = user.permissions as any;
+    return navItems.filter(item => {
+      if (item.id && permissions[item.id]) {
+        return permissions[item.id].view;
+      }
+      // Hide items that don't have a permission mapping
+      return false;
+    });
+  }, [user, isAdmin]);
 
   React.useEffect(() => {
     if (!isUserLoading && !user) {
@@ -106,7 +125,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
           </SidebarHeader>
           <SidebarContent>
             <SidebarMenu>
-              {navItems.map((item) => (
+              {visibleNavItems.map((item) => (
                 <SidebarMenuItem key={item.href || item.label}>
                   {item.children ? (
                     <>
