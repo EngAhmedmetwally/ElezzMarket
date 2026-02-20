@@ -132,30 +132,30 @@ export default function ProductsReportPage() {
                 </CardHeader>
                 <CardContent>
                 {isMobile ? (
-                    <div className="space-y-4">
-                        {productsSales.map((product) => {
+                    <Card>
+                      <CardContent className="p-0">
+                        <div className="divide-y">
+                          {productsSales.map((product) => {
                             const href = `/reports/products/${encodeURIComponent(product.name)}?from=${fromDateString}&to=${toDateString}`;
                             return (
-                                <Link href={href} key={product.name} passHref>
-                                    <Card className="cursor-pointer hover:bg-muted/50">
-                                        <CardContent className="p-4">
-                                            <div className="flex justify-between items-start">
-                                                <p className="font-medium flex-1 pr-4">{product.name}</p>
-                                                <div className="text-right">
-                                                    <p className="font-bold">{product.count} <span className="text-xs font-normal text-muted-foreground">{language === 'ar' ? 'وحدة' : 'units'}</span></p>
-                                                    <p className="text-sm text-muted-foreground">{product.totalWeight.toFixed(2)} {language === 'ar' ? 'كجم' : 'kg'}</p>
-                                                </div>
-                                            </div>
-                                            <div className="flex items-center gap-2 mt-2">
-                                                <Progress value={product.percentage} className="h-2" />
-                                                <span className="text-xs text-muted-foreground">{product.percentage.toFixed(1)}%</span>
-                                            </div>
-                                        </CardContent>
-                                    </Card>
+                                <Link href={href} key={product.name} className="block p-4 hover:bg-muted/50" passHref>
+                                    <div className="flex justify-between items-center gap-4 mb-1">
+                                        <p className="font-medium break-all">{product.name}</p>
+                                        <div className="text-right shrink-0">
+                                            <p className="font-bold">{product.count} <span className="text-xs font-normal text-muted-foreground">{language === 'ar' ? 'وحدة' : 'units'}</span></p>
+                                            <p className="text-sm text-muted-foreground">{product.totalWeight.toFixed(2)} {language === 'ar' ? 'كجم' : 'kg'}</p>
+                                        </div>
+                                    </div>
+                                    <div className="flex items-center gap-2 mt-2">
+                                        <Progress value={product.percentage} className="h-2" />
+                                        <span className="text-xs text-muted-foreground">{product.percentage.toFixed(1)}%</span>
+                                    </div>
                                 </Link>
                             )
-                        })}
-                    </div>
+                          })}
+                        </div>
+                      </CardContent>
+                    </Card>
                 ) : (
                     <Table>
                         <TableHeader>
@@ -163,7 +163,7 @@ export default function ProductsReportPage() {
                             <TableHead>{language === 'ar' ? 'المنتج' : 'Product'}</TableHead>
                             <TableHead className="text-end">{language === 'ar' ? 'الكمية المباعة' : 'Quantity Sold'}</TableHead>
                             <TableHead className="text-end">{language === 'ar' ? 'الوزن الإجمالي (كجم)' : 'Total Weight (kg)'}</TableHead>
-                            <TableHead className="w-[200px] text-end">{language === 'ar' ? 'نسبة المبيعات' : 'Sales Percentage'}</TableHead>
+                            <TableHead className="text-end">{language === 'ar' ? 'نسبة المبيعات' : 'Sales Percentage'}</TableHead>
                         </TableRow>
                         </TableHeader>
                         <TableBody>
@@ -171,7 +171,7 @@ export default function ProductsReportPage() {
                             const href = `/reports/products/${encodeURIComponent(product.name)}?from=${fromDateString}&to=${toDateString}`;
                             return (
                                 <TableRow key={product.name}>
-                                    <TableCell className="font-medium">
+                                    <TableCell className="font-medium max-w-xs break-words">
                                         <Link href={href} className="hover:underline text-primary">
                                             {product.name}
                                         </Link>
@@ -180,7 +180,7 @@ export default function ProductsReportPage() {
                                     <TableCell className="text-end">{product.totalWeight.toFixed(2)}</TableCell>
                                     <TableCell className="text-end">
                                         <div className="flex items-center justify-end gap-2">
-                                            <span className="text-xs text-muted-foreground w-12">{product.percentage.toFixed(1)}%</span>
+                                            <span className="text-xs text-muted-foreground w-12 text-right">{product.percentage.toFixed(1)}%</span>
                                             <Progress value={product.percentage} className="h-2 w-24" />
                                         </div>
                                     </TableCell>
