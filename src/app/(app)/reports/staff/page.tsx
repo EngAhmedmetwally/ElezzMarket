@@ -8,9 +8,10 @@ import { useLanguage } from "@/components/language-provider";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { DatePicker } from "@/components/ui/datepicker";
 import { useRealtimeCachedCollection } from "@/hooks/use-realtime-cached-collection";
-import type { Order, User, OrderStatus } from "@/lib/types";
+import type { Order, User, OrderStatus, Commission } from "@/lib/types";
 import { Skeleton } from "@/components/ui/skeleton";
 import { StaffActivityChart } from "../components/staff-activity-chart";
+import { StaffPerformanceChart } from "../components/staff-performance-chart";
 
 
 function StaffReportSkeleton() {
@@ -19,6 +20,12 @@ function StaffReportSkeleton() {
       <div className="flex items-center gap-4">
         <Skeleton className="h-10 w-40" />
         <Skeleton className="h-10 w-40" />
+      </div>
+      <div className="grid lg:grid-cols-2 gap-8">
+        <Skeleton className="h-[350px] w-full" />
+        <Skeleton className="h-[350px] w-full" />
+        <Skeleton className="h-[350px] w-full" />
+        <Skeleton className="h-[350px] w-full" />
       </div>
       <Skeleton className="h-[350px] w-full" />
       <Card>
@@ -44,9 +51,21 @@ export default function StaffReportPage() {
   
   const { data: allOrders, isLoading: isLoadingOrders } = useRealtimeCachedCollection<Order>('orders');
   const { data: usersData, isLoading: isLoadingUsers } = useRealtimeCachedCollection<User>('users');
+  const { data: commissionsData, isLoading: isLoadingCommissions } = useRealtimeCachedCollection<Commission>('commissions');
+  
+  const filteredOrders = React.useMemo(() => {
+    if (!allOrders || !fromDate || !toDate) return [];
+    const from = fromDate.getTime();
+    const to = new Date(toDate).setHours(23, 59, 59, 999);
+    return allOrders.filter(order => {
+        if (!order.createdAt) return false;
+        const orderDate = new Date(order.createdAt).getTime();
+        return orderDate >= from && orderDate <= to;
+    });
+  }, [allOrders, fromDate, toDate]);
 
   const staffActivityReport = React.useMemo(() => {
-    if (!usersData || !allOrders || !fromDate || !toDate) return [];
+    if (!usersData || !filteredOrders) return [];
     
     const usersMap = new Map(usersData.map(u => [u.id, u]));
 
@@ -59,41 +78,34 @@ export default function StaffReportPage() {
         total: number;
     }>();
 
-    const from = fromDate.getTime();
-    const to = new Date(toDate).setHours(23, 59, 59, 999);
-
-    for (const order of allOrders) {
+    for (const order of filteredOrders) {
         if (!order.statusHistory) continue;
 
         for (const historyKey in order.statusHistory) {
             const historyItem = order.statusHistory[historyKey];
             
             if (!historyItem.userId || !historyItem.createdAt) continue;
+            
+            const user = usersMap.get(historyItem.userId);
 
-            const itemDate = new Date(historyItem.createdAt).getTime();
+            if (user) {
+                let userActivity = staffActivity.get(historyItem.userId);
+                
+                if (!userActivity) {
+                    userActivity = {
+                        id: user.id,
+                        name: user.name,
+                        avatarUrl: user.avatarUrl,
+                        role: user.role,
+                        actions: { "تم التسجيل": 0, "قيد التجهيز": 0, "تم الشحن": 0, "مكتمل": 0, "ملغي": 0 },
+                        total: 0
+                    };
+                    staffActivity.set(user.id, userActivity);
+                }
 
-            if (itemDate >= from && itemDate <= to) {
-                const user = usersMap.get(historyItem.userId);
-
-                if (user) {
-                    let userActivity = staffActivity.get(historyItem.userId);
-                    
-                    if (!userActivity) {
-                        userActivity = {
-                            id: user.id,
-                            name: user.name,
-                            avatarUrl: user.avatarUrl,
-                            role: user.role,
-                            actions: { "تم التسجيل": 0, "قيد التجهيز": 0, "تم الشحن": 0, "مكتمل": 0, "ملغي": 0 },
-                            total: 0
-                        };
-                        staffActivity.set(user.id, userActivity);
-                    }
-
-                    if (historyItem.status in userActivity.actions) {
-                        userActivity.actions[historyItem.status]++;
-                        userActivity.total++;
-                    }
+                if (historyItem.status in userActivity.actions) {
+                    userActivity.actions[historyItem.status]++;
+                    userActivity.total++;
                 }
             }
         }
@@ -102,37 +114,154 @@ export default function StaffReportPage() {
     return Array.from(staffActivity.values())
         .filter(user => user.total > 0)
         .sort((a, b) => b.total - a.total);
-  }, [usersData, allOrders, fromDate, toDate]);
+  }, [usersData, filteredOrders]);
   
-  const chartData = staffActivityReport.map(m => ({ name: m.name, actions: m.actions }));
+  const topModeratorsByOrders = React.useMemo(() => {
+    if (!usersData || !filteredOrders) return [];
+    const orderCounts = filteredOrders.reduce((acc, order) => {
+        if (order.moderatorId) {
+            acc[order.moderatorId] = (acc[order.moderatorId] || 0) + 1;
+        }
+        return acc;
+    }, {} as Record<string, number>);
 
-  const isLoading = isLoadingOrders || isLoadingUsers;
+    return usersData
+        .filter(user => user.role === 'Moderator')
+        .map(user => ({ name: user.name, value: orderCounts[user.id] || 0 }))
+        .filter(u => u.value > 0)
+        .sort((a, b) => b.value - a.value);
+  }, [usersData, filteredOrders]);
+
+  const topCouriersByDeliveries = React.useMemo(() => {
+    if (!usersData || !filteredOrders) return [];
+    const deliveryCounts = filteredOrders
+        .filter(o => o.status === 'مكتمل' && o.courierId)
+        .reduce((acc, order) => {
+            acc[order.courierId!] = (acc[order.courierId!] || 0) + 1;
+            return acc;
+        }, {} as Record<string, number>);
+
+    return usersData
+        .filter(user => user.role === 'Courier')
+        .map(user => ({ name: user.name, value: deliveryCounts[user.id] || 0 }))
+        .filter(u => u.value > 0)
+        .sort((a, b) => b.value - a.value);
+  }, [usersData, filteredOrders]);
+
+  const fastestCouriers = React.useMemo(() => {
+    if (!usersData || !filteredOrders) return [];
+    const deliveryTimes: Record<string, number[]> = {};
+    filteredOrders.forEach(order => {
+        if (order.status !== 'مكتمل' || !order.courierId || !order.statusHistory) return;
+        const history = Object.values(order.statusHistory);
+        const shippedEvent = history.find(h => h.status === 'تم الشحن');
+        const completedEvent = history.find(h => h.status === 'مكتمل');
+        if (shippedEvent && completedEvent) {
+            const shippedTime = new Date(shippedEvent.createdAt).getTime();
+            const completedTime = new Date(completedEvent.createdAt).getTime();
+            const durationMinutes = (completedTime - shippedTime) / (1000 * 60);
+            if (durationMinutes >= 0) {
+                 if (!deliveryTimes[order.courierId]) deliveryTimes[order.courierId] = [];
+                deliveryTimes[order.courierId].push(durationMinutes);
+            }
+        }
+    });
+    const avgDeliveryTimes: { id: string; avgTime: number }[] = [];
+    for (const courierId in deliveryTimes) {
+        const times = deliveryTimes[courierId];
+        const avg = times.reduce((a, b) => a + b, 0) / times.length;
+        avgDeliveryTimes.push({ id: courierId, avgTime: avg });
+    }
+    return avgDeliveryTimes
+        .map(item => ({ name: usersData.find(u => u.id === item.id)?.name || 'Unknown', value: item.avgTime }))
+        .sort((a, b) => a.value - b.value);
+  }, [usersData, filteredOrders]);
+
+  const topEarners = React.useMemo(() => {
+     if (!usersData || !commissionsData || !fromDate || !toDate) return [];
+     const from = fromDate.getTime();
+     const to = new Date(toDate).setHours(23, 59, 59, 999);
+     const filteredCommissions = commissionsData.filter(c => {
+         if (!c.calculationDate) return false;
+         const commissionDate = new Date(c.calculationDate).getTime();
+         return commissionDate >= from && commissionDate <= to;
+     });
+     const commissionSums = filteredCommissions.reduce((acc, commission) => {
+         acc[commission.userId] = (acc[commission.userId] || 0) + commission.amount;
+         return acc;
+     }, {} as Record<string, number>);
+     return usersData
+        .map(user => ({ name: user.name, value: commissionSums[user.id] || 0}))
+        .filter(u => u.value > 0)
+        .sort((a, b) => b.value - a.value);
+  }, [usersData, commissionsData, fromDate, toDate]);
+  
+  const activityChartData = staffActivityReport.map(m => ({ name: m.name, actions: m.actions }));
+
+  const isLoading = isLoadingOrders || isLoadingUsers || isLoadingCommissions;
 
   if (isLoading) {
     return (
       <div>
-        <PageHeader title={language === 'ar' ? 'تقرير الموظفين' : 'Staff Report'} />
+        <PageHeader title={language === 'ar' ? 'تقرير أداء الموظفين' : 'Staff Performance Report'} />
         <StaffReportSkeleton />
       </div>
     )
   }
 
   const orderStatuses: OrderStatus[] = ["تم التسجيل", "قيد التجهيز", "تم الشحن", "مكتمل", "ملغي"];
+  const formatCurrency = (value: number) => new Intl.NumberFormat(language === 'ar' ? 'ar-EG' : 'en-US', { style: 'currency', currency: 'EGP' }).format(value);
+  const formatMinutes = (minutes: number) => {
+    if (minutes < 60) return `${Math.round(minutes)} ${language === 'ar' ? 'دقيقة' : 'min'}`;
+    const hours = Math.floor(minutes / 60);
+    const mins = Math.round(minutes % 60);
+    return `${hours} ${language === 'ar' ? 'س' : 'h'} ${mins} ${language === 'ar' ? 'د' : 'm'}`;
+  }
+
 
   return (
-    <div>
-      <PageHeader title={language === 'ar' ? 'تقرير الموظفين' : 'Staff Report'} />
+    <div className="space-y-8">
+      <PageHeader title={language === 'ar' ? 'تقرير أداء الموظفين' : 'Staff Performance Report'} />
       
-      <div className="flex items-center gap-4 mb-8">
+      <div className="flex items-center gap-4">
         <DatePicker date={fromDate} onDateChange={setFromDate} placeholder={language === 'ar' ? 'من تاريخ' : 'From date'} />
         <DatePicker date={toDate} onDateChange={setToDate} placeholder={language === 'ar' ? 'إلى تاريخ' : 'To date'} />
       </div>
 
+      <div className="grid lg:grid-cols-2 gap-8">
+         <StaffPerformanceChart 
+            data={topModeratorsByOrders} 
+            title={language === 'ar' ? 'أفضل الوسطاء (حسب عدد الطلبات)' : 'Top Moderators (by Orders)'}
+            barDataKey="orders"
+            barLabel={language === 'ar' ? 'طلبات' : 'Orders'}
+        />
+        <StaffPerformanceChart 
+            data={topCouriersByDeliveries} 
+            title={language === 'ar' ? 'أفضل المناديب (حسب عدد التسليمات)' : 'Top Couriers (by Deliveries)'}
+            barDataKey="deliveries"
+            barLabel={language === 'ar' ? 'تسليمات' : 'Deliveries'}
+        />
+         <StaffPerformanceChart 
+            data={fastestCouriers} 
+            title={language === 'ar' ? 'أسرع المناديب (متوسط وقت التسليم)' : 'Fastest Couriers (Avg. Delivery Time)'}
+            barDataKey="avg_time"
+            barLabel={language === 'ar' ? 'متوسط الوقت' : 'Avg. Time'}
+            formatter={formatMinutes}
+        />
+         <StaffPerformanceChart 
+            data={topEarners} 
+            title={language === 'ar' ? 'الأكثر ربحًا (حسب العمولة)' : 'Top Earners (by Commission)'}
+            barDataKey="commission"
+            barLabel={language === 'ar' ? 'العمولة' : 'Commission'}
+            formatter={formatCurrency}
+        />
+      </div>
+      
       <div className="space-y-8">
-        <StaffActivityChart data={chartData} />
+        <StaffActivityChart data={activityChartData} />
         <Card>
           <CardHeader>
-            <CardTitle>{language === 'ar' ? 'تقرير نشاط الموظفين' : 'Staff Activity Report'}</CardTitle>
+            <CardTitle>{language === 'ar' ? 'تقرير نشاط الموظفين التفصيلي' : 'Detailed Staff Activity Report'}</CardTitle>
             <CardDescription>{language === 'ar' ? 'ملخص الإجراءات التي قام بها كل موظف على الطلبات' : 'Summary of actions performed by each staff member on orders'}</CardDescription>
           </CardHeader>
           <CardContent className="overflow-x-auto">
