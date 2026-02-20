@@ -17,7 +17,7 @@ import { ref, set } from "firebase/database";
 import type { ReceiptSettings, User, AppSettings } from "@/lib/types";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Users, Download, Upload, Trash2 } from "lucide-react";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDescription } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
