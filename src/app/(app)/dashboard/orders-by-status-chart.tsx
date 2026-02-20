@@ -60,7 +60,7 @@ export function OrdersByStatusChart({ data }: OrdersByStatusChartProps) {
         <CardTitle>{chartTitle}</CardTitle>
       </CardHeader>
       <CardContent>
-        <ChartContainer config={chartConfig} className="min-h-[300px] w-full">
+        <ChartContainer config={chartConfig} className="min-h-[350px] w-full">
           <PieChart>
             <Tooltip
               cursor={false}
@@ -71,9 +71,9 @@ export function OrdersByStatusChart({ data }: OrdersByStatusChartProps) {
               dataKey="value"
               nameKey="name"
               cx="50%"
-              cy="50%"
-              outerRadius={80}
-              innerRadius={50}
+              cy="45%"
+              outerRadius={90}
+              innerRadius={60}
               paddingAngle={2}
               labelLine={false}
             >
@@ -83,9 +83,9 @@ export function OrdersByStatusChart({ data }: OrdersByStatusChartProps) {
             </Pie>
             <ChartLegend
               content={<ChartLegendContent nameKey="name" />}
-              layout="vertical"
-              align="right"
-              verticalAlign="middle"
+              layout="horizontal"
+              verticalAlign="bottom"
+              align="center"
             />
           </PieChart>
         </ChartContainer>

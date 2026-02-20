@@ -42,7 +42,7 @@ export function OrdersStatusPieChart({ data }: OrdersStatusPieChartProps) {
   return (
     <ChartContainer
       config={chartConfig}
-      className="min-h-[150px] w-full"
+      className="min-h-[220px] w-full"
     >
       <PieChart>
         <Tooltip
@@ -53,6 +53,8 @@ export function OrdersStatusPieChart({ data }: OrdersStatusPieChartProps) {
           data={chartData}
           dataKey="value"
           nameKey="name"
+          cx="50%"
+          cy="40%"
           innerRadius={40}
           outerRadius={55}
           paddingAngle={2}
@@ -92,9 +94,9 @@ export function OrdersStatusPieChart({ data }: OrdersStatusPieChartProps) {
         </Pie>
         <ChartLegend
           content={<ChartLegendContent nameKey="name" />}
-          layout="vertical"
-          align="right"
-          verticalAlign="middle"
+          layout="horizontal"
+          verticalAlign="bottom"
+          align="center"
         />
       </PieChart>
     </ChartContainer>
