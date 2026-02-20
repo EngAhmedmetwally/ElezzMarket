@@ -29,7 +29,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useRealtimeCachedCollection } from "@/hooks/use-realtime-cached-collection";
 
 const orderFormSchema = z.object({
-  id: z.string().min(1, "رقم الطلب مطلوب"),
+  id: z.string().optional(),
   customerName: z.string().min(1, "اسم العميل مطلوب"),
   facebookName: z.string().optional(),
   customerPhone1: z.string().min(1, "رقم الموبايل 1 مطلوب"),
@@ -88,19 +88,6 @@ export function OrderForm({ onSuccess }: OrderFormProps) {
       items: [{ productId: "", productName: "", quantity: 1, price: 0, weight: undefined }],
     },
   });
-  
-  React.useEffect(() => {
-    if (isAutoIdEnabled && database) {
-        if (!form.getValues('id') || form.formState.isSubmitSuccessful) {
-            const counterRef = ref(database, 'counters/orders');
-            get(counterRef).then((snapshot) => {
-                const nextId = snapshot.exists() ? snapshot.val() + 1 : 20001;
-                form.setValue('id', String(nextId));
-            });
-        }
-    }
-  }, [isAutoIdEnabled, database, form, form.formState.isSubmitSuccessful]);
-
 
   const { fields, append, remove } = useFieldArray({
     control: form.control,
@@ -153,27 +140,50 @@ export function OrderForm({ onSuccess }: OrderFormProps) {
       return;
     }
 
-    const orderRef = ref(database, `orders/${data.id}`);
-    
-    if (!isAutoIdEnabled) {
-        const snapshot = await get(orderRef);
-        if (snapshot.exists()) {
-            form.setError("id", {
-                type: "manual",
-                message: language === 'ar' ? "رقم الطلب هذا موجود بالفعل." : "This Order ID already exists.",
-            });
-            toast({
-                variant: "destructive",
-                title: language === 'ar' ? 'خطأ في الإدخال' : "Input Error",
-                description: language === 'ar' ? "رقم الطلب هذا موجود بالفعل. يرجى إدخال رقم مختلف." : "This Order ID already exists. Please enter a different one.",
-            });
-            return;
-        }
-    }
-    
-    const allProducts: (Product & {id: string})[] = products || [];
-
     try {
+        let orderId: string;
+
+        if (isAutoIdEnabled) {
+            const counterRef = ref(database, 'counters/orders');
+            const transactionResult = await runTransaction(counterRef, (currentCount) => {
+                if (currentCount === null) {
+                    return 20001; // Starting number
+                }
+                return currentCount + 1;
+            });
+
+            if (!transactionResult.committed) {
+                throw new Error(language === 'ar' ? 'فشل الحصول على رقم طلب جديد. قد يكون هناك ضغط على النظام، يرجى المحاولة مرة أخرى.' : 'Failed to get a new order ID. The system might be busy, please try again.');
+            }
+            orderId = String(transactionResult.snapshot.val());
+        } else {
+            if (!data.id) {
+                form.setError("id", {
+                    type: "manual",
+                    message: language === 'ar' ? "رقم الطلب مطلوب." : "Order ID is required.",
+                });
+                return; // Stop submission
+            }
+            orderId = data.id;
+            const orderRefCheck = ref(database, `orders/${orderId}`);
+            const snapshot = await get(orderRefCheck);
+            if (snapshot.exists()) {
+                form.setError("id", {
+                    type: "manual",
+                    message: language === 'ar' ? "رقم الطلب هذا موجود بالفعل." : "This Order ID already exists.",
+                });
+                toast({
+                    variant: "destructive",
+                    title: language === 'ar' ? 'خطأ في الإدخال' : "Input Error",
+                    description: language === 'ar' ? "رقم الطلب هذا موجود بالفعل. يرجى إدخال رقم مختلف." : "This Order ID already exists. Please enter a different one.",
+                });
+                return; // Stop submission
+            }
+        }
+        
+        const orderRef = ref(database, `orders/${orderId}`);
+        const allProducts: (Product & {id: string})[] = products || [];
+
         const resolvedItems: OrderItem[] = [];
         for (const item of data.items) {
             let productId = item.productId;
@@ -211,7 +221,7 @@ export function OrderForm({ onSuccess }: OrderFormProps) {
         };
 
         const newOrder = {
-            id: data.id,
+            id: orderId,
             customerName: data.customerName,
             facebookName: data.facebookName,
             customerPhone1: data.customerPhone1,
@@ -232,14 +242,9 @@ export function OrderForm({ onSuccess }: OrderFormProps) {
 
         await set(orderRef, newOrder);
 
-        if (isAutoIdEnabled) {
-            const counterRef = ref(database, 'counters/orders');
-            await set(counterRef, Number(data.id));
-        }
-
         const updates: { [key: string]: any } = {};
-        updates[`order-lookup/${data.id}`] = true;
-        updates[`customer-orders/${data.customerPhone1}/${data.id}`] = true;
+        updates[`order-lookup/${orderId}`] = true;
+        updates[`customer-orders/${data.customerPhone1}/${orderId}`] = true;
 
         const customerRef = ref(database, `customers/${data.customerPhone1}`);
         const customerSnapshot = await get(customerRef);
@@ -262,7 +267,7 @@ export function OrderForm({ onSuccess }: OrderFormProps) {
         const registrationCommissionAmount = commissionRules?.["تم التسجيل"]?.amount || 0;
         if (registrationCommissionAmount > 0) {
             const newCommission: Omit<Commission, 'id'> = {
-                orderId: data.id,
+                orderId: orderId,
                 userId: user.id,
                 orderStatus: "تم التسجيل",
                 amount: registrationCommissionAmount,
@@ -275,7 +280,7 @@ export function OrderForm({ onSuccess }: OrderFormProps) {
 
         toast({
             title: language === 'ar' ? "تم إنشاء الطلب" : "Order Created",
-            description: language === 'ar' ? `تم إنشاء طلب جديد برقم ${data.id} بنجاح.` : `New order #${data.id} has been successfully created.`,
+            description: language === 'ar' ? `تم إنشاء طلب جديد برقم ${orderId} بنجاح.` : `New order #${orderId} has been successfully created.`,
         });
         onSuccess?.();
         form.reset();
@@ -298,7 +303,12 @@ export function OrderForm({ onSuccess }: OrderFormProps) {
            <FormField control={form.control} name="id" render={({ field }) => (
                 <FormItem>
                 <FormLabel>{language === 'ar' ? 'رقم الطلب' : 'Order ID'}</FormLabel>
-                <FormControl><Input placeholder={language === 'ar' ? 'أدخل رقم الطلب' : 'Enter Order ID'} {...field} disabled={isAutoIdEnabled || isLoadingAppSettings} /></FormControl>
+                <FormControl><Input 
+                    placeholder={isAutoIdEnabled ? (language === 'ar' ? 'سيتم إنشاؤه تلقائياً' : 'Will be auto-generated') : (language === 'ar' ? 'أدخل رقم الطلب' : 'Enter Order ID')} 
+                    {...field}
+                    value={field.value ?? ''}
+                    disabled={isAutoIdEnabled || isLoadingAppSettings} 
+                 /></FormControl>
                 <FormMessage />
                 </FormItem>
             )}/>
