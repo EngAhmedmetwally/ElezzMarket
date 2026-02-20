@@ -35,6 +35,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { syncEvents } from "@/lib/sync-events";
+import { Switch } from "@/components/ui/switch";
 
 
 const receiptSettingsSchema = z.object({
@@ -60,6 +61,7 @@ type ReceiptSettingsFormValues = z.infer<typeof receiptSettingsSchema>;
 
 const appSettingsSchema = z.object({
   maxUsers: z.coerce.number().int().min(1, "العدد يجب أن يكون 1 على الأقل"),
+  autoGenerateOrderId: z.boolean().default(false),
 });
 
 type AppSettingsFormValues = z.infer<typeof appSettingsSchema>;
@@ -121,6 +123,7 @@ export default function SettingsPage() {
     resolver: zodResolver(appSettingsSchema),
     defaultValues: {
       maxUsers: 25,
+      autoGenerateOrderId: false,
     },
   });
 
@@ -135,7 +138,10 @@ export default function SettingsPage() {
 
   React.useEffect(() => {
     if (currentAppSettings) {
-      appSettingsForm.reset({ maxUsers: currentAppSettings.maxUsers });
+      appSettingsForm.reset({ 
+          maxUsers: currentAppSettings.maxUsers,
+          autoGenerateOrderId: currentAppSettings.autoGenerateOrderId || false,
+        });
     }
   }, [currentAppSettings, appSettingsForm]);
 
@@ -290,6 +296,24 @@ export default function SettingsPage() {
                             />
                           </div>
                       </div>
+                       <FormField
+                          control={appSettingsForm.control}
+                          name="autoGenerateOrderId"
+                          render={({ field }) => (
+                            <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4 mt-4">
+                              <div className="space-y-0.5">
+                                <FormLabel className="text-base">{language === 'ar' ? 'إنشاء رقم الطلب تلقائياً' : 'Auto-generate Order ID'}</FormLabel>
+                                <FormDescription>{language === 'ar' ? 'عند التفعيل، سيتم إنشاء رقم الطلب تلقائياً.' : 'If enabled, the order ID will be generated automatically.'}</FormDescription>
+                              </div>
+                              <FormControl>
+                                <Switch
+                                  checked={field.value}
+                                  onCheckedChange={field.onChange}
+                                />
+                              </FormControl>
+                            </FormItem>
+                          )}
+                        />
                     </CardContent>
                     <CardFooter className="border-t px-6 py-4">
                       <Button type="submit" disabled={appSettingsForm.formState.isSubmitting}>{language === 'ar' ? 'حفظ إعدادات الخطة' : 'Save Plan Settings'}</Button>

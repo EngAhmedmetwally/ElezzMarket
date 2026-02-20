@@ -3,6 +3,10 @@
   "rules": {
     ".read": true,
     ".write": true,
+    "counters": {
+      ".read": true,
+      ".write": true
+    },
     "orders": {
       ".indexOn": [
         "createdAt",

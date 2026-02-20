@@ -138,5 +138,6 @@ export type ReceiptSettings = {
 
 export type AppSettings = {
   maxUsers: number;
+  autoGenerateOrderId?: boolean;
 };
     

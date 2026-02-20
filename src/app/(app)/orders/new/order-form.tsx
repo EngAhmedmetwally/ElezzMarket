@@ -19,7 +19,7 @@ import { Separator } from "@/components/ui/separator";
 import { PlusCircle, Trash2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useLanguage } from "@/components/language-provider";
-import type { Customer, Product, OrderItem, ShippingZone, Commission } from "@/lib/types";
+import type { Customer, Product, OrderItem, ShippingZone, Commission, AppSettings } from "@/lib/types";
 import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { useDatabase, useUser } from "@/firebase";
@@ -64,6 +64,14 @@ export function OrderForm({ onSuccess }: OrderFormProps) {
   const { data: customers } = useRealtimeCachedCollection<Customer>('customers');
   const { data: products } = useRealtimeCachedCollection<Product>('products');
   const { data: shippingZones, isLoading: isLoadingZones } = useRealtimeCachedCollection<ShippingZone>('shipping-zones');
+  const { data: appSettingsCollection, isLoading: isLoadingAppSettings } = useRealtimeCachedCollection<AppSettings>('app-settings');
+
+  const appSettings = React.useMemo(() => {
+    if (!appSettingsCollection || appSettingsCollection.length === 0) return null;
+    return appSettingsCollection[0];
+  }, [appSettingsCollection]);
+
+  const isAutoIdEnabled = appSettings?.autoGenerateOrderId === true;
 
   const [selectedZone, setSelectedZone] = React.useState<ShippingZone | null>(null);
 
@@ -80,6 +88,19 @@ export function OrderForm({ onSuccess }: OrderFormProps) {
       items: [{ productId: "", productName: "", quantity: 1, price: 0, weight: undefined }],
     },
   });
+  
+  React.useEffect(() => {
+    if (isAutoIdEnabled && database) {
+        if (!form.getValues('id') || form.formState.isSubmitSuccessful) {
+            const counterRef = ref(database, 'counters/orders');
+            get(counterRef).then((snapshot) => {
+                const nextId = snapshot.exists() ? snapshot.val() + 1 : 20001;
+                form.setValue('id', String(nextId));
+            });
+        }
+    }
+  }, [isAutoIdEnabled, database, form, form.formState.isSubmitSuccessful]);
+
 
   const { fields, append, remove } = useFieldArray({
     control: form.control,
@@ -133,19 +154,21 @@ export function OrderForm({ onSuccess }: OrderFormProps) {
     }
 
     const orderRef = ref(database, `orders/${data.id}`);
-    const snapshot = await get(orderRef);
     
-    if (snapshot.exists()) {
-        form.setError("id", {
-            type: "manual",
-            message: language === 'ar' ? "رقم الطلب هذا موجود بالفعل." : "This Order ID already exists.",
-        });
-        toast({
-            variant: "destructive",
-            title: language === 'ar' ? 'خطأ في الإدخال' : "Input Error",
-            description: language === 'ar' ? "رقم الطلب هذا موجود بالفعل. يرجى إدخال رقم مختلف." : "This Order ID already exists. Please enter a different one.",
-        });
-        return;
+    if (!isAutoIdEnabled) {
+        const snapshot = await get(orderRef);
+        if (snapshot.exists()) {
+            form.setError("id", {
+                type: "manual",
+                message: language === 'ar' ? "رقم الطلب هذا موجود بالفعل." : "This Order ID already exists.",
+            });
+            toast({
+                variant: "destructive",
+                title: language === 'ar' ? 'خطأ في الإدخال' : "Input Error",
+                description: language === 'ar' ? "رقم الطلب هذا موجود بالفعل. يرجى إدخال رقم مختلف." : "This Order ID already exists. Please enter a different one.",
+            });
+            return;
+        }
     }
     
     const allProducts: (Product & {id: string})[] = products || [];
@@ -209,6 +232,11 @@ export function OrderForm({ onSuccess }: OrderFormProps) {
 
         await set(orderRef, newOrder);
 
+        if (isAutoIdEnabled) {
+            const counterRef = ref(database, 'counters/orders');
+            await set(counterRef, Number(data.id));
+        }
+
         const updates: { [key: string]: any } = {};
         updates[`order-lookup/${data.id}`] = true;
         updates[`customer-orders/${data.customerPhone1}/${data.id}`] = true;
@@ -247,7 +275,7 @@ export function OrderForm({ onSuccess }: OrderFormProps) {
 
         toast({
             title: language === 'ar' ? "تم إنشاء الطلب" : "Order Created",
-            description: language === 'ar' ? "تم إنشاء طلب جديد بنجاح." : "A new order has been successfully created.",
+            description: language === 'ar' ? `تم إنشاء طلب جديد برقم ${data.id} بنجاح.` : `New order #${data.id} has been successfully created.`,
         });
         onSuccess?.();
         form.reset();
@@ -270,7 +298,7 @@ export function OrderForm({ onSuccess }: OrderFormProps) {
            <FormField control={form.control} name="id" render={({ field }) => (
                 <FormItem>
                 <FormLabel>{language === 'ar' ? 'رقم الطلب' : 'Order ID'}</FormLabel>
-                <FormControl><Input placeholder={language === 'ar' ? 'أدخل رقم الطلب' : 'Enter Order ID'} {...field} /></FormControl>
+                <FormControl><Input placeholder={language === 'ar' ? 'أدخل رقم الطلب' : 'Enter Order ID'} {...field} disabled={isAutoIdEnabled || isLoadingAppSettings} /></FormControl>
                 <FormMessage />
                 </FormItem>
             )}/>
