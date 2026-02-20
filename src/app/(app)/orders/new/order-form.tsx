@@ -27,6 +27,7 @@ import { ref, get, update, push, set, runTransaction, child } from "firebase/dat
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useRealtimeCachedCollection } from "@/hooks/use-realtime-cached-collection";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose } from "@/components/ui/dialog";
 
 const orderFormSchema = z.object({
   id: z.string().optional(),
@@ -60,6 +61,9 @@ export function OrderForm({ onSuccess }: OrderFormProps) {
   const { language } = useLanguage();
   const database = useDatabase();
   const { user } = useUser();
+  
+  const [newOrderId, setNewOrderId] = React.useState<string | null>(null);
+  const [isSuccessModalOpen, setIsSuccessModalOpen] = React.useState(false);
 
   const { data: customers } = useRealtimeCachedCollection<Customer>('customers');
   const { data: products } = useRealtimeCachedCollection<Product>('products');
@@ -278,12 +282,9 @@ export function OrderForm({ onSuccess }: OrderFormProps) {
             await runTransaction(child(orderRef, 'totalCommission'), (currentTotal) => (currentTotal || 0) + registrationCommissionAmount);
         }
 
-        toast({
-            title: language === 'ar' ? "تم إنشاء الطلب" : "Order Created",
-            description: language === 'ar' ? `تم إنشاء طلب جديد برقم ${orderId} بنجاح.` : `New order #${orderId} has been successfully created.`,
-        });
-        onSuccess?.();
-        form.reset();
+        setNewOrderId(orderId);
+        setIsSuccessModalOpen(true);
+        
     } catch(e: any) {
         console.error("Order creation failed:", e);
         toast({
@@ -297,221 +298,249 @@ export function OrderForm({ onSuccess }: OrderFormProps) {
   const formatCurrency = (value: number) => new Intl.NumberFormat(language === 'ar' ? 'ar-EG' : 'en-US', { style: 'currency', currency: 'EGP' }).format(value);
 
   return (
-    <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-        <div className="grid md:grid-cols-2 gap-4">
-           <FormField control={form.control} name="id" render={({ field }) => (
-                <FormItem>
-                <FormLabel>{language === 'ar' ? 'رقم الطلب' : 'Order ID'}</FormLabel>
-                <FormControl><Input 
-                    placeholder={isAutoIdEnabled ? (language === 'ar' ? 'سيتم إنشاؤه تلقائياً' : 'Will be auto-generated') : (language === 'ar' ? 'أدخل رقم الطلب' : 'Enter Order ID')} 
-                    {...field}
-                    value={field.value ?? ''}
-                    disabled={isAutoIdEnabled || isLoadingAppSettings} 
-                 /></FormControl>
-                <FormMessage />
-                </FormItem>
-            )}/>
-        </div>
-        
-        <div>
-            <h3 className="text-lg font-medium mb-4">{language === 'ar' ? 'تفاصيل العميل' : 'Customer Details'}</h3>
+    <>
+        <Form {...form}>
+        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
             <div className="grid md:grid-cols-2 gap-4">
-                 <div className="relative md:col-span-2">
-                    <FormField control={form.control} name="customerName" render={({ field }) => (
+            <FormField control={form.control} name="id" render={({ field }) => (
+                    <FormItem>
+                    <FormLabel>{language === 'ar' ? 'رقم الطلب' : 'Order ID'}</FormLabel>
+                    <FormControl><Input 
+                        placeholder={isAutoIdEnabled ? (language === 'ar' ? 'سيتم إنشاؤه تلقائياً' : 'Will be auto-generated') : (language === 'ar' ? 'أدخل رقم الطلب' : 'Enter Order ID')} 
+                        {...field}
+                        value={field.value ?? ''}
+                        disabled={isAutoIdEnabled || isLoadingAppSettings} 
+                    /></FormControl>
+                    <FormMessage />
+                    </FormItem>
+                )}/>
+            </div>
+            
+            <div>
+                <h3 className="text-lg font-medium mb-4">{language === 'ar' ? 'تفاصيل العميل' : 'Customer Details'}</h3>
+                <div className="grid md:grid-cols-2 gap-4">
+                    <div className="relative md:col-span-2">
+                        <FormField control={form.control} name="customerName" render={({ field }) => (
+                            <FormItem>
+                            <FormLabel>{language === 'ar' ? 'اسم العميل' : 'Customer Name'}</FormLabel>
+                            <FormControl>
+                                <Input 
+                                    placeholder={language === 'ar' ? 'ابحث بالاسم أو رقم الهاتف...' : 'Search by name or phone...'} 
+                                    {...field} 
+                                    autoComplete="off"
+                                />
+                            </FormControl>
+                            <FormMessage />
+                            </FormItem>
+                        )}/>
+                        {filteredCustomers.length > 0 && customerSearch && (
+                            <Card className="absolute z-10 w-full mt-1 shadow-lg">
+                                <CardContent className="p-2 max-h-60 overflow-y-auto">
+                                    {filteredCustomers.map((customer: any) => (
+                                        <div 
+                                            key={customer.id} 
+                                            className="p-2 hover:bg-muted rounded-md cursor-pointer text-sm"
+                                            onClick={() => handleCustomerSelect(customer)}
+                                        >
+                                            <p className="font-medium">{customer.customerName}</p>
+                                            <p className="text-muted-foreground">{customer.customerPhone1}</p>
+                                        </div>
+                                    ))}
+                                </CardContent>
+                            </Card>
+                        )}
+                    </div>
+                    <FormField control={form.control} name="facebookName" render={({ field }) => (
                         <FormItem>
-                        <FormLabel>{language === 'ar' ? 'اسم العميل' : 'Customer Name'}</FormLabel>
+                        <FormLabel>{language === 'ar' ? 'اسم فيسبوك' : 'Facebook Name'}</FormLabel>
+                        <FormControl><Input placeholder={language === 'ar' ? 'اسم الملف الشخصي على فيسبوك' : 'Facebook profile name'} {...field} /></FormControl>
+                        <FormMessage />
+                        </FormItem>
+                    )}/>
+                    <FormField control={form.control} name="customerPhone1" render={({ field }) => (
+                        <FormItem>
+                        <FormLabel>{language === 'ar' ? 'رقم الموبايل 1' : 'Phone Number 1'}</FormLabel>
+                        <FormControl><Input placeholder={language === 'ar' ? 'رقم الموبايل الأساسي' : 'Primary phone number'} {...field} /></FormControl>
+                        <FormMessage />
+                        </FormItem>
+                    )}/>
+                    <FormField control={form.control} name="customerPhone2" render={({ field }) => (
+                        <FormItem>
+                        <FormLabel>{language === 'ar' ? 'رقم الموبايل 2 (اختياري)' : 'Phone Number 2 (Optional)'}</FormLabel>
+                        <FormControl><Input placeholder={language === 'ar' ? 'رقم موبايل إضافي' : 'Additional phone number'} {...field} /></FormControl>
+                        <FormMessage />
+                        </FormItem>
+                    )}/>
+                    <FormField control={form.control} name="customerAddress" render={({ field }) => (
+                        <FormItem className="md:col-span-2">
+                        <FormLabel>{language === 'ar' ? 'العنوان بالتفصيل' : 'Detailed Address'}</FormLabel>
+                        <FormControl><Input placeholder={language === 'ar' ? 'عنوان الشارع، رقم المبنى، إلخ.' : 'Street address, building no., etc.'} {...field} /></FormControl>
+                        <FormMessage />
+                        </FormItem>
+                    )}/>
+                    <FormField control={form.control} name="zoning" render={({ field }) => (
+                        <FormItem>
+                        <FormLabel>{language === 'ar' ? 'المنطقة' : 'Zoning'}</FormLabel>
+                        {isLoadingZones ? <Skeleton className="h-10" /> : (
+                        <Select onValueChange={(zoneName) => {
+                            field.onChange(zoneName);
+                            const zone = shippingZones?.find(z => z.name === zoneName);
+                            setSelectedZone(zone || null);
+                        }} value={field.value}>
+                            <FormControl>
+                            <SelectTrigger>
+                                <SelectValue placeholder={language === 'ar' ? 'اختر منطقة' : 'Select a zone'} />
+                            </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                            {shippingZones?.map(zone => (
+                                <SelectItem key={zone.id} value={zone.name}>{zone.name}</SelectItem>
+                            ))}
+                            </SelectContent>
+                        </Select>
+                        )}
+                        <FormMessage />
+                        </FormItem>
+                    )}/>
+                </div>
+            </div>
+            
+            <div>
+            <h3 className="text-lg font-medium mb-4">{language === 'ar' ? 'عناصر الطلب' : 'Order Items'}</h3>
+            <div className="space-y-4">
+                {fields.map((field, index) => (
+                <div key={field.id} className="flex flex-wrap gap-4 items-start">
+                    <FormField control={form.control} name={`items.${index}.productName`} render={({ field }) => (
+                        <FormItem className="flex-1 min-w-[150px]">
+                        <FormLabel className={cn(index > 0 && 'sr-only')}>{language === 'ar' ? 'المنتج' : 'Product'}</FormLabel>
                         <FormControl>
                             <Input 
-                                placeholder={language === 'ar' ? 'ابحث بالاسم أو رقم الهاتف...' : 'Search by name or phone...'} 
-                                {...field} 
-                                autoComplete="off"
+                            placeholder={language === 'ar' ? 'اسم المنتج' : 'Product name'} 
+                            {...field}
+                            list="product-list"
+                            onChange={(e) => {
+                                field.onChange(e);
+                                const product = products?.find(p => p.name === e.target.value);
+                                if (product) {
+                                    form.setValue(`items.${index}.price`, product.price);
+                                    form.setValue(`items.${index}.productId`, product.id);
+                                    if (product.weight) {
+                                        form.setValue(`items.${index}.weight`, product.weight);
+                                    }
+                                } else {
+                                    form.setValue(`items.${index}.productId`, '');
+                                }
+                            }}
                             />
                         </FormControl>
                         <FormMessage />
                         </FormItem>
                     )}/>
-                    {filteredCustomers.length > 0 && customerSearch && (
-                        <Card className="absolute z-10 w-full mt-1 shadow-lg">
-                            <CardContent className="p-2 max-h-60 overflow-y-auto">
-                                {filteredCustomers.map((customer: any) => (
-                                    <div 
-                                        key={customer.id} 
-                                        className="p-2 hover:bg-muted rounded-md cursor-pointer text-sm"
-                                        onClick={() => handleCustomerSelect(customer)}
-                                    >
-                                        <p className="font-medium">{customer.customerName}</p>
-                                        <p className="text-muted-foreground">{customer.customerPhone1}</p>
-                                    </div>
-                                ))}
-                            </CardContent>
-                        </Card>
-                    )}
-                 </div>
-                 <FormField control={form.control} name="facebookName" render={({ field }) => (
-                    <FormItem>
-                    <FormLabel>{language === 'ar' ? 'اسم فيسبوك' : 'Facebook Name'}</FormLabel>
-                    <FormControl><Input placeholder={language === 'ar' ? 'اسم الملف الشخصي على فيسبوك' : 'Facebook profile name'} {...field} /></FormControl>
-                    <FormMessage />
-                    </FormItem>
-                )}/>
-                <FormField control={form.control} name="customerPhone1" render={({ field }) => (
-                    <FormItem>
-                    <FormLabel>{language === 'ar' ? 'رقم الموبايل 1' : 'Phone Number 1'}</FormLabel>
-                    <FormControl><Input placeholder={language === 'ar' ? 'رقم الموبايل الأساسي' : 'Primary phone number'} {...field} /></FormControl>
-                    <FormMessage />
-                    </FormItem>
-                )}/>
-                <FormField control={form.control} name="customerPhone2" render={({ field }) => (
-                    <FormItem>
-                    <FormLabel>{language === 'ar' ? 'رقم الموبايل 2 (اختياري)' : 'Phone Number 2 (Optional)'}</FormLabel>
-                    <FormControl><Input placeholder={language === 'ar' ? 'رقم موبايل إضافي' : 'Additional phone number'} {...field} /></FormControl>
-                    <FormMessage />
-                    </FormItem>
-                )}/>
-                <FormField control={form.control} name="customerAddress" render={({ field }) => (
-                    <FormItem className="md:col-span-2">
-                    <FormLabel>{language === 'ar' ? 'العنوان بالتفصيل' : 'Detailed Address'}</FormLabel>
-                    <FormControl><Input placeholder={language === 'ar' ? 'عنوان الشارع، رقم المبنى، إلخ.' : 'Street address, building no., etc.'} {...field} /></FormControl>
-                    <FormMessage />
-                    </FormItem>
-                )}/>
-                <FormField control={form.control} name="zoning" render={({ field }) => (
-                    <FormItem>
-                    <FormLabel>{language === 'ar' ? 'المنطقة' : 'Zoning'}</FormLabel>
-                    {isLoadingZones ? <Skeleton className="h-10" /> : (
-                      <Select onValueChange={(zoneName) => {
-                          field.onChange(zoneName);
-                          const zone = shippingZones?.find(z => z.name === zoneName);
-                          setSelectedZone(zone || null);
-                      }} value={field.value}>
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder={language === 'ar' ? 'اختر منطقة' : 'Select a zone'} />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {shippingZones?.map(zone => (
-                            <SelectItem key={zone.id} value={zone.name}>{zone.name}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    )}
-                    <FormMessage />
-                    </FormItem>
-                )}/>
-            </div>
-        </div>
-        
-        <div>
-          <h3 className="text-lg font-medium mb-4">{language === 'ar' ? 'عناصر الطلب' : 'Order Items'}</h3>
-          <div className="space-y-4">
-            {fields.map((field, index) => (
-              <div key={field.id} className="flex flex-wrap gap-4 items-start">
-                <FormField control={form.control} name={`items.${index}.productName`} render={({ field }) => (
-                    <FormItem className="flex-1 min-w-[150px]">
-                      <FormLabel className={cn(index > 0 && 'sr-only')}>{language === 'ar' ? 'المنتج' : 'Product'}</FormLabel>
-                      <FormControl>
-                        <Input 
-                          placeholder={language === 'ar' ? 'اسم المنتج' : 'Product name'} 
-                          {...field}
-                          list="product-list"
-                          onChange={(e) => {
-                            field.onChange(e);
-                            const product = products?.find(p => p.name === e.target.value);
-                            if (product) {
-                                form.setValue(`items.${index}.price`, product.price);
-                                form.setValue(`items.${index}.productId`, product.id);
-                                if (product.weight) {
-                                    form.setValue(`items.${index}.weight`, product.weight);
-                                }
-                            } else {
-                                form.setValue(`items.${index}.productId`, '');
-                            }
-                          }}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                )}/>
-                 <FormField
-                    control={form.control}
-                    name={`items.${index}.weight`}
-                    render={({ field }) => (
-                    <FormItem className="w-24">
-                        <FormLabel className={cn(index > 0 && "sr-only")}>
-                        {language === "ar" ? "الوزن" : "Weight"}
-                        </FormLabel>
-                        <FormControl>
-                        <Input
-                            type="number"
-                            placeholder={language === "ar" ? "الوزن" : "Weight"}
-                            {...field}
-                            value={field.value ?? ''}
-                            step="any"
-                        />
-                        </FormControl>
+                    <FormField
+                        control={form.control}
+                        name={`items.${index}.weight`}
+                        render={({ field }) => (
+                        <FormItem className="w-24">
+                            <FormLabel className={cn(index > 0 && "sr-only")}>
+                            {language === "ar" ? "الوزن" : "Weight"}
+                            </FormLabel>
+                            <FormControl>
+                            <Input
+                                type="number"
+                                placeholder={language === "ar" ? "الوزن" : "Weight"}
+                                {...field}
+                                value={field.value ?? ''}
+                                step="any"
+                            />
+                            </FormControl>
+                            <FormMessage />
+                        </FormItem>
+                        )}
+                    />
+                    <FormField control={form.control} name={`items.${index}.quantity`} render={({ field }) => (
+                        <FormItem className="w-24">
+                        <FormLabel className={cn(index > 0 && 'sr-only')}>{language === 'ar' ? 'الكمية' : 'Quantity'}</FormLabel>
+                        <FormControl><Input type="number" placeholder={language === 'ar' ? 'الكمية' : 'Qty'} {...field} /></FormControl>
                         <FormMessage />
-                    </FormItem>
-                    )}
-                />
-                <FormField control={form.control} name={`items.${index}.quantity`} render={({ field }) => (
-                    <FormItem className="w-24">
-                       <FormLabel className={cn(index > 0 && 'sr-only')}>{language === 'ar' ? 'الكمية' : 'Quantity'}</FormLabel>
-                      <FormControl><Input type="number" placeholder={language === 'ar' ? 'الكمية' : 'Qty'} {...field} /></FormControl>
-                      <FormMessage />
-                    </FormItem>
-                )}/>
-                <FormField control={form.control} name={`items.${index}.price`} render={({ field }) => (
-                    <FormItem className="w-32">
-                       <FormLabel className={cn(index > 0 && 'sr-only')}>{language === 'ar' ? 'السعر (جنيه)' : 'Price (EGP)'}</FormLabel>
-                      <FormControl><Input type="number" placeholder={language === 'ar' ? 'السعر' : 'Price'} {...field} /></FormControl>
-                      <FormMessage />
-                    </FormItem>
-                )}/>
-                <div className={cn('pt-2', index > 0 && 'md:pt-8')}>
-                  <Button type="button" variant="destructive" size="icon" onClick={() => remove(index)} disabled={fields.length === 1}>
-                      <Trash2 className="h-4 w-4" />
-                      <span className="sr-only">{language === 'ar' ? 'إزالة عنصر' : 'Remove item'}</span>
-                  </Button>
+                        </FormItem>
+                    )}/>
+                    <FormField control={form.control} name={`items.${index}.price`} render={({ field }) => (
+                        <FormItem className="w-32">
+                        <FormLabel className={cn(index > 0 && 'sr-only')}>{language === 'ar' ? 'السعر (جنيه)' : 'Price (EGP)'}</FormLabel>
+                        <FormControl><Input type="number" placeholder={language === 'ar' ? 'السعر' : 'Price'} {...field} /></FormControl>
+                        <FormMessage />
+                        </FormItem>
+                    )}/>
+                    <div className={cn('pt-2', index > 0 && 'md:pt-8')}>
+                    <Button type="button" variant="destructive" size="icon" onClick={() => remove(index)} disabled={fields.length === 1}>
+                        <Trash2 className="h-4 w-4" />
+                        <span className="sr-only">{language === 'ar' ? 'إزالة عنصر' : 'Remove item'}</span>
+                    </Button>
+                    </div>
                 </div>
-              </div>
-            ))}
-          </div>
+                ))}
+            </div>
 
-          <Button type="button" variant="outline" size="sm" className="mt-4" onClick={() => append({ productId: "", productName: "", quantity: 1, price: 0, weight: undefined })}>
-            <PlusCircle className="me-2 h-4 w-4" />
-            {language === 'ar' ? 'إضافة عنصر' : 'Add Item'}
-          </Button>
-          
-          <Separator className="my-6" />
+            <Button type="button" variant="outline" size="sm" className="mt-4" onClick={() => append({ productId: "", productName: "", quantity: 1, price: 0, weight: undefined })}>
+                <PlusCircle className="me-2 h-4 w-4" />
+                {language === 'ar' ? 'إضافة عنصر' : 'Add Item'}
+            </Button>
+            
+            <Separator className="my-6" />
 
-            <div className="space-y-2">
-                <div className="flex justify-between">
-                    <p>{language === 'ar' ? 'مجموع المنتجات' : 'Items Subtotal'}</p>
-                    <p>{formatCurrency(itemsTotal)}</p>
-                </div>
-                <div className="flex justify-between">
-                    <p>{language === 'ar' ? 'تكلفة الشحن' : 'Shipping Cost'}</p>
-                    <p>{formatCurrency(shippingCost)}</p>
-                </div>
-                <Separator className="my-2" />
-                <div className="flex justify-between font-bold text-lg">
-                    <p>{language === 'ar' ? 'الإجمالي الكلي' : 'Grand Total'}</p>
-                    <p>{formatCurrency(total)}</p>
+                <div className="space-y-2">
+                    <div className="flex justify-between">
+                        <p>{language === 'ar' ? 'مجموع المنتجات' : 'Items Subtotal'}</p>
+                        <p>{formatCurrency(itemsTotal)}</p>
+                    </div>
+                    <div className="flex justify-between">
+                        <p>{language === 'ar' ? 'تكلفة الشحن' : 'Shipping Cost'}</p>
+                        <p>{formatCurrency(shippingCost)}</p>
+                    </div>
+                    <Separator className="my-2" />
+                    <div className="flex justify-between font-bold text-lg">
+                        <p>{language === 'ar' ? 'الإجمالي الكلي' : 'Grand Total'}</p>
+                        <p>{formatCurrency(total)}</p>
+                    </div>
                 </div>
             </div>
-        </div>
 
-        <div className="flex justify-end gap-2">
-          <Button type="submit">{language === 'ar' ? 'إنشاء الطلب' : 'Create Order'}</Button>
-        </div>
-      </form>
-      <datalist id="product-list">
-        {(products || []).map((product) => (
-            <option key={product.id} value={product.name} />
-        ))}
-      </datalist>
-    </Form>
+            <div className="flex justify-end gap-2">
+            <Button type="submit">{language === 'ar' ? 'إنشاء الطلب' : 'Create Order'}</Button>
+            </div>
+        </form>
+        <datalist id="product-list">
+            {(products || []).map((product) => (
+                <option key={product.id} value={product.name} />
+            ))}
+        </datalist>
+        </Form>
+        <Dialog open={isSuccessModalOpen} onOpenChange={(isOpen) => {
+            if (!isOpen) {
+                setIsSuccessModalOpen(false);
+                onSuccess?.();
+                form.reset();
+                setNewOrderId(null);
+                setSelectedZone(null);
+            }
+        }}>
+            <DialogContent>
+                <DialogHeader>
+                    <DialogTitle>{language === 'ar' ? 'تم إنشاء الطلب بنجاح' : 'Order Created Successfully'}</DialogTitle>
+                </DialogHeader>
+                <div className="py-4 text-center">
+                    <p className="text-lg">{language === 'ar' ? `تم تسجيل الطلب رقم` : `Order registered with number`}</p>
+                    <p className="text-2xl font-bold text-primary mt-2">{newOrderId}</p>
+                </div>
+                <DialogFooter>
+                    <DialogClose asChild>
+                        <Button>{language === 'ar' ? 'موافق' : 'OK'}</Button>
+                    </DialogClose>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
+    </>
   );
 }
+
+    
