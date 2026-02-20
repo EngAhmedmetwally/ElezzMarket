@@ -148,7 +148,7 @@ export default function LoginPage() {
                     <Logo className="h-8 w-8" />
                 </div>
             </div>
-          <CardTitle>{language === 'ar' ? 'سوق العز' : 'ElEzz Market'}</CardTitle>
+          <CardTitle>العز ماركت</CardTitle>
           <CardDescription>{language === 'ar' ? 'تسجيل الدخول إلى حسابك' : 'Sign in to your account'}</CardDescription>
         </CardHeader>
         <CardContent>

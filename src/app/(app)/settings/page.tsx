@@ -99,7 +99,7 @@ export default function SettingsPage() {
     resolver: zodResolver(receiptSettingsSchema),
     defaultValues: {
       showLogo: true,
-      headerText: language === 'ar' ? 'سوق العز' : 'ElEzz Market',
+      headerText: 'العز ماركت',
       showOrderId: true,
       showDate: true,
       showCustomerName: true,

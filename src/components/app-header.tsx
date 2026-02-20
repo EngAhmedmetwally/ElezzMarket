@@ -23,7 +23,7 @@ export default function AppHeader() {
       <div className="flex h-16 items-center px-4 md:px-8">
         <div className="flex items-center gap-2">
             {showSidebarTrigger && <SidebarTrigger className="md:hidden" />}
-            <div className="hidden md:block font-bold text-lg">{language === 'ar' ? 'سوق العز' : 'ElEzz Market'}</div>
+            <div className="hidden md:block font-bold text-lg">العز ماركت</div>
         </div>
         <div className="ml-auto flex items-center space-x-2">
           <ConnectionStatus />

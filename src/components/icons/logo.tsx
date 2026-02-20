@@ -9,7 +9,7 @@ export function Logo({ className }: { className?: string }) {
       fill="currentColor"
       xmlns="http://www.w3.org/2000/svg"
     >
-      <title>ElEzz Market Logo</title>
+      <title>العز ماركت</title>
       <defs>
         <mask id="text-mask-logo">
           <rect x="0" y="0" width="24" height="24" fill="white" />

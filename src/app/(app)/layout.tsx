@@ -122,7 +122,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
               <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary text-primary-foreground">
                 <Logo className="h-6 w-6" />
               </div>
-              <span className="font-bold text-lg">{language === 'ar' ? 'سوق العز' : 'ElEzz Market'}</span>
+              <span className="font-bold text-lg">العز ماركت</span>
             </Link>
           </SidebarHeader>
           <SidebarContent>
