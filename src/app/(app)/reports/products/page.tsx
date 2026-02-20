@@ -2,16 +2,18 @@
 "use client";
 import * as React from "react";
 import { PageHeader } from "@/components/page-header";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useLanguage } from "@/components/language-provider";
-import { useIsMobile } from "@/hooks/use-mobile";
 import { StaffPerformanceChart } from "../components/staff-performance-chart";
 import { Progress } from "@/components/ui/progress";
 import { useRealtimeCachedCollection } from "@/hooks/use-realtime-cached-collection";
 import type { Order } from "@/lib/types";
 import { Skeleton } from "@/components/ui/skeleton";
 import { DatePicker } from "@/components/ui/datepicker";
+import Link from "next/link";
+import { useIsMobile } from "@/hooks/use-mobile";
+
 
 function ProductsReportSkeleton() {
   return (
@@ -66,14 +68,15 @@ export default function ProductsReportPage() {
 
 
   const productsSales = React.useMemo(() => {
-    const productMap = new Map<string, { name: string; count: number }>();
+    const productMap = new Map<string, { name: string; count: number; totalWeight: number }>();
     
     filteredOrders.forEach(order => {
         if (order.status === 'ملغي') return;
-        const items = Array.isArray(order.items) ? order.items : Object.values(order.items);
+        const items = Array.isArray(order.items) ? order.items : Object.values(order.items || {});
         items.forEach(item => {
-            const existing = productMap.get(item.productName) || { name: item.productName, count: 0 };
+            const existing = productMap.get(item.productName) || { name: item.productName, count: 0, totalWeight: 0 };
             existing.count += item.quantity;
+            existing.totalWeight += (item.weight || 0) * item.quantity;
             productMap.set(item.productName, existing);
         });
     });
@@ -90,7 +93,9 @@ export default function ProductsReportPage() {
     }));
   }, [filteredOrders]);
 
-  const topProductsChartData = productsSales.slice(0, 10).map(p => ({ name: p.name, value: p.count }));
+  const topProductsChartData = productsSales.slice(0, isMobile ? 5 : 10).map(p => ({ name: p.name, value: p.count }));
+  const fromDateString = fromDate ? fromDate.toISOString() : '';
+  const toDateString = toDate ? toDate.toISOString() : '';
 
   if (isLoading) {
     return (
@@ -122,48 +127,66 @@ export default function ProductsReportPage() {
         <div className="lg:col-span-3">
             <Card>
                 <CardHeader>
-                <CardTitle>{language === 'ar' ? 'تقرير مبيعات جميع المنتجات' : 'All Products Sales Report'}</CardTitle>
+                    <CardTitle>{language === 'ar' ? 'تقرير مبيعات جميع المنتجات' : 'All Products Sales Report'}</CardTitle>
+                    <CardDescription>{language === 'ar' ? 'انقر على اسم المنتج لعرض تفاصيل الطلبات.' : 'Click on a product name to view order details.'}</CardDescription>
                 </CardHeader>
                 <CardContent>
                 {isMobile ? (
                     <div className="space-y-4">
-                        {productsSales.map((product) => (
-                            <Card key={product.name}>
-                                <CardContent className="p-4">
-                                    <div className="flex justify-between items-start">
-                                        <p className="font-medium flex-1 pr-4">{product.name}</p>
-                                        <p className="font-bold">{product.count} <span className="text-xs font-normal text-muted-foreground">{language === 'ar' ? 'وحدة' : 'units'}</span></p>
-                                    </div>
-                                    <div className="flex items-center gap-2 mt-2">
-                                        <Progress value={product.percentage} className="h-2" />
-                                        <span className="text-xs text-muted-foreground">{product.percentage.toFixed(1)}%</span>
-                                    </div>
-                                </CardContent>
-                            </Card>
-                        ))}
+                        {productsSales.map((product) => {
+                            const href = `/reports/products/${encodeURIComponent(product.name)}?from=${fromDateString}&to=${toDateString}`;
+                            return (
+                                <Link href={href} key={product.name} passHref>
+                                    <Card className="cursor-pointer hover:bg-muted/50">
+                                        <CardContent className="p-4">
+                                            <div className="flex justify-between items-start">
+                                                <p className="font-medium flex-1 pr-4">{product.name}</p>
+                                                <div className="text-right">
+                                                    <p className="font-bold">{product.count} <span className="text-xs font-normal text-muted-foreground">{language === 'ar' ? 'وحدة' : 'units'}</span></p>
+                                                    <p className="text-sm text-muted-foreground">{product.totalWeight.toFixed(2)} {language === 'ar' ? 'كجم' : 'kg'}</p>
+                                                </div>
+                                            </div>
+                                            <div className="flex items-center gap-2 mt-2">
+                                                <Progress value={product.percentage} className="h-2" />
+                                                <span className="text-xs text-muted-foreground">{product.percentage.toFixed(1)}%</span>
+                                            </div>
+                                        </CardContent>
+                                    </Card>
+                                </Link>
+                            )
+                        })}
                     </div>
                 ) : (
                     <Table>
                         <TableHeader>
                         <TableRow>
                             <TableHead>{language === 'ar' ? 'المنتج' : 'Product'}</TableHead>
-                            <TableHead className="w-[150px] text-end">{language === 'ar' ? 'الكمية المباعة' : 'Quantity Sold'}</TableHead>
+                            <TableHead className="text-end">{language === 'ar' ? 'الكمية المباعة' : 'Quantity Sold'}</TableHead>
+                            <TableHead className="text-end">{language === 'ar' ? 'الوزن الإجمالي (كجم)' : 'Total Weight (kg)'}</TableHead>
                             <TableHead className="w-[200px] text-end">{language === 'ar' ? 'نسبة المبيعات' : 'Sales Percentage'}</TableHead>
                         </TableRow>
                         </TableHeader>
                         <TableBody>
-                        {productsSales.map((product) => (
-                            <TableRow key={product.name}>
-                                <TableCell className="font-medium">{product.name}</TableCell>
-                                <TableCell className="text-end font-bold">{product.count}</TableCell>
-                                <TableCell className="text-end">
-                                    <div className="flex items-center justify-end gap-2">
-                                        <span className="text-xs text-muted-foreground w-12">{product.percentage.toFixed(1)}%</span>
-                                        <Progress value={product.percentage} className="h-2 w-24" />
-                                    </div>
-                                </TableCell>
-                            </TableRow>
-                        ))}
+                        {productsSales.map((product) => {
+                            const href = `/reports/products/${encodeURIComponent(product.name)}?from=${fromDateString}&to=${toDateString}`;
+                            return (
+                                <TableRow key={product.name}>
+                                    <TableCell className="font-medium">
+                                        <Link href={href} className="hover:underline text-primary">
+                                            {product.name}
+                                        </Link>
+                                    </TableCell>
+                                    <TableCell className="text-end font-bold">{product.count}</TableCell>
+                                    <TableCell className="text-end">{product.totalWeight.toFixed(2)}</TableCell>
+                                    <TableCell className="text-end">
+                                        <div className="flex items-center justify-end gap-2">
+                                            <span className="text-xs text-muted-foreground w-12">{product.percentage.toFixed(1)}%</span>
+                                            <Progress value={product.percentage} className="h-2 w-24" />
+                                        </div>
+                                    </TableCell>
+                                </TableRow>
+                            )
+                        })}
                         </TableBody>
                     </Table>
                 )}
