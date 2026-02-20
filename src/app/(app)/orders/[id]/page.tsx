@@ -29,7 +29,7 @@ import { useRealtimeCachedCollection } from "@/hooks/use-realtime-cached-collect
 import { Logo } from "@/components/icons/logo";
 import { idbPut } from "@/lib/db";
 import { syncEvents } from "@/lib/sync-events";
-import { useIsMobile } from "@/hooks/use-mobile";
+import { useIsMobile } from "@/hooks/use-is-mobile";
 
 const allowedTransitions: Record<OrderStatus, OrderStatus[]> = {
     "تم التسجيل": ["قيد التجهيز", "ملغي"],
@@ -339,8 +339,8 @@ export default function OrderDetailsPage() {
            }
 
            toast({
-               title: language === 'ar' ? 'تم تحديث الحالة' : 'Status Updated',
-               description: `${language === 'ar' ? 'تم تحديث حالة الطلب إلى' : 'Order status updated to'} ${newStatus}.`,
+               title: language === 'ar' ? 'تم تحديث الطلب' : 'Order Updated',
+               description: language === 'ar' ? `تم تحديث حالة الطلب رقم ${order.id} إلى ${newStatus}.` : `Order #${order.id} status updated to ${newStatus}.`,
            });
        } else {
             toast({
@@ -615,3 +615,5 @@ export default function OrderDetailsPage() {
     </>
   );
 }
+
+    
