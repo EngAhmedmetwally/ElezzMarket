@@ -14,11 +14,11 @@ import type { OrderStatus } from "@/lib/types";
 
 const statusOrder: OrderStatus[] = ["تم التسجيل", "قيد التجهيز", "تم الشحن", "مكتمل", "ملغي"];
 const chartConfig = {
-    "تم التسجيل": { label: "تم التسجيل", color: "hsl(var(--chart-1))" },
-    "قيد التجهيز": { label: "قيد التجهيز", color: "hsl(var(--chart-3))" },
-    "تم الشحن": { label: "تم الشحن", color: "hsl(var(--chart-4))" },
-    "مكتمل": { label: "مكتمل", color: "hsl(var(--chart-2))" },
-    "ملغي": { label: "ملغي", color: "hsl(var(--chart-5))" },
+    "تم التسجيل": { label: "تم التسجيل", color: "hsl(var(--chart-1))" }, // Blue
+    "قيد التجهيز": { label: "قيد التجهيز", color: "hsl(var(--chart-2))" }, // Yellow
+    "تم الشحن": { label: "تم الشحن", color: "hsl(var(--chart-3))" }, // Dark Orange
+    "مكتمل": { label: "مكتمل", color: "hsl(var(--chart-4))" }, // Green
+    "ملغي": { label: "ملغي", color: "hsl(var(--chart-5))" }, // Grey
 };
 
 interface StaffActivityChartProps {
@@ -77,12 +77,12 @@ export function StaffActivityChart({ data }: StaffActivityChartProps) {
               />}
             />
             <Legend contentStyle={{ fontSize: '12px' }} />
-            {statusOrder.map(status => (
+            {statusOrder.map((status, index) => (
                  <Bar 
                     key={status} 
                     dataKey={status} 
                     stackId="a" 
-                    fill={`var(--color-${status})`} 
+                    fill={`var(--color-${status.replace(/\s+/g, '-')})`} 
                     radius={[0, 4, 4, 0]}
                 />
             ))}

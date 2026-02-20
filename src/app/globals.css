@@ -25,11 +25,11 @@
     --ring: 230 83% 60%;
     --radius: 0.5rem;
     
-    --chart-1: 266 68% 32%;
-    --chart-2: 230 83% 60%;
-    --chart-3: 266 50% 50%;
-    --chart-4: 230 70% 70%;
-    --chart-5: 266 30% 60%;
+    --chart-1: 221 83% 53%; /* Blue - 'تم التسجيل' */
+    --chart-2: 48 96% 51%; /* Yellow - 'قيد التجهيز' */
+    --chart-3: 25 84% 50%; /* Dark Orange - 'تم الشحن' */
+    --chart-4: 142 71% 45%; /* Green - 'مكتمل' */
+    --chart-5: 240 5% 65%; /* Grey - 'ملغي' */
 
     --sidebar-background: 267 27% 95%;
     --sidebar-foreground: 266 20% 15%;
@@ -62,11 +62,11 @@
     --input: 0 0% 14.9%;
     --ring: 230 83% 60%;
 
-    --chart-1: 266 70% 70%;
-    --chart-2: 230 83% 60%;
-    --chart-3: 266 50% 60%;
-    --chart-4: 230 70% 80%;
-    --chart-5: 266 30% 70%;
+    --chart-1: 221 83% 63%; /* Lighter Blue */
+    --chart-2: 48 96% 61%; /* Lighter Yellow */
+    --chart-3: 25 84% 60%; /* Lighter Dark Orange */
+    --chart-4: 142 71% 55%; /* Lighter Green */
+    --chart-5: 240 5% 55%; /* Lighter Grey */
 
     --sidebar-background: 266 20% 8%;
     --sidebar-foreground: 266 10% 80%;

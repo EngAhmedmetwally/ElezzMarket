@@ -19,11 +19,11 @@ const chartConfig = {
     orders: {
         label: "Orders"
     },
-    "تم التسجيل": { label: "تم التسجيل", color: "hsl(var(--chart-1))" },
-    "قيد التجهيز": { label: "قيد التجهيز", color: "hsl(var(--chart-3))" },
-    "تم الشحن": { label: "تم الشحن", color: "hsl(var(--chart-4))" },
-    "مكتمل": { label: "مكتمل", color: "hsl(var(--chart-2))" },
-    "ملغي": { label: "ملغي", color: "hsl(var(--chart-5))" },
+    "تم التسجيل": { label: "تم التسجيل", color: "hsl(var(--chart-1))" }, // Blue
+    "قيد التجهيز": { label: "قيد التجهيز", color: "hsl(var(--chart-2))" }, // Yellow
+    "تم الشحن": { label: "تم الشحن", color: "hsl(var(--chart-3))" }, // Dark Orange
+    "مكتمل": { label: "مكتمل", color: "hsl(var(--chart-4))" }, // Green
+    "ملغي": { label: "ملغي", color: "hsl(var(--chart-5))" }, // Grey
 }
 
 interface OrdersByStatusChartProps {
