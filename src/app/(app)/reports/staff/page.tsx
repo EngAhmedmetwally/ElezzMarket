@@ -1,4 +1,3 @@
-
 "use client";
 
 import * as React from "react";
@@ -47,56 +46,58 @@ export default function StaffReportPage() {
   const { data: usersData, isLoading: isLoadingUsers } = useRealtimeCachedCollection<User>('users');
 
   const staffActivityReport = React.useMemo(() => {
-    if (!usersData || !allOrders) return [];
+    if (!usersData || !allOrders || !fromDate || !toDate) return [];
     
+    const usersMap = new Map(usersData.map(u => [u.id, u]));
+
     const staffActivity = new Map<string, {
         id: string;
         name: string;
         avatarUrl: string;
         role: string;
-        actions: { [key in OrderStatus | string]: number };
+        actions: { [key in OrderStatus]: number };
         total: number;
     }>();
 
-    // Initialize map with all users
-    usersData.forEach(user => {
-        staffActivity.set(user.id, {
-            id: user.id,
-            name: user.name,
-            avatarUrl: user.avatarUrl,
-            role: user.role,
-            actions: {
-                "تم التسجيل": 0,
-                "قيد التجهيز": 0,
-                "تم الشحن": 0,
-                "مكتمل": 0,
-                "ملغي": 0,
-            },
-            total: 0
-        });
-    });
+    const from = fromDate.getTime();
+    const to = new Date(toDate).setHours(23, 59, 59, 999);
 
-    const from = fromDate ? fromDate.getTime() : 0;
-    const to = toDate ? new Date(toDate).setHours(23, 59, 59, 999) : Infinity;
+    for (const order of allOrders) {
+        if (!order.statusHistory) continue;
 
-    // Process status history from all orders
-    allOrders.forEach(order => {
-        if (order.statusHistory) {
-            const historyItems = Object.values(order.statusHistory);
-            historyItems.forEach(item => {
-                // Ensure the history item is within the date range
-                const itemDate = new Date(item.createdAt).getTime();
+        for (const historyKey in order.statusHistory) {
+            const historyItem = order.statusHistory[historyKey];
+            
+            if (!historyItem.userId || !historyItem.createdAt) continue;
 
-                if (item.userId && staffActivity.has(item.userId) && itemDate >= from && itemDate <= to) {
-                    const userActivity = staffActivity.get(item.userId)!;
-                    if (item.status in userActivity.actions) {
-                        userActivity.actions[item.status]++;
+            const itemDate = new Date(historyItem.createdAt).getTime();
+
+            if (itemDate >= from && itemDate <= to) {
+                const user = usersMap.get(historyItem.userId);
+
+                if (user) {
+                    let userActivity = staffActivity.get(historyItem.userId);
+                    
+                    if (!userActivity) {
+                        userActivity = {
+                            id: user.id,
+                            name: user.name,
+                            avatarUrl: user.avatarUrl,
+                            role: user.role,
+                            actions: { "تم التسجيل": 0, "قيد التجهيز": 0, "تم الشحن": 0, "مكتمل": 0, "ملغي": 0 },
+                            total: 0
+                        };
+                        staffActivity.set(user.id, userActivity);
+                    }
+
+                    if (historyItem.status in userActivity.actions) {
+                        userActivity.actions[historyItem.status]++;
                         userActivity.total++;
                     }
                 }
-            });
+            }
         }
-    });
+    }
 
     return Array.from(staffActivity.values())
         .filter(user => user.total > 0)
