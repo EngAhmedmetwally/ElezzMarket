@@ -12,6 +12,7 @@ import {
   CardContent,
   CardHeader,
   CardTitle,
+  CardDescription,
 } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useLanguage } from "@/components/language-provider";
@@ -19,12 +20,14 @@ import { DatePicker } from "@/components/ui/datepicker";
 import type { Order, User, UserRole } from "@/lib/types";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useRealtimeCachedCollection } from "@/hooks/use-realtime-cached-collection";
+import { PeakTimeChart } from "./peak-time-chart";
+import { TopProductsCard } from "./top-products-card";
 
 function DashboardSkeleton() {
   const { language } = useLanguage();
   return (
     <div>
-      <PageHeader title={language === 'ar' ? 'لوحة التحكم' : 'Dashboard'} />
+      <PageHeader title={language === 'ar' ? 'متابعه الاعمال' : 'Business Overview'} />
       <div className="flex items-center gap-4 mb-8">
         <Skeleton className="h-10 w-40" />
         <Skeleton className="h-10 w-40" />
@@ -35,15 +38,13 @@ function DashboardSkeleton() {
          <Skeleton className="h-28" />
          <Skeleton className="h-28" />
        </div>
-       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <Skeleton className="h-[350px]" />
+        <Skeleton className="h-[350px]" />
+        <Skeleton className="h-[350px]" />
+        <Skeleton className="h-[350px]" />
         <div className="lg:col-span-2">
-            <Skeleton className="h-[350px]" />
-        </div>
-        <div>
-            <Skeleton className="h-[350px]" />
-        </div>
-         <div className="lg:col-span-3">
-            <Skeleton className="h-[400px]" />
+           <Skeleton className="h-[400px]" />
         </div>
        </div>
     </div>
@@ -101,21 +102,60 @@ export default function DashboardPage() {
     
     const moderators = users.filter(u => u.role === 'Moderator');
     
-    return moderators.map(moderator => {
-      const moderatorSales = filteredOrders
-        .filter(o => o.moderatorId === moderator.id)
-        .reduce((acc, order) => acc + (order.total || 0), 0);
-      
-      return {
-        ...moderator,
-        sales: moderatorSales
-      };
-    })
-    .filter(m => m.sales > 0)
-    .sort((a, b) => b.sales - a.sales)
+    const moderatorOrderCounts = filteredOrders.reduce((acc, order) => {
+        if(order.moderatorId) {
+            acc[order.moderatorId] = (acc[order.moderatorId] || 0) + 1;
+        }
+        return acc;
+    }, {} as Record<string, number>);
+
+    return moderators.map(moderator => ({
+      ...moderator,
+      orderCount: moderatorOrderCounts[moderator.id] || 0
+    }))
+    .filter(m => m.orderCount > 0)
+    .sort((a, b) => b.orderCount - a.orderCount)
     .slice(0, 5);
 
   }, [users, filteredOrders]);
+  
+  const peakTimeData = React.useMemo(() => {
+    const hours = Array(24).fill(0);
+    filteredOrders.forEach(order => {
+        if (order.createdAt) {
+            const hour = new Date(order.createdAt).getHours();
+            hours[hour]++;
+        }
+    });
+
+    return hours.map((count, index) => ({
+        hour: `${index}:00`,
+        orders: count
+    }));
+  }, [filteredOrders]);
+
+  const topProducts = React.useMemo(() => {
+    if (!filteredOrders) return [];
+    
+    const productCounts = filteredOrders.reduce((acc, order) => {
+        if (order.items) {
+            const items = Array.isArray(order.items) ? order.items : Object.values(order.items);
+            items.forEach(item => {
+                if (item.productName) {
+                    acc[item.productName] = (acc[item.productName] || 0) + item.quantity;
+                }
+            });
+        }
+        return acc;
+    }, {} as Record<string, number>);
+
+    return Object.entries(productCounts)
+        .map(([name, quantity]) => ({ name, quantity }))
+        .sort((a, b) => b.quantity - a.quantity)
+        .slice(0, 5);
+
+  }, [filteredOrders]);
+
 
   if (isLoadingOrders || isLoadingUsers) {
     return <DashboardSkeleton />;
@@ -123,7 +163,7 @@ export default function DashboardPage() {
 
   return (
     <div>
-      <PageHeader title={language === 'ar' ? 'لوحة التحكم' : 'Dashboard'} />
+      <PageHeader title={language === 'ar' ? 'متابعه الاعمال' : 'Business Overview'} />
 
       <div className="flex items-center gap-4 mb-8">
         <DatePicker date={fromDate} onDateChange={setFromDate} placeholder={language === 'ar' ? 'من تاريخ' : 'From date'} />
@@ -155,17 +195,14 @@ export default function DashboardPage() {
           icon={<Users className="h-4 w-4" />}
         />
       </div>
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        <div className="lg:col-span-2">
-          <SalesChart data={salesByMonth} />
-        </div>
-        <div>
-          <OrdersByStatusChart data={ordersByStatus} />
-        </div>
-        <div className="lg:col-span-3">
-          <Card>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <SalesChart data={salesByMonth} />
+        <OrdersByStatusChart data={ordersByStatus} />
+        <PeakTimeChart data={peakTimeData} />
+        <Card>
             <CardHeader>
-              <CardTitle>{language === 'ar' ? 'أفضل الوسطاء' : 'Top Moderators'}</CardTitle>
+                <CardTitle>{language === 'ar' ? 'أفضل الوسطاء' : 'Top Moderators'}</CardTitle>
+                <CardDescription>{language === 'ar' ? 'بناءً على عدد الطلبات المسجلة' : 'Based on number of orders created'}</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="space-y-8">
@@ -186,15 +223,17 @@ export default function DashboardPage() {
                       </p>
                     </div>
                     <div className="ms-auto font-medium">
-                      +EGP {user.sales.toLocaleString()}
+                      +{user.orderCount} {language === 'ar' ? 'طلبات' : 'orders'}
                     </div>
                   </div>
                 )) : (
-                  <p className="text-sm text-muted-foreground">{language === 'ar' ? 'لا توجد بيانات مبيعات لعرضها.' : 'No sales data to display.'}</p>
+                  <p className="text-sm text-muted-foreground">{language === 'ar' ? 'لا توجد بيانات لعرضها.' : 'No data to display.'}</p>
                 )}
               </div>
             </CardContent>
           </Card>
+        <div className="lg:col-span-2">
+            <TopProductsCard data={topProducts} />
         </div>
       </div>
     </div>

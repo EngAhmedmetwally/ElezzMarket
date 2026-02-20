@@ -40,7 +40,7 @@ import { ThemeToggle } from "@/components/theme-toggle";
 import { UserNav } from "@/components/user-nav";
 
 const navItems = [
-  { href: "/dashboard", icon: LayoutDashboard, label: "Dashboard", arLabel: "لوحة التحكم", id: "dashboard" },
+  { href: "/dashboard", icon: LayoutDashboard, label: "متابعه الاعمال", arLabel: "متابعه الاعمال", id: "dashboard" },
   { href: "/orders", icon: Package, label: "Orders", arLabel: "الطلبات", id: "orders" },
   { href: "/customers", icon: Users2, label: "Customers", arLabel: "العملاء", id: "customers" },
   { href: "/users", icon: Users, label: "Users", arLabel: "المستخدمون", id: "users" },

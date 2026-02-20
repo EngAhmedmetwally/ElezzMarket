@@ -12,6 +12,8 @@ import {
   ChartContainer,
   ChartTooltip,
   ChartTooltipContent,
+  ChartLegend,
+  ChartLegendContent,
 } from "@/components/ui/chart";
 import { useLanguage } from "@/components/language-provider";
 
@@ -58,7 +60,7 @@ export function OrdersByStatusChart({ data }: OrdersByStatusChartProps) {
         <CardTitle>{chartTitle}</CardTitle>
       </CardHeader>
       <CardContent>
-        <ChartContainer config={chartConfig} className="mx-auto aspect-square max-h-[300px]">
+        <ChartContainer config={chartConfig} className="min-h-[300px] w-full">
           <PieChart>
             <Tooltip
               cursor={false}
@@ -70,15 +72,21 @@ export function OrdersByStatusChart({ data }: OrdersByStatusChartProps) {
               nameKey="name"
               cx="50%"
               cy="50%"
-              outerRadius={100}
-              innerRadius={60}
-              paddingAngle={5}
+              outerRadius={80}
+              innerRadius={50}
+              paddingAngle={2}
               labelLine={false}
             >
               {chartData.map((entry) => (
                 <Cell key={`cell-${entry.name}`} fill={entry.fill} />
               ))}
             </Pie>
+            <ChartLegend
+              content={<ChartLegendContent nameKey="name" />}
+              layout="vertical"
+              align="right"
+              verticalAlign="middle"
+            />
           </PieChart>
         </ChartContainer>
       </CardContent>
