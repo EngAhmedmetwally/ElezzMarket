@@ -117,65 +117,75 @@ export default function StaffReportPage() {
   }, [usersData, filteredOrders]);
   
   const topModeratorsByOrders = React.useMemo(() => {
-    if (!usersData || !filteredOrders) return [];
-    const orderCounts = filteredOrders.reduce((acc, order) => {
-        if (order.moderatorId) {
-            acc[order.moderatorId] = (acc[order.moderatorId] || 0) + 1;
-        }
-        return acc;
-    }, {} as Record<string, number>);
+    if (!filteredOrders) return [];
+    
+    const moderatorStats = new Map<string, { name: string; count: number }>();
 
-    return usersData
-        .filter(user => user.role === 'Moderator')
-        .map(user => ({ name: user.name, value: orderCounts[user.id] || 0 }))
-        .filter(u => u.value > 0)
+    filteredOrders.forEach(order => {
+      if (order.moderatorId && order.moderatorName) {
+        const stats = moderatorStats.get(order.moderatorId) || { name: order.moderatorName, count: 0 };
+        stats.count++;
+        moderatorStats.set(order.moderatorId, stats);
+      }
+    });
+
+    return Array.from(moderatorStats.values())
+        .map(mod => ({ name: mod.name, value: mod.count }))
         .sort((a, b) => b.value - a.value);
-  }, [usersData, filteredOrders]);
+  }, [filteredOrders]);
 
   const topCouriersByDeliveries = React.useMemo(() => {
-    if (!usersData || !filteredOrders) return [];
-    const deliveryCounts = filteredOrders
-        .filter(o => o.status === 'مكتمل' && o.courierId)
-        .reduce((acc, order) => {
-            acc[order.courierId!] = (acc[order.courierId!] || 0) + 1;
-            return acc;
-        }, {} as Record<string, number>);
+    if (!filteredOrders) return [];
+    
+    const courierStats = new Map<string, { name: string; count: number }>();
+    const deliveryOrders = filteredOrders.filter(o => o.status === 'مكتمل');
 
-    return usersData
-        .filter(user => user.role === 'Courier')
-        .map(user => ({ name: user.name, value: deliveryCounts[user.id] || 0 }))
-        .filter(u => u.value > 0)
+    deliveryOrders.forEach(order => {
+      if (order.courierId && order.courierName) {
+        const stats = courierStats.get(order.courierId) || { name: order.courierName, count: 0 };
+        stats.count++;
+        courierStats.set(order.courierId, stats);
+      }
+    });
+    
+    return Array.from(courierStats.values())
+        .map(courier => ({ name: courier.name, value: courier.count }))
         .sort((a, b) => b.value - a.value);
-  }, [usersData, filteredOrders]);
+  }, [filteredOrders]);
 
   const fastestCouriers = React.useMemo(() => {
-    if (!usersData || !filteredOrders) return [];
-    const deliveryTimes: Record<string, number[]> = {};
+    if (!filteredOrders) return [];
+    
+    const deliveryTimes = new Map<string, { name: string; times: number[] }>();
+
     filteredOrders.forEach(order => {
-        if (order.status !== 'مكتمل' || !order.courierId || !order.statusHistory) return;
+        if (order.status !== 'مكتمل' || !order.courierId || !order.courierName || !order.statusHistory) return;
+
         const history = Object.values(order.statusHistory);
         const shippedEvent = history.find(h => h.status === 'تم الشحن');
         const completedEvent = history.find(h => h.status === 'مكتمل');
-        if (shippedEvent && completedEvent) {
+        
+        if (shippedEvent && completedEvent && shippedEvent.createdAt && completedEvent.createdAt) {
             const shippedTime = new Date(shippedEvent.createdAt).getTime();
             const completedTime = new Date(completedEvent.createdAt).getTime();
             const durationMinutes = (completedTime - shippedTime) / (1000 * 60);
+
             if (durationMinutes >= 0) {
-                 if (!deliveryTimes[order.courierId]) deliveryTimes[order.courierId] = [];
-                deliveryTimes[order.courierId].push(durationMinutes);
+                const courierData = deliveryTimes.get(order.courierId) || { name: order.courierName, times: [] };
+                courierData.times.push(durationMinutes);
+                deliveryTimes.set(order.courierId, courierData);
             }
         }
     });
-    const avgDeliveryTimes: { id: string; avgTime: number }[] = [];
-    for (const courierId in deliveryTimes) {
-        const times = deliveryTimes[courierId];
-        const avg = times.reduce((a, b) => a + b, 0) / times.length;
-        avgDeliveryTimes.push({ id: courierId, avgTime: avg });
-    }
-    return avgDeliveryTimes
-        .map(item => ({ name: usersData.find(u => u.id === item.id)?.name || 'Unknown', value: item.avgTime }))
-        .sort((a, b) => a.value - b.value);
-  }, [usersData, filteredOrders]);
+
+    const avgDeliveryTimes: { name: string; value: number }[] = [];
+    deliveryTimes.forEach((data) => {
+        const avg = data.times.reduce((a, b) => a + b, 0) / data.times.length;
+        avgDeliveryTimes.push({ name: data.name, value: avg });
+    });
+
+    return avgDeliveryTimes.sort((a, b) => a.value - b.value);
+  }, [filteredOrders]);
 
   const topEarners = React.useMemo(() => {
      if (!usersData || !commissionsData || !fromDate || !toDate) return [];
