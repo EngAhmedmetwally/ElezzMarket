@@ -29,7 +29,7 @@ import { useRealtimeCachedCollection } from "@/hooks/use-realtime-cached-collect
 import { Logo } from "@/components/icons/logo";
 import { idbPut } from "@/lib/db";
 import { syncEvents } from "@/lib/sync-events";
-import { useIsMobile } from "@/hooks/use-is-mobile";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 const allowedTransitions: Record<OrderStatus, OrderStatus[]> = {
     "تم التسجيل": ["قيد التجهيز", "ملغي"],
@@ -615,5 +615,3 @@ export default function OrderDetailsPage() {
     </>
   );
 }
-
-    
