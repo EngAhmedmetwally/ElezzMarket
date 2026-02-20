@@ -1,3 +1,4 @@
+
 "use client";
 
 import {
@@ -59,6 +60,7 @@ const navItems = [
       { href: "/reports/staff", label: "Staff", arLabel: "الموظفون" },
       { href: "/reports/daily", label: "Daily", arLabel: "اليومي" },
       { href: "/reports/shipping", label: "Shipping", arLabel: "الشحن" },
+      { href: "/reports/preparation-time", label: "Preparation Time", arLabel: "وقت التجهيز" },
     ],
   },
 ];

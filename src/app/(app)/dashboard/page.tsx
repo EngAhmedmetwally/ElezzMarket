@@ -53,7 +53,7 @@ function DashboardSkeleton() {
 
 export default function DashboardPage() {
   const { language } = useLanguage();
-  const [fromDate, setFromDate] = React.useState<Date | undefined>(new Date(new Date().getFullYear(), new Date().getMonth(), 1));
+  const [fromDate, setFromDate] = React.useState<Date | undefined>(new Date());
   const [toDate, setToDate] = React.useState<Date | undefined>(new Date());
 
   const { data: allOrders, isLoading: isLoadingOrders } = useRealtimeCachedCollection<Order>('orders');
