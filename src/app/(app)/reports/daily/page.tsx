@@ -1,3 +1,4 @@
+
 "use client";
 
 import * as React from "react";
@@ -75,16 +76,17 @@ export default function DailyRevenueReportPage() {
   const dailyData = React.useMemo(() => {
     if (!filteredOrders) return [];
 
-    const dailyMap = new Map<string, { totalRevenue: number; totalOrders: number }>();
+    const dailyMap = new Map<string, { totalRevenue: number; totalOrders: number; totalRevenueWithoutShipping: number }>();
 
     filteredOrders.forEach(order => {
       if (!order.createdAt) return;
       const dateStr = format(new Date(order.createdAt), "yyyy-MM-dd");
       
-      const dayData = dailyMap.get(dateStr) || { totalRevenue: 0, totalOrders: 0 };
+      const dayData = dailyMap.get(dateStr) || { totalRevenue: 0, totalOrders: 0, totalRevenueWithoutShipping: 0 };
       dayData.totalOrders += 1;
       dayData.totalRevenue += order.total;
-      
+      dayData.totalRevenueWithoutShipping += order.total - (order.shippingCost || 0);
+
       dailyMap.set(dateStr, dayData);
     });
 
@@ -97,13 +99,14 @@ export default function DailyRevenueReportPage() {
   const moderatorRevenue = React.useMemo(() => {
      if (!filteredOrders) return [];
      
-     const moderatorMap = new Map<string, { name: string, totalRevenue: number, totalOrders: number }>();
+     const moderatorMap = new Map<string, { name: string, totalRevenue: number, totalOrders: number, totalRevenueWithoutShipping: number }>();
 
      filteredOrders.forEach(order => {
         if (order.moderatorId && order.moderatorName) {
-            const moderator = moderatorMap.get(order.moderatorId) || { name: order.moderatorName, totalRevenue: 0, totalOrders: 0 };
+            const moderator = moderatorMap.get(order.moderatorId) || { name: order.moderatorName, totalRevenue: 0, totalOrders: 0, totalRevenueWithoutShipping: 0 };
             moderator.totalOrders += 1;
             moderator.totalRevenue += order.total;
+            moderator.totalRevenueWithoutShipping += order.total - (order.shippingCost || 0);
             moderatorMap.set(order.moderatorId, moderator);
         }
      });
@@ -161,6 +164,7 @@ export default function DailyRevenueReportPage() {
                 <TableHead>{language === 'ar' ? 'التاريخ' : 'Date'}</TableHead>
                 <TableHead className="text-end">{language === 'ar' ? 'إجمالي الطلبات' : 'Total Orders'}</TableHead>
                 <TableHead className="text-end">{language === 'ar' ? 'إجمالي الإيرادات' : 'Total Revenue'}</TableHead>
+                <TableHead className="text-end">{language === 'ar' ? 'الإيراد (بدون شحن)' : 'Revenue (w/o Ship.)'}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -169,11 +173,12 @@ export default function DailyRevenueReportPage() {
                   <TableCell className="font-medium">{format(new Date(row.date), "PPP")}</TableCell>
                   <TableCell className="text-end">{row.totalOrders}</TableCell>
                   <TableCell className="text-end">{formatCurrency(row.totalRevenue)}</TableCell>
+                  <TableCell className="text-end">{formatCurrency(row.totalRevenueWithoutShipping)}</TableCell>
                 </TableRow>
               ))}
               {dailyData.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={3} className="h-24 text-center">
+                  <TableCell colSpan={4} className="h-24 text-center">
                     {language === 'ar' ? 'لا توجد بيانات للعرض.' : 'No data to display.'}
                   </TableCell>
                 </TableRow>
@@ -195,6 +200,7 @@ export default function DailyRevenueReportPage() {
                 <TableHead>{language === 'ar' ? 'الوسيط' : 'Moderator'}</TableHead>
                 <TableHead className="text-end">{language === 'ar' ? 'إجمالي الطلبات' : 'Total Orders'}</TableHead>
                 <TableHead className="text-end">{language === 'ar' ? 'إجمالي الإيرادات' : 'Total Revenue'}</TableHead>
+                <TableHead className="text-end">{language === 'ar' ? 'الإيراد (بدون شحن)' : 'Revenue (w/o Ship.)'}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -203,11 +209,12 @@ export default function DailyRevenueReportPage() {
                     <TableCell className="font-medium">{row.name}</TableCell>
                     <TableCell className="text-end">{row.totalOrders}</TableCell>
                     <TableCell className="text-end">{formatCurrency(row.totalRevenue)}</TableCell>
+                    <TableCell className="text-end">{formatCurrency(row.totalRevenueWithoutShipping)}</TableCell>
                   </TableRow>
               ))}
               {moderatorRevenue.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={3} className="h-24 text-center">
+                  <TableCell colSpan={4} className="h-24 text-center">
                     {language === 'ar' ? 'لا توجد بيانات للعرض.' : 'No data to display.'}
                   </TableCell>
                 </TableRow>
