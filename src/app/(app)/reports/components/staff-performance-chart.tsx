@@ -1,3 +1,4 @@
+
 "use client"
 
 import { Bar, BarChart, XAxis, YAxis, CartesianGrid, Tooltip } from "recharts";
@@ -46,7 +47,7 @@ export function StaffPerformanceChart({ data, barDataKey, barLabel, formatter, l
   }
 
   return (
-    <ChartContainer config={chartConfig} className={cn("h-[300px] w-full", className)}>
+    <ChartContainer config={chartConfig} className={cn("h-[350px] w-full", className)}>
         <BarChart 
         accessibilityLayer 
         data={data} 

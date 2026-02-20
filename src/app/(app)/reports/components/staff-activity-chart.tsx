@@ -57,7 +57,7 @@ export function StaffActivityChart({ data }: StaffActivityChartProps) {
         <CardTitle>{chartTitle}</CardTitle>
       </CardHeader>
       <CardContent>
-        <ChartContainer config={chartConfig} className="h-[350px] w-full">
+        <ChartContainer config={chartConfig} className="h-[450px] w-full">
           <BarChart 
             accessibilityLayer 
             data={chartData} 
@@ -93,6 +93,7 @@ export function StaffActivityChart({ data }: StaffActivityChartProps) {
                  <Bar 
                     key={status} 
                     dataKey={statusKeyMap[status]} 
+                    name={status}
                     stackId="a" 
                     fill={`var(--color-${statusKeyMap[status]})`} 
                     radius={[0, 4, 4, 0]}
