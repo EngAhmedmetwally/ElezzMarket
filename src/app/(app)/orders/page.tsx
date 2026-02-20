@@ -216,7 +216,7 @@ export default function OrdersPage() {
             <CardHeader className="p-4">
                 <CardTitle className="text-sm font-medium">{language === 'ar' ? 'ملخص الحالات' : 'Status Summary'}</CardTitle>
             </CardHeader>
-            <CardContent className="p-0 flex justify-center items-center">
+            <CardContent className="p-4">
                  <OrdersStatusPieChart data={ordersByStatus} />
             </CardContent>
         </Card>

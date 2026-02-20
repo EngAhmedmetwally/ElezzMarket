@@ -1,4 +1,3 @@
-
 "use client";
 
 import * as React from "react"
@@ -7,6 +6,8 @@ import {
   ChartContainer,
   ChartTooltip,
   ChartTooltipContent,
+  ChartLegend,
+  ChartLegendContent,
 } from "@/components/ui/chart";
 import { useLanguage } from "@/components/language-provider";
 
@@ -34,11 +35,14 @@ export function OrdersStatusPieChart({ data }: OrdersStatusPieChartProps) {
     const totalOrders = React.useMemo(() => data.reduce((acc, curr) => acc + curr.value, 0), [data]);
 
     if (!chartData || chartData.length === 0) {
-        return <div className="flex items-center justify-center h-[120px] text-muted-foreground">{language === 'ar' ? 'لا توجد بيانات' : 'No data'}</div>;
+        return <div className="flex items-center justify-center h-[150px] text-muted-foreground">{language === 'ar' ? 'لا توجد بيانات' : 'No data'}</div>;
     }
 
   return (
-    <ChartContainer config={chartConfig} className="mx-auto aspect-square h-[120px]">
+    <ChartContainer
+      config={chartConfig}
+      className="min-h-[150px] w-full"
+    >
       <PieChart>
         <Tooltip
           cursor={false}
@@ -51,8 +55,6 @@ export function OrdersStatusPieChart({ data }: OrdersStatusPieChartProps) {
           innerRadius={40}
           outerRadius={55}
           paddingAngle={2}
-          startAngle={90}
-          endAngle={450}
         >
             <Label
                 content={({ viewBox }) => {
@@ -87,6 +89,12 @@ export function OrdersStatusPieChart({ data }: OrdersStatusPieChartProps) {
             <Cell key={`cell-${entry.name}`} fill={entry.fill} />
           ))}
         </Pie>
+        <ChartLegend
+          content={<ChartLegendContent nameKey="name" />}
+          layout="vertical"
+          align="right"
+          verticalAlign="middle"
+        />
       </PieChart>
     </ChartContainer>
   );
