@@ -441,40 +441,39 @@ export function AddUserForm({ onSuccess, userToEdit }: AddUserFormProps) {
             <AccordionItem value="permissions">
                 <AccordionTrigger>{language === 'ar' ? 'الصلاحيات' : 'Permissions'}</AccordionTrigger>
                 <AccordionContent>
-                <div className="overflow-x-auto pb-2">
-                    <div className="grid grid-cols-7 gap-y-2 items-center min-w-[620px]">
-                    <div className="font-medium text-muted-foreground">{language === 'ar' ? 'الشاشة' : 'Screen'}</div>
-                    {allPerms.map(perm => (
-                        <div key={perm} className="font-medium text-muted-foreground text-center text-xs sm:text-sm">{language === 'ar' ? permLabels[perm].ar : permLabels[perm].en}</div>
-                    ))}
-
-                    {screensConfig.map((screen) => (
-                        <React.Fragment key={screen.id}>
-                        <div className="font-medium">{language === 'ar' ? screen.arName : screen.name}</div>
-                        {allPerms.map(perm => (
-                            <div key={perm} className="flex justify-center">
-                            {screen.perms.includes(perm as any) ? (
-                                <FormField
-                                control={form.control}
-                                name={`permissions.${screen.id}.${perm as any}`}
-                                render={({ field }) => (
-                                    <FormItem>
-                                    <FormControl>
-                                        <Checkbox
-                                        checked={field.value}
-                                        onCheckedChange={field.onChange}
-                                        />
-                                    </FormControl>
-                                    </FormItem>
-                                )}
-                                />
-                            ) : <span className="text-muted-foreground">-</span>}
+                    <div className="space-y-4">
+                        {screensConfig.map((screen) => (
+                            <div key={screen.id} className="rounded-md border p-4">
+                                <h4 className="font-medium mb-4">{language === 'ar' ? screen.arName : screen.name}</h4>
+                                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-x-4 gap-y-6">
+                                    {allPerms
+                                        .filter(perm => (screen.perms as readonly string[]).includes(perm))
+                                        .map(perm => (
+                                            <FormField
+                                                key={perm}
+                                                control={form.control}
+                                                name={`permissions.${screen.id}.${perm as 'view' | 'add' | 'edit' | 'delete' | 'editStatus' | 'cancel'}`}
+                                                render={({ field }) => (
+                                                    <FormItem className="flex flex-row items-center space-x-2 space-y-0 rtl:space-x-reverse">
+                                                        <FormControl>
+                                                            <Checkbox
+                                                                checked={field.value}
+                                                                onCheckedChange={field.onChange}
+                                                                id={`${screen.id}-${perm}`}
+                                                            />
+                                                        </FormControl>
+                                                        <FormLabel htmlFor={`${screen.id}-${perm}`} className="font-normal cursor-pointer">
+                                                            {language === 'ar' ? permLabels[perm].ar : permLabels[perm].en}
+                                                        </FormLabel>
+                                                    </FormItem>
+                                                )}
+                                            />
+                                        ))
+                                    }
+                                </div>
                             </div>
                         ))}
-                        </React.Fragment>
-                    ))}
                     </div>
-                </div>
                 </AccordionContent>
             </AccordionItem>
             </Accordion>
@@ -494,3 +493,5 @@ export function AddUserForm({ onSuccess, userToEdit }: AddUserFormProps) {
     </Form>
   );
 }
+
+    
