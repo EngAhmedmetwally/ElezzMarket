@@ -1,3 +1,4 @@
+
 "use client";
 import * as React from "react";
 import { PageHeader } from "@/components/page-header";
@@ -57,6 +58,8 @@ export default function ProductsReportPage() {
     const to = new Date(toDate).setHours(23, 59, 59, 999);
     return allOrders.filter(order => {
         if (!order.createdAt) return false;
+        // Sales reports should not include cancelled orders
+        if (order.status === 'ملغي') return false;
         const orderDate = new Date(order.createdAt).getTime();
         return orderDate >= from && orderDate <= to;
     });
@@ -66,7 +69,6 @@ export default function ProductsReportPage() {
     const productMap = new Map<string, { name: string; count: number; totalWeight: number }>();
     
     filteredOrders.forEach(order => {
-        if (order.status === 'ملغي') return;
         const items = Array.isArray(order.items) ? order.items : Object.values(order.items || {});
         items.forEach(item => {
             if (!item.productName) return;

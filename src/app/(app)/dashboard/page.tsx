@@ -70,9 +70,14 @@ export default function DashboardPage() {
     });
   }, [allOrders, fromDate, toDate]);
 
-  const totalSales = filteredOrders.reduce((acc, order) => acc + (order.total || 0), 0);
+  const revenueOrders = React.useMemo(() => {
+    if (!filteredOrders) return [];
+    return filteredOrders.filter(order => order.status !== 'ملغي');
+  }, [filteredOrders]);
+
+  const totalSales = revenueOrders.reduce((acc, order) => acc + (order.total || 0), 0);
   const totalOrders = filteredOrders.length;
-  const avgOrderValue = totalOrders > 0 ? totalSales / totalOrders : 0;
+  const avgOrderValue = revenueOrders.length > 0 ? totalSales / revenueOrders.length : 0;
   const activeUsersCount = users ? users.filter(u => u.status === 'نشط').length : 0;
 
   const ordersByStatus = React.useMemo(() => {
@@ -87,7 +92,7 @@ export default function DashboardPage() {
   }, [filteredOrders]);
 
   const salesByMonth = React.useMemo(() => {
-      const salesMap = filteredOrders.reduce((acc, order) => {
+      const salesMap = revenueOrders.reduce((acc, order) => {
           if (!order.createdAt) return acc;
           const month = new Date(order.createdAt).toLocaleString(language === 'ar' ? 'ar-EG' : 'en-US', { month: 'long', year: 'numeric' });
           acc.set(month, (acc.get(month) || 0) + (order.total || 0));
@@ -95,7 +100,7 @@ export default function DashboardPage() {
       }, new Map<string, number>());
 
       return Array.from(salesMap, ([month, sales]) => ({ month, sales }));
-  }, [filteredOrders, language]);
+  }, [revenueOrders, language]);
 
   const topModerators = React.useMemo(() => {
     if (!users || !filteredOrders) return [];
@@ -135,9 +140,9 @@ export default function DashboardPage() {
   }, [filteredOrders]);
 
   const topProducts = React.useMemo(() => {
-    if (!filteredOrders) return [];
+    if (!revenueOrders) return [];
     
-    const productCounts = filteredOrders.reduce((acc, order) => {
+    const productCounts = revenueOrders.reduce((acc, order) => {
         if (order.items) {
             const items = Array.isArray(order.items) ? order.items : Object.values(order.items);
             items.forEach(item => {
@@ -154,7 +159,7 @@ export default function DashboardPage() {
         .sort((a, b) => b.quantity - a.quantity)
         .slice(0, 5);
 
-  }, [filteredOrders]);
+  }, [revenueOrders]);
 
 
   if (isLoadingOrders || isLoadingUsers) {

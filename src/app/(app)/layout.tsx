@@ -29,6 +29,7 @@ import {
   CalendarDays,
   Truck,
   Settings,
+  FileX,
 } from "lucide-react";
 import { Logo } from "@/components/icons/logo";
 import Link from "next/link";
@@ -61,6 +62,7 @@ const navItems = [
       { href: "/reports/daily", label: "Daily", arLabel: "اليومي" },
       { href: "/reports/shipping", label: "Shipping", arLabel: "الشحن" },
       { href: "/reports/preparation-time", label: "Preparation Time", arLabel: "وقت التجهيز" },
+      { href: "/reports/cancelled", label: "Cancelled Orders", arLabel: "الطلبات الملغاة" },
     ],
   },
 ];
