@@ -1,3 +1,4 @@
+
 "use client";
 
 import * as React from "react";
@@ -65,7 +66,7 @@ export default function StaffReportPage() {
   }, [allOrders, fromDate, toDate]);
 
   const staffActivityReport = React.useMemo(() => {
-    if (!usersData || !filteredOrders) return [];
+    if (!usersData || !allOrders || !fromDate || !toDate) return [];
     
     const usersMap = new Map(usersData.map(u => [u.id, u]));
 
@@ -78,13 +79,19 @@ export default function StaffReportPage() {
         total: number;
     }>();
 
-    for (const order of filteredOrders) {
+    const from = fromDate.getTime();
+    const to = new Date(toDate).setHours(23, 59, 59, 999);
+
+    for (const order of allOrders) {
         if (!order.statusHistory) continue;
 
         for (const historyKey in order.statusHistory) {
             const historyItem = order.statusHistory[historyKey];
             
             if (!historyItem.userId || !historyItem.createdAt) continue;
+
+            const historyDate = new Date(historyItem.createdAt).getTime();
+            if (historyDate < from || historyDate > to) continue;
             
             const user = usersMap.get(historyItem.userId);
 
@@ -114,7 +121,7 @@ export default function StaffReportPage() {
     return Array.from(staffActivity.values())
         .filter(user => user.total > 0)
         .sort((a, b) => b.total - a.total);
-  }, [usersData, filteredOrders]);
+  }, [usersData, allOrders, fromDate, toDate]);
   
   const topModeratorsByOrders = React.useMemo(() => {
     if (!filteredOrders) return [];
@@ -135,30 +142,42 @@ export default function StaffReportPage() {
   }, [filteredOrders]);
 
   const topCouriersByDeliveries = React.useMemo(() => {
-    if (!filteredOrders) return [];
+    if (!allOrders || !fromDate || !toDate) return [];
     
     const courierStats = new Map<string, { name: string; count: number }>();
-    const deliveryOrders = filteredOrders.filter(o => o.status === 'مكتمل');
+    
+    const from = fromDate.getTime();
+    const to = new Date(toDate).setHours(23, 59, 59, 999);
 
-    deliveryOrders.forEach(order => {
-      if (order.courierId && order.courierName) {
-        const stats = courierStats.get(order.courierId) || { name: order.courierName, count: 0 };
-        stats.count++;
-        courierStats.set(order.courierId, stats);
+    allOrders.forEach(order => {
+      if (order.status !== 'مكتمل' || !order.courierId || !order.courierName) return;
+
+      const history = Object.values(order.statusHistory || {});
+      const completedEvent = history.find(h => h.status === 'مكتمل');
+      if (completedEvent && completedEvent.createdAt) {
+          const completedDate = new Date(completedEvent.createdAt).getTime();
+          if(completedDate >= from && completedDate <= to) {
+            const stats = courierStats.get(order.courierId) || { name: order.courierName, count: 0 };
+            stats.count++;
+            courierStats.set(order.courierId, stats);
+          }
       }
     });
     
     return Array.from(courierStats.values())
         .map(courier => ({ name: courier.name, value: courier.count }))
         .sort((a, b) => b.value - a.value);
-  }, [filteredOrders]);
+  }, [allOrders, fromDate, toDate]);
 
   const fastestCouriers = React.useMemo(() => {
-    if (!filteredOrders) return [];
+    if (!allOrders || !fromDate || !toDate) return [];
+    
+    const from = fromDate.getTime();
+    const to = new Date(toDate).setHours(23, 59, 59, 999);
     
     const deliveryTimes = new Map<string, { name: string; times: number[] }>();
 
-    filteredOrders.forEach(order => {
+    allOrders.forEach(order => {
         if (order.status !== 'مكتمل' || !order.courierId || !order.courierName || !order.statusHistory) return;
 
         const history = Object.values(order.statusHistory);
@@ -166,8 +185,10 @@ export default function StaffReportPage() {
         const completedEvent = history.find(h => h.status === 'مكتمل');
         
         if (shippedEvent && completedEvent && shippedEvent.createdAt && completedEvent.createdAt) {
-            const shippedTime = new Date(shippedEvent.createdAt).getTime();
             const completedTime = new Date(completedEvent.createdAt).getTime();
+            if (completedTime < from || completedTime > to) return;
+
+            const shippedTime = new Date(shippedEvent.createdAt).getTime();
             const durationMinutes = (completedTime - shippedTime) / (1000 * 60);
 
             if (durationMinutes >= 0) {
@@ -180,12 +201,14 @@ export default function StaffReportPage() {
 
     const avgDeliveryTimes: { name: string; value: number }[] = [];
     deliveryTimes.forEach((data) => {
-        const avg = data.times.reduce((a, b) => a + b, 0) / data.times.length;
-        avgDeliveryTimes.push({ name: data.name, value: avg });
+        if (data.times.length > 0) {
+            const avg = data.times.reduce((a, b) => a + b, 0) / data.times.length;
+            avgDeliveryTimes.push({ name: data.name, value: avg });
+        }
     });
 
     return avgDeliveryTimes.sort((a, b) => a.value - b.value);
-  }, [filteredOrders]);
+  }, [allOrders, fromDate, toDate]);
 
   const topEarners = React.useMemo(() => {
      if (!usersData || !commissionsData || !fromDate || !toDate) return [];
