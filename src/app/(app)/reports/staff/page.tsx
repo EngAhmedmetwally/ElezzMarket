@@ -22,10 +22,10 @@ function StaffReportSkeleton() {
         <Skeleton className="h-10 w-40" />
       </div>
       <div className="grid lg:grid-cols-2 gap-8">
-        <Skeleton className="h-[350px] w-full" />
-        <Skeleton className="h-[350px] w-full" />
-        <Skeleton className="h-[350px] w-full" />
-        <Skeleton className="h-[350px] w-full" />
+        <Skeleton className="h-[450px] w-full" />
+        <Skeleton className="h-[450px] w-full" />
+        <Skeleton className="h-[450px] w-full" />
+        <Skeleton className="h-[450px] w-full" />
       </div>
       <Skeleton className="h-[350px] w-full" />
       <Card>
@@ -229,32 +229,159 @@ export default function StaffReportPage() {
       </div>
 
       <div className="grid lg:grid-cols-2 gap-8">
-         <StaffPerformanceChart 
-            data={topModeratorsByOrders} 
-            title={language === 'ar' ? 'أفضل الوسطاء (حسب عدد الطلبات)' : 'Top Moderators (by Orders)'}
-            barDataKey="orders"
-            barLabel={language === 'ar' ? 'طلبات' : 'Orders'}
-        />
-        <StaffPerformanceChart 
-            data={topCouriersByDeliveries} 
-            title={language === 'ar' ? 'أفضل المناديب (حسب عدد التسليمات)' : 'Top Couriers (by Deliveries)'}
-            barDataKey="deliveries"
-            barLabel={language === 'ar' ? 'تسليمات' : 'Deliveries'}
-        />
-         <StaffPerformanceChart 
-            data={fastestCouriers} 
-            title={language === 'ar' ? 'أسرع المناديب (متوسط وقت التسليم)' : 'Fastest Couriers (Avg. Delivery Time)'}
-            barDataKey="avg_time"
-            barLabel={language === 'ar' ? 'متوسط الوقت' : 'Avg. Time'}
-            formatter={formatMinutes}
-        />
-         <StaffPerformanceChart 
-            data={topEarners} 
-            title={language === 'ar' ? 'الأكثر ربحًا (حسب العمولة)' : 'Top Earners (by Commission)'}
-            barDataKey="commission"
-            barLabel={language === 'ar' ? 'العمولة' : 'Commission'}
-            formatter={formatCurrency}
-        />
+         <Card>
+            <CardHeader>
+                <CardTitle>{language === 'ar' ? 'أفضل الوسطاء (حسب عدد الطلبات)' : 'Top Moderators (by Orders)'}</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-6">
+                <StaffPerformanceChart 
+                    data={topModeratorsByOrders} 
+                    barDataKey="orders"
+                    barLabel={language === 'ar' ? 'طلبات' : 'Orders'}
+                />
+                <div className="max-h-60 overflow-y-auto">
+                    <Table>
+                        <TableHeader>
+                            <TableRow>
+                                <TableHead>{language === 'ar' ? 'الوسيط' : 'Moderator'}</TableHead>
+                                <TableHead className="text-end">{language === 'ar' ? 'عدد الطلبات' : 'Orders Count'}</TableHead>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            {topModeratorsByOrders.map((item) => (
+                                <TableRow key={item.name}>
+                                    <TableCell>{item.name}</TableCell>
+                                    <TableCell className="text-end font-medium">{item.value}</TableCell>
+                                </TableRow>
+                            ))}
+                            {topModeratorsByOrders.length === 0 && (
+                                <TableRow>
+                                    <TableCell colSpan={2} className="h-24 text-center">
+                                        {language === 'ar' ? 'لا توجد بيانات للعرض.' : 'No data to display.'}
+                                    </TableCell>
+                                </TableRow>
+                            )}
+                        </TableBody>
+                    </Table>
+                </div>
+            </CardContent>
+        </Card>
+        
+        <Card>
+            <CardHeader>
+                <CardTitle>{language === 'ar' ? 'أفضل المناديب (حسب عدد التسليمات)' : 'Top Couriers (by Deliveries)'}</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-6">
+                <StaffPerformanceChart 
+                    data={topCouriersByDeliveries} 
+                    barDataKey="deliveries"
+                    barLabel={language === 'ar' ? 'تسليمات' : 'Deliveries'}
+                />
+                 <div className="max-h-60 overflow-y-auto">
+                    <Table>
+                        <TableHeader>
+                            <TableRow>
+                                <TableHead>{language === 'ar' ? 'المندوب' : 'Courier'}</TableHead>
+                                <TableHead className="text-end">{language === 'ar' ? 'عدد التسليمات' : 'Deliveries'}</TableHead>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            {topCouriersByDeliveries.map((item) => (
+                                <TableRow key={item.name}>
+                                    <TableCell>{item.name}</TableCell>
+                                    <TableCell className="text-end font-medium">{item.value}</TableCell>
+                                </TableRow>
+                            ))}
+                            {topCouriersByDeliveries.length === 0 && (
+                                <TableRow>
+                                    <TableCell colSpan={2} className="h-24 text-center">
+                                        {language === 'ar' ? 'لا توجد بيانات للعرض.' : 'No data to display.'}
+                                    </TableCell>
+                                </TableRow>
+                            )}
+                        </TableBody>
+                    </Table>
+                </div>
+            </CardContent>
+        </Card>
+
+        <Card>
+            <CardHeader>
+                <CardTitle>{language === 'ar' ? 'أسرع المناديب (متوسط وقت التسليم)' : 'Fastest Couriers (Avg. Delivery Time)'}</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-6">
+                <StaffPerformanceChart 
+                    data={fastestCouriers} 
+                    barDataKey="avg_time"
+                    barLabel={language === 'ar' ? 'متوسط الوقت' : 'Avg. Time'}
+                    formatter={formatMinutes}
+                />
+                <div className="max-h-60 overflow-y-auto">
+                    <Table>
+                        <TableHeader>
+                            <TableRow>
+                                <TableHead>{language === 'ar' ? 'المندوب' : 'Courier'}</TableHead>
+                                <TableHead className="text-end">{language === 'ar' ? 'متوسط الوقت' : 'Average Time'}</TableHead>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            {fastestCouriers.map((item) => (
+                                <TableRow key={item.name}>
+                                    <TableCell>{item.name}</TableCell>
+                                    <TableCell className="text-end font-medium">{formatMinutes(item.value)}</TableCell>
+                                </TableRow>
+                            ))}
+                            {fastestCouriers.length === 0 && (
+                                <TableRow>
+                                    <TableCell colSpan={2} className="h-24 text-center">
+                                        {language === 'ar' ? 'لا توجد بيانات للعرض.' : 'No data to display.'}
+                                    </TableCell>
+                                </TableRow>
+                            )}
+                        </TableBody>
+                    </Table>
+                </div>
+            </CardContent>
+        </Card>
+        
+        <Card>
+            <CardHeader>
+                <CardTitle>{language === 'ar' ? 'الأكثر ربحًا (حسب العمولة)' : 'Top Earners (by Commission)'}</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-6">
+                <StaffPerformanceChart 
+                    data={topEarners} 
+                    barDataKey="commission"
+                    barLabel={language === 'ar' ? 'العمولة' : 'Commission'}
+                    formatter={formatCurrency}
+                />
+                <div className="max-h-60 overflow-y-auto">
+                    <Table>
+                        <TableHeader>
+                            <TableRow>
+                                <TableHead>{language === 'ar' ? 'الموظف' : 'Staff'}</TableHead>
+                                <TableHead className="text-end">{language === 'ar' ? 'إجمالي العمولة' : 'Total Commission'}</TableHead>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            {topEarners.map((item) => (
+                                <TableRow key={item.name}>
+                                    <TableCell>{item.name}</TableCell>
+                                    <TableCell className="text-end font-medium">{formatCurrency(item.value)}</TableCell>
+                                </TableRow>
+                            ))}
+                            {topEarners.length === 0 && (
+                                <TableRow>
+                                    <TableCell colSpan={2} className="h-24 text-center">
+                                        {language === 'ar' ? 'لا توجد بيانات للعرض.' : 'No data to display.'}
+                                    </TableCell>
+                                </TableRow>
+                            )}
+                        </TableBody>
+                    </Table>
+                </div>
+            </CardContent>
+        </Card>
       </div>
       
       <div className="space-y-8">
