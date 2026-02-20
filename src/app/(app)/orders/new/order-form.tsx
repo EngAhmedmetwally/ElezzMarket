@@ -184,6 +184,7 @@ export function OrderForm({ onSuccess }: OrderFormProps) {
             status: 'تم التسجيل',
             createdAt: new Date().toISOString(),
             userName: user.name || user.email || 'Unknown',
+            userId: user.id,
         };
 
         const newOrder = {

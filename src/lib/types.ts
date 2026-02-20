@@ -48,6 +48,7 @@ export type StatusHistoryItem = {
   notes?: string;
   createdAt: string;
   userName: string;
+  userId: string;
 };
 
 export type Order = {

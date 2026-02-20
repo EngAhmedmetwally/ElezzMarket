@@ -275,6 +275,7 @@ export default function OrderDetailsPage() {
                         notes: finalNote,
                         createdAt: now,
                         userName: currentUser,
+                        userId: authUser.id,
                     };
                 }
 
