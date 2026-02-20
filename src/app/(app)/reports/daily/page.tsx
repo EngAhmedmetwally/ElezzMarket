@@ -1,4 +1,3 @@
-
 "use client";
 
 import * as React from "react";
@@ -12,15 +11,6 @@ import type { Order } from "@/lib/types";
 import { Skeleton } from "@/components/ui/skeleton";
 import { StaffPerformanceChart } from "../components/staff-performance-chart";
 import { format } from "date-fns";
-import Link from "next/link";
-
-// Data structure for the report
-type DailyReportData = {
-  date: string;
-  totalOrders: number;
-  totalItems: number;
-  totalWeight: number;
-};
 
 // Skeleton component for loading state
 function DailyReportSkeleton() {
@@ -44,11 +34,23 @@ function DailyReportSkeleton() {
           </div>
         </CardContent>
       </Card>
+      <Card>
+        <CardHeader>
+          <Skeleton className="h-6 w-48" />
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            <Skeleton className="h-12 w-full" />
+            <Skeleton className="h-12 w-full" />
+            <Skeleton className="h-12 w-full" />
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }
 
-export default function DailyReportPage() {
+export default function DailyRevenueReportPage() {
   const { language } = useLanguage();
   const [fromDate, setFromDate] = React.useState<Date | undefined>(
     new Date(new Date().getFullYear(), new Date().getMonth(), 1)
@@ -63,26 +65,25 @@ export default function DailyReportPage() {
     const to = new Date(toDate).setHours(23, 59, 59, 999);
     return allOrders.filter(order => {
         if (!order.createdAt) return false;
+        // Filter by completed orders for revenue reports
+        if (order.status === 'ملغي') return false;
         const orderDate = new Date(order.createdAt).getTime();
         return orderDate >= from && orderDate <= to;
     });
   }, [allOrders, fromDate, toDate]);
 
-  const dailyReportData = React.useMemo(() => {
+  const dailyData = React.useMemo(() => {
     if (!filteredOrders) return [];
 
-    const dailyMap = new Map<string, { totalOrders: number; totalItems: number; totalWeight: number }>();
+    const dailyMap = new Map<string, { totalRevenue: number; totalOrders: number }>();
 
     filteredOrders.forEach(order => {
       if (!order.createdAt) return;
       const dateStr = format(new Date(order.createdAt), "yyyy-MM-dd");
       
-      const dayData = dailyMap.get(dateStr) || { totalOrders: 0, totalItems: 0, totalWeight: 0 };
+      const dayData = dailyMap.get(dateStr) || { totalRevenue: 0, totalOrders: 0 };
       dayData.totalOrders += 1;
-      
-      const itemsArray = order.items ? (Array.isArray(order.items) ? order.items : Object.values(order.items)) : [];
-      dayData.totalItems += itemsArray.reduce((acc, item) => acc + (item.quantity || 0), 0);
-      dayData.totalWeight += itemsArray.reduce((acc, item) => acc + ((item.weight || 0) * (item.quantity || 1)), 0);
+      dayData.totalRevenue += order.total;
       
       dailyMap.set(dateStr, dayData);
     });
@@ -93,41 +94,34 @@ export default function DailyReportPage() {
 
   }, [filteredOrders]);
 
-  const productsSummary = React.useMemo(() => {
-    if (!filteredOrders) return [];
+  const moderatorRevenue = React.useMemo(() => {
+     if (!filteredOrders) return [];
+     
+     const moderatorMap = new Map<string, { name: string, totalRevenue: number, totalOrders: number }>();
 
-    const productMap = new Map<string, { totalQuantity: number; totalWeight: number }>();
+     filteredOrders.forEach(order => {
+        if (order.moderatorId && order.moderatorName) {
+            const moderator = moderatorMap.get(order.moderatorId) || { name: order.moderatorName, totalRevenue: 0, totalOrders: 0 };
+            moderator.totalOrders += 1;
+            moderator.totalRevenue += order.total;
+            moderatorMap.set(order.moderatorId, moderator);
+        }
+     });
 
-    filteredOrders.forEach(order => {
-        const itemsArray = order.items ? (Array.isArray(order.items) ? order.items : Object.values(order.items)) : [];
-        itemsArray.forEach(item => {
-            const productName = item.productName;
-            if (!productName) return;
-            
-            const productData = productMap.get(productName) || { totalQuantity: 0, totalWeight: 0 };
-            
-            productData.totalQuantity += item.quantity || 0;
-            productData.totalWeight += (item.weight || 0) * (item.quantity || 1);
-
-            productMap.set(productName, productData);
-        });
-    });
-
-    return Array.from(productMap.entries())
-      .map(([name, data]) => ({ name, ...data }))
-      .sort((a, b) => b.totalQuantity - a.totalQuantity);
-
+     return Array.from(moderatorMap.values()).sort((a, b) => b.totalRevenue - a.totalRevenue);
   }, [filteredOrders]);
 
-  const chartData = dailyReportData.map(d => ({ 
+  const chartData = dailyData.map(d => ({ 
     name: format(new Date(d.date), "MMM d"), 
-    value: d.totalItems 
+    value: d.totalRevenue 
   })).reverse();
+  
+  const formatCurrency = (value: number) => new Intl.NumberFormat(language === 'ar' ? 'ar-EG' : 'en-US', { style: 'currency', currency: 'EGP' }).format(value);
 
   if (isLoading) {
     return (
       <div>
-        <PageHeader title={language === 'ar' ? 'التقرير اليومي' : 'Daily Report'} />
+        <PageHeader title={language === 'ar' ? 'تقرير الإيراد اليومي' : 'Daily Revenue Report'} />
         <DailyReportSkeleton />
       </div>
     );
@@ -135,23 +129,30 @@ export default function DailyReportPage() {
 
   return (
     <div className="space-y-8">
-      <PageHeader title={language === 'ar' ? 'التقرير اليومي' : 'Daily Report'} />
+      <PageHeader title={language === 'ar' ? 'تقرير الإيراد اليومي' : 'Daily Revenue Report'} />
       
       <div className="flex flex-col sm:flex-row items-center gap-4">
         <DatePicker date={fromDate} onDateChange={setFromDate} placeholder={language === 'ar' ? 'من تاريخ' : 'From date'} />
         <DatePicker date={toDate} onDateChange={setToDate} placeholder={language === 'ar' ? 'إلى تاريخ' : 'To date'} />
       </div>
-
-      <StaffPerformanceChart 
-        data={chartData} 
-        title={language === 'ar' ? 'إجمالي الأصناف المباعة يوميًا' : 'Total Items Sold Per Day'}
-        barDataKey="items"
-        barLabel={language === 'ar' ? 'الأصناف' : 'Items'}
-      />
+      
+      <Card>
+          <CardHeader>
+              <CardTitle>{language === 'ar' ? 'إجمالي الإيرادات اليومية' : 'Total Daily Revenue'}</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <StaffPerformanceChart 
+                data={chartData} 
+                barDataKey="revenue"
+                barLabel={language === 'ar' ? 'الإيراد' : 'Revenue'}
+                formatter={formatCurrency}
+            />
+          </CardContent>
+      </Card>
       
       <Card>
         <CardHeader>
-          <CardTitle>{language === 'ar' ? 'ملخص اليوميات' : 'Daily Summary'}</CardTitle>
+          <CardTitle>{language === 'ar' ? 'ملخص الإيرادات المجمعة' : 'Aggregated Revenue Summary'}</CardTitle>
         </CardHeader>
         <CardContent>
           <Table>
@@ -159,22 +160,20 @@ export default function DailyReportPage() {
               <TableRow>
                 <TableHead>{language === 'ar' ? 'التاريخ' : 'Date'}</TableHead>
                 <TableHead className="text-end">{language === 'ar' ? 'إجمالي الطلبات' : 'Total Orders'}</TableHead>
-                <TableHead className="text-end">{language === 'ar' ? 'إجمالي الأصناف' : 'Total Items'}</TableHead>
-                <TableHead className="text-end">{language === 'ar' ? 'إجمالي الأوزان (كجم)' : 'Total Weight (kg)'}</TableHead>
+                <TableHead className="text-end">{language === 'ar' ? 'إجمالي الإيرادات' : 'Total Revenue'}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {dailyReportData.map((row) => (
+              {dailyData.map((row) => (
                 <TableRow key={row.date}>
                   <TableCell className="font-medium">{format(new Date(row.date), "PPP")}</TableCell>
                   <TableCell className="text-end">{row.totalOrders}</TableCell>
-                  <TableCell className="text-end">{row.totalItems}</TableCell>
-                  <TableCell className="text-end">{row.totalWeight.toFixed(2)}</TableCell>
+                  <TableCell className="text-end">{formatCurrency(row.totalRevenue)}</TableCell>
                 </TableRow>
               ))}
-              {dailyReportData.length === 0 && (
+              {dailyData.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={4} className="h-24 text-center">
+                  <TableCell colSpan={3} className="h-24 text-center">
                     {language === 'ar' ? 'لا توجد بيانات للعرض.' : 'No data to display.'}
                   </TableCell>
                 </TableRow>
@@ -186,37 +185,27 @@ export default function DailyReportPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>{language === 'ar' ? 'ملخص الأصناف' : 'Items Summary'}</CardTitle>
-          <CardDescription>{language === 'ar' ? 'إجمالي الكميات والأوزان لكل صنف في الفترة المحددة' : 'Total quantities and weights for each item in the selected period'}</CardDescription>
+          <CardTitle>{language === 'ar' ? 'ملخص إيرادات الوسطاء' : 'Moderator Revenue Summary'}</CardTitle>
+          <CardDescription>{language === 'ar' ? 'تفصيل الإيرادات حسب كل وسيط قام بتسجيل الطلبات في الفترة المحددة' : 'Revenue breakdown by each moderator who created orders in the selected period'}</CardDescription>
         </CardHeader>
         <CardContent>
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>{language === 'ar' ? 'الصنف' : 'Item'}</TableHead>
-                <TableHead className="text-end">{language === 'ar' ? 'إجمالي الكمية' : 'Total Quantity'}</TableHead>
-                <TableHead className="text-end">{language === 'ar' ? 'إجمالي الوزن (كجم)' : 'Total Weight (kg)'}</TableHead>
+                <TableHead>{language === 'ar' ? 'الوسيط' : 'Moderator'}</TableHead>
+                <TableHead className="text-end">{language === 'ar' ? 'إجمالي الطلبات' : 'Total Orders'}</TableHead>
+                <TableHead className="text-end">{language === 'ar' ? 'إجمالي الإيرادات' : 'Total Revenue'}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {productsSummary.map((row) => {
-                 const fromDateString = fromDate ? fromDate.toISOString() : '';
-                 const toDateString = toDate ? toDate.toISOString() : '';
-                 const href = `/reports/products/${encodeURIComponent(row.name)}?from=${fromDateString}&to=${toDateString}`;
-
-                return (
+              {moderatorRevenue.map((row) => (
                   <TableRow key={row.name}>
-                    <TableCell className="font-medium">
-                      <Link href={href} className="hover:underline text-primary">
-                        {row.name}
-                      </Link>
-                    </TableCell>
-                    <TableCell className="text-end">{row.totalQuantity}</TableCell>
-                    <TableCell className="text-end">{row.totalWeight.toFixed(2)}</TableCell>
+                    <TableCell className="font-medium">{row.name}</TableCell>
+                    <TableCell className="text-end">{row.totalOrders}</TableCell>
+                    <TableCell className="text-end">{formatCurrency(row.totalRevenue)}</TableCell>
                   </TableRow>
-                )
-              })}
-              {productsSummary.length === 0 && (
+              ))}
+              {moderatorRevenue.length === 0 && (
                 <TableRow>
                   <TableCell colSpan={3} className="h-24 text-center">
                     {language === 'ar' ? 'لا توجد بيانات للعرض.' : 'No data to display.'}

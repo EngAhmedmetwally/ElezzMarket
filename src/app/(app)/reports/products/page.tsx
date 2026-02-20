@@ -125,21 +125,33 @@ export default function ProductsReportPage() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        <StaffPerformanceChart 
-            data={topProductsByQuantityChartData} 
-            title={language === 'ar' ? 'المنتجات الأكثر مبيعًا (حسب الكمية)' : 'Top Selling Products (by Quantity)'}
-            barDataKey="products_by_quantity"
-            barLabel={language === 'ar' ? 'الكمية المباعة' : 'Quantity Sold'}
-            layout="horizontal"
-        />
-        <StaffPerformanceChart 
-            data={topProductsByWeightChartData} 
-            title={language === 'ar' ? 'المنتجات الأكثر مبيعًا (حسب الوزن)' : 'Top Selling Products (by Weight)'}
-            barDataKey="products_by_weight"
-            barLabel={language === 'ar' ? 'الوزن المباع (كجم)' : 'Weight Sold (kg)'}
-            formatter={(value) => `${value.toFixed(2)} kg`}
-            layout="horizontal"
-        />
+        <Card>
+            <CardHeader>
+                <CardTitle>{language === 'ar' ? 'المنتجات الأكثر مبيعًا (حسب الكمية)' : 'Top Selling Products (by Quantity)'}</CardTitle>
+            </CardHeader>
+            <CardContent>
+                <StaffPerformanceChart 
+                    data={topProductsByQuantityChartData} 
+                    barDataKey="products_by_quantity"
+                    barLabel={language === 'ar' ? 'الكمية المباعة' : 'Quantity Sold'}
+                    layout="horizontal"
+                />
+            </CardContent>
+        </Card>
+        <Card>
+            <CardHeader>
+                <CardTitle>{language === 'ar' ? 'المنتجات الأكثر مبيعًا (حسب الوزن)' : 'Top Selling Products (by Weight)'}</CardTitle>
+            </CardHeader>
+            <CardContent>
+                <StaffPerformanceChart 
+                    data={topProductsByWeightChartData} 
+                    barDataKey="products_by_weight"
+                    barLabel={language === 'ar' ? 'الوزن المباع (كجم)' : 'Weight Sold (kg)'}
+                    formatter={(value) => `${value.toFixed(2)} kg`}
+                    layout="horizontal"
+                />
+            </CardContent>
+        </Card>
       </div>
       
       <Card>
