@@ -13,7 +13,7 @@ export function Logo({ className }: { className?: string }) {
       <defs>
         <mask id="text-mask-logo">
           <rect x="0" y="0" width="24" height="24" fill="white" />
-          <text x="12" y="17.5" fontFamily="Cairo, sans-serif" fontWeight="bold" fontSize="8" text-anchor="middle" fill="black">العز</text>
+          <text x="12" y="17.5" fontFamily="Cairo, sans-serif" fontWeight="bold" fontSize="8" textAnchor="middle" fill="black">العز</text>
         </mask>
       </defs>
       {/* Awning */}
