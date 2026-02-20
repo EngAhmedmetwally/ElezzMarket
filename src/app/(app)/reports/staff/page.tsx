@@ -1,3 +1,4 @@
+
 "use client";
 
 import * as React from "react";
@@ -5,12 +6,10 @@ import { PageHeader } from "@/components/page-header";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useLanguage } from "@/components/language-provider";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { DatePicker } from "@/components/ui/datepicker";
 import { useRealtimeCachedCollection } from "@/hooks/use-realtime-cached-collection";
-import type { Order, User, OrderStatus, Commission } from "@/lib/types";
+import type { Order, User, Commission } from "@/lib/types";
 import { Skeleton } from "@/components/ui/skeleton";
-import { StaffActivityChart } from "../components/staff-activity-chart";
 import { StaffPerformanceChart } from "../components/staff-performance-chart";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -29,19 +28,6 @@ function StaffReportSkeleton() {
         <Skeleton className="h-[450px] w-full" />
         <Skeleton className="h-[450px] w-full" />
       </div>
-      <Skeleton className="h-[350px] w-full" />
-      <Card>
-        <CardHeader>
-          <Skeleton className="h-6 w-48 mb-2" />
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            <Skeleton className="h-12 w-full" />
-            <Skeleton className="h-12 w-full" />
-            <Skeleton className="h-12 w-full" />
-          </div>
-        </CardContent>
-      </Card>
     </div>
   )
 }
@@ -55,61 +41,6 @@ export default function StaffReportPage() {
   const { data: allOrders, isLoading: isLoadingOrders } = useRealtimeCachedCollection<Order>('orders');
   const { data: usersData, isLoading: isLoadingUsers } = useRealtimeCachedCollection<User>('users');
   const { data: commissionsData, isLoading: isLoadingCommissions } = useRealtimeCachedCollection<Commission>('commissions');
-  
-  const staffActivityReport = React.useMemo(() => {
-    if (!usersData || !allOrders || !fromDate || !toDate) return [];
-    
-    const usersMap = new Map(usersData.map(u => [u.id, u]));
-    const staffActivity = new Map<string, {
-        id: string;
-        name: string;
-        avatarUrl: string;
-        role: string;
-        actions: { [key in OrderStatus]: number };
-        total: number;
-    }>();
-
-    const from = fromDate.getTime();
-    const to = new Date(toDate).setHours(23, 59, 59, 999);
-
-    for (const order of allOrders) {
-        if (!order.statusHistory) continue;
-
-        for (const historyKey in order.statusHistory) {
-            const historyItem = order.statusHistory[historyKey];
-            if (!historyItem.userId || !historyItem.createdAt) continue;
-
-            const historyDate = new Date(historyItem.createdAt).getTime();
-            if (historyDate < from || historyDate > to) continue;
-            
-            const user = usersMap.get(historyItem.userId);
-
-            if (user) {
-                let userActivity = staffActivity.get(historyItem.userId);
-                if (!userActivity) {
-                    userActivity = {
-                        id: user.id,
-                        name: user.name,
-                        avatarUrl: user.avatarUrl,
-                        role: user.role,
-                        actions: { "تم التسجيل": 0, "قيد التجهيز": 0, "تم الشحن": 0, "مكتمل": 0, "ملغي": 0 },
-                        total: 0
-                    };
-                    staffActivity.set(user.id, userActivity);
-                }
-
-                if (historyItem.status in userActivity.actions) {
-                    userActivity.actions[historyItem.status]++;
-                    userActivity.total++;
-                }
-            }
-        }
-    }
-
-    return Array.from(staffActivity.values())
-        .filter(user => user.total > 0)
-        .sort((a, b) => b.total - a.total);
-  }, [usersData, allOrders, fromDate, toDate]);
   
   const filteredOrders = React.useMemo(() => {
     if (!allOrders || !fromDate || !toDate) return [];
@@ -211,10 +142,8 @@ export default function StaffReportPage() {
         .sort((a, b) => b.value - a.value);
   }, [usersData, commissionsData, fromDate, toDate]);
   
-  const activityChartData = staffActivityReport.map(m => ({ name: m.name, actions: m.actions }));
   const isLoading = isLoadingOrders || isLoadingUsers || isLoadingCommissions;
 
-  const orderStatuses: OrderStatus[] = ["تم التسجيل", "قيد التجهيز", "تم الشحن", "مكتمل", "ملغي"];
   const formatCurrency = (value: number) => new Intl.NumberFormat(language === 'ar' ? 'ar-EG' : 'en-US', { style: 'currency', currency: 'EGP' }).format(value);
   const formatMinutes = (minutes: number) => {
     if (minutes < 60) return `${Math.round(minutes)} ${language === 'ar' ? 'دقيقة' : 'min'}`;
@@ -379,92 +308,6 @@ export default function StaffReportPage() {
           ))}
         </div>
       )}
-      
-      <div className="space-y-8">
-        <StaffActivityChart data={activityChartData} />
-        <Card>
-          <CardHeader>
-            <CardTitle>{language === 'ar' ? 'تقرير نشاط الموظفين التفصيلي' : 'Detailed Staff Activity Report'}</CardTitle>
-            <CardDescription>{language === 'ar' ? 'ملخص الإجراءات التي قام بها كل موظف على الطلبات' : 'Summary of actions performed by each staff member on orders'}</CardDescription>
-          </CardHeader>
-          <CardContent>
-            {isMobile ? (
-              <div className="space-y-4">
-                {staffActivityReport.length > 0 ? staffActivityReport.map((user) => (
-                  <Card key={user.id}>
-                      <CardHeader className="flex-row items-center gap-3 space-y-0 p-4">
-                          <Avatar className="h-10 w-10">
-                              <AvatarImage src={user.avatarUrl} alt={user.name} data-ai-hint="avatar" />
-                              <AvatarFallback>{user.name.charAt(0)}</AvatarFallback>
-                          </Avatar>
-                          <div>
-                              <p className="font-bold">{user.name}</p>
-                              <p className="text-xs text-muted-foreground">{language === 'ar' ? 'الإجمالي' : 'Total'}: {user.total}</p>
-                          </div>
-                      </CardHeader>
-                      <CardContent className="p-4 pt-0">
-                          <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
-                              {orderStatuses.map(status => {
-                                  const count = user.actions[status] || 0;
-                                  return count > 0 && (
-                                      <div key={status} className="flex justify-between">
-                                          <span className="text-muted-foreground">{status}</span>
-                                          <span className="font-medium">{count}</span>
-                                      </div>
-                                  )
-                              })}
-                          </div>
-                      </CardContent>
-                  </Card>
-                )) : (
-                  <div className="h-24 text-center flex items-center justify-center text-muted-foreground">
-                    {language === 'ar' ? 'لا توجد بيانات للعرض في الفترة المحددة.' : 'No data to display for the selected period.'}
-                  </div>
-                )}
-              </div>
-            ) : (
-              <div className="overflow-x-auto">
-                {staffActivityReport.length > 0 ? (
-                    <Table>
-                    <TableHeader>
-                        <TableRow>
-                            <TableHead className="text-start">{language === 'ar' ? 'الموظف' : 'Staff'}</TableHead>
-                            {orderStatuses.map(status => (
-                                <TableHead key={status} className="text-center">{status}</TableHead>
-                            ))}
-                            <TableHead className="text-center">{language === 'ar' ? 'الإجمالي' : 'Total'}</TableHead>
-                        </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                        {staffActivityReport.map((user) => (
-                        <TableRow key={user.id}>
-                            <TableCell className="font-medium text-start">
-                                <div className="flex items-center gap-2">
-                                    <Avatar className="h-8 w-8">
-                                        <AvatarImage src={user.avatarUrl} alt={user.name} data-ai-hint="avatar" />
-                                        <AvatarFallback>{user.name.charAt(0)}</AvatarFallback>
-                                    </Avatar>
-                                    <span>{user.name}</span>
-                                </div>
-                            </TableCell>
-                            {orderStatuses.map(status => (
-                                <TableCell key={status} className="text-center">{user.actions[status] || 0}</TableCell>
-                            ))}
-                            <TableCell className="text-center font-bold">{user.total}</TableCell>
-                        </TableRow>
-                        ))}
-                    </TableBody>
-                    </Table>
-                ) : (
-                    <div className="h-24 text-center flex items-center justify-center text-muted-foreground">
-                        {language === 'ar' ? 'لا توجد بيانات للعرض في الفترة المحددة.' : 'No data to display for the selected period.'}
-                    </div>
-                )}
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      </div>
     </div>
   );
 }
