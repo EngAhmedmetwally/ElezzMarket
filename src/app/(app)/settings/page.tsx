@@ -53,6 +53,7 @@ const receiptSettingsSchema = z.object({
   showItemPrice: z.boolean().default(true),
   showItemSubtotal: z.boolean().default(true),
   showCourierName: z.boolean().default(false),
+  showModeratorName: z.boolean().default(false),
 });
 
 type ReceiptSettingsFormValues = z.infer<typeof receiptSettingsSchema>;
@@ -112,6 +113,7 @@ export default function SettingsPage() {
       showItemPrice: true,
       showItemSubtotal: true,
       showCourierName: false,
+      showModeratorName: false,
     },
   });
 

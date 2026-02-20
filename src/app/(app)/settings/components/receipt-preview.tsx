@@ -1,3 +1,4 @@
+
 "use client";
 
 import * as React from "react";
@@ -17,6 +18,7 @@ const mockOrder = {
   customerPhone1: "01234567890",
   customerAddress: "123 شارع المثال، القاهرة",
   courierName: "عمر إبراهيم",
+  moderatorName: "علي حسن",
   items: [
     { productName: "منتج تجريبي 1", quantity: 2, price: 50.00, weight: 0.5 },
     { productName: "منتج آخر طويل جداً", quantity: 1, price: 120.50, weight: 1.2 },
@@ -44,15 +46,20 @@ export function ReceiptPreview({ settings }: ReceiptPreviewProps) {
         {settings.showOrderId && <p className="text-xs break-words">{language === 'ar' ? 'رقم الطلب:' : 'Order ID:'} {mockOrder.id}</p>}
         {settings.showDate && <p className="text-xs break-words">{language === 'ar' ? 'التاريخ:' : 'Date:'} {format(new Date(mockOrder.createdAt), "dd/MM/yyyy HH:mm")}</p>}
         
-        {(settings.showOrderId || settings.showDate) && (settings.showCustomerName || settings.showCustomerPhone || settings.showCustomerAddress || settings.showCourierName) && <Hr />}
+        {(settings.showOrderId || settings.showDate) && (settings.showCustomerName || settings.showCustomerPhone || settings.showCustomerAddress || settings.showCourierName || settings.showModeratorName) && <Hr />}
         
         {settings.showCustomerName && <p className="text-xs font-semibold break-words">{language === 'ar' ? 'العميل:' : 'Customer:'} {mockOrder.customerName}</p>}
         {settings.showCustomerPhone && <p className="text-xs break-words">{language === 'ar' ? 'الهاتف:' : 'Phone:'} {mockOrder.customerPhone1}</p>}
         {settings.showCustomerAddress && mockOrder.customerAddress && <p className="text-xs break-words">{language === 'ar' ? 'العنوان:' : 'Address:'} {mockOrder.customerAddress}</p>}
         
-        {settings.showCourierName && mockOrder.courierName && <p className="text-xs font-semibold break-words">{language === 'ar' ? 'المندوب:' : 'Courier:'} {mockOrder.courierName}</p>}
+        {(settings.showCourierName && mockOrder.courierName || settings.showModeratorName && mockOrder.moderatorName) && (
+            <div className="space-y-0.5 mt-1">
+                {settings.showModeratorName && mockOrder.moderatorName && <p className="text-xs font-semibold break-words">{language === 'ar' ? 'الوسيط:' : 'Moderator:'} {mockOrder.moderatorName}</p>}
+                {settings.showCourierName && mockOrder.courierName && <p className="text-xs font-semibold break-words">{language === 'ar' ? 'المندوب:' : 'Courier:'} {mockOrder.courierName}</p>}
+            </div>
+        )}
         
-        {(settings.showCustomerName || settings.showCustomerPhone || settings.showCustomerAddress || settings.showCourierName) && <Hr />}
+        {(settings.showCustomerName || settings.showCustomerPhone || settings.showCustomerAddress || settings.showCourierName || settings.showModeratorName) && <Hr />}
         
         <table className="w-full text-xs">
             <thead>

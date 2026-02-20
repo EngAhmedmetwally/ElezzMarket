@@ -1,3 +1,4 @@
+
 "use client";
 
 import * as React from "react";
@@ -81,6 +82,12 @@ export function ReceiptSettingsForm({ form, onSubmit }: ReceiptSettingsFormProps
                 <FormField control={form.control} name="showCourierName" render={({ field }) => (
                     <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
                     <div className="space-y-0.5"><FormLabel className="text-base">{language === 'ar' ? 'إظهار اسم المندوب' : 'Show Courier Name'}</FormLabel></div>
+                    <FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl>
+                    </FormItem>
+                )}/>
+                <FormField control={form.control} name="showModeratorName" render={({ field }) => (
+                    <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                    <div className="space-y-0.5"><FormLabel className="text-base">{language === 'ar' ? 'إظهار اسم الوسيط' : 'Show Moderator Name'}</FormLabel></div>
                     <FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl>
                     </FormItem>
                 )}/>

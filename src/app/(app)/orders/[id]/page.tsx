@@ -117,6 +117,7 @@ function ReceiptView({ order, language, settings }: { order: Order; language: "a
       showItemsSubtotal: true, showShippingCost: true, showGrandTotal: true,
       footerText: language === 'ar' ? 'شكراً لتعاملكم معنا!' : 'Thank you!',
       showCourierName: true,
+      showModeratorName: false,
   };
   
   const formatCurrency = (value: number) => value.toFixed(2);
@@ -143,11 +144,12 @@ function ReceiptView({ order, language, settings }: { order: Order; language: "a
              {s.showCustomerAddress && order.customerAddress && <p className="text-xs break-words pt-1 text-right">{order.customerAddress}</p>}
         </div>
 
-        {s.showCourierName && order.courierName && (
+        {(s.showCourierName && order.courierName || s.showModeratorName && order.moderatorName) && (
             <>
                 <Hr />
-                <div className="receipt-thermal-info">
-                    <div className="info-item"><span>{language === 'ar' ? 'المندوب' : 'Courier'}:</span><span>{order.courierName}</span></div>
+                <div className="receipt-thermal-info space-y-0.5">
+                    {s.showCourierName && order.courierName && <div className="info-item"><span>{language === 'ar' ? 'المندوب' : 'Courier'}:</span><span>{order.courierName}</span></div>}
+                    {s.showModeratorName && order.moderatorName && <div className="info-item"><span>{language === 'ar' ? 'الوسيط' : 'Moderator'}:</span><span>{order.moderatorName}</span></div>}
                 </div>
             </>
         )}

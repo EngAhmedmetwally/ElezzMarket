@@ -133,6 +133,7 @@ export type ReceiptSettings = {
   showItemSubtotal?: boolean;
   showItemWeight?: boolean;
   showCourierName?: boolean;
+  showModeratorName?: boolean;
 };
 
 export type AppSettings = {
