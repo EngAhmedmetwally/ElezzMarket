@@ -728,7 +728,7 @@ export default function OrderDetailsPage() {
         </div>
         
         <Dialog open={isNoteModalOpen} onOpenChange={setIsNoteModalOpen}>
-            <DialogContent>
+            <DialogContent onOpenAutoFocus={(e) => e.preventDefault()}>
                 <DialogHeader>
                     <DialogTitle>{language === 'ar' ? `إضافة ملاحظة لـ "${selectedStatus}"` : `Add note for "${selectedStatus}"`}</DialogTitle>
                 </DialogHeader>
@@ -749,7 +749,10 @@ export default function OrderDetailsPage() {
         </Dialog>
 
         <Dialog open={isCourierModalOpen} onOpenChange={setIsCourierModalOpen}>
-            <DialogContent className="sm:max-w-md">
+            <DialogContent 
+                className="sm:max-w-md"
+                onOpenAutoFocus={(e) => e.preventDefault()}
+            >
                 <DialogHeader>
                     <DialogTitle>{language === 'ar' ? 'إسناد مندوب' : 'Assign Courier'}</DialogTitle>
                     <DialogDescription>{language === 'ar' ? 'اختر مندوبًا لتسليم هذا الطلب.' : 'Select a courier to deliver this order.'}</DialogDescription>
@@ -807,7 +810,10 @@ export default function OrderDetailsPage() {
             </DialogContent>
         </Dialog>
          <Dialog open={isEditModalOpen} onOpenChange={setIsEditModalOpen}>
-            <DialogContent className="sm:max-w-3xl max-h-[90vh] overflow-y-auto">
+            <DialogContent 
+                className="sm:max-w-3xl max-h-[90vh] overflow-y-auto"
+                onOpenAutoFocus={(e) => e.preventDefault()}
+            >
                 <DialogHeader>
                     <DialogTitle>{language === 'ar' ? 'تعديل الطلب رقم' : 'Edit Order #'} {order.id}</DialogTitle>
                 </DialogHeader>
@@ -823,7 +829,7 @@ export default function OrderDetailsPage() {
             </DialogContent>
         </Dialog>
         <Dialog open={isHistoryModalOpen} onOpenChange={setIsHistoryModalOpen}>
-            <DialogContent className="sm:max-w-2xl">
+            <DialogContent className="sm:max-w-2xl" onOpenAutoFocus={(e) => e.preventDefault()}>
                 <DialogHeader>
                     <DialogTitle>{language === 'ar' ? 'سجل تعديلات الطلب' : 'Order Edit History'}</DialogTitle>
                     <DialogDescription>#{order.id}</DialogDescription>
@@ -835,7 +841,10 @@ export default function OrderDetailsPage() {
         </Dialog>
 
         <Dialog open={isSharePreviewOpen} onOpenChange={setIsSharePreviewOpen}>
-            <DialogContent className="sm:max-w-md max-h-[90vh] flex flex-col p-0 overflow-hidden">
+            <DialogContent 
+                className="sm:max-w-md max-h-[90vh] flex flex-col p-0 overflow-hidden"
+                onOpenAutoFocus={(e) => e.preventDefault()}
+            >
                 <DialogHeader className="p-6 pb-2">
                     <DialogTitle>{language === 'ar' ? 'معاينة الإيصال قبل المشاركة' : 'Receipt Preview before Sharing'}</DialogTitle>
                     <DialogDescription>{language === 'ar' ? 'تأكد من البيانات قبل إرسال الصورة.' : 'Verify the data before sending the image.'}</DialogDescription>

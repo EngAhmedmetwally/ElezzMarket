@@ -178,7 +178,10 @@ export default function OrdersPage() {
               {language === 'ar' ? 'طلب جديد' : 'New Order'}
             </Button>
           </DialogTrigger>
-          <DialogContent className="sm:max-w-3xl max-h-[90vh] overflow-y-auto">
+          <DialogContent 
+            className="sm:max-w-3xl max-h-[90vh] overflow-y-auto"
+            onOpenAutoFocus={(e) => e.preventDefault()}
+          >
             <DialogHeader>
               <DialogTitle>{language === 'ar' ? 'إنشاء طلب جديد' : 'Create New Order'}</DialogTitle>
               <DialogDescription>
