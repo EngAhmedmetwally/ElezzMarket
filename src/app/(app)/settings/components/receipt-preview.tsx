@@ -75,7 +75,7 @@ export function ReceiptPreview({ settings }: ReceiptPreviewProps) {
                 <Hr />
                 <div className="space-y-0.5">
                     {settings.showModeratorName && mockOrder.moderatorName && <p className="text-xs font-semibold break-words">{language === 'ar' ? 'الوسيط:' : 'Moderator:'} {mockOrder.moderatorName}</p>}
-                    {settings.showModeratorUsername && mockOrder.moderatorUsername && <p className="text-xs font-semibold break-words">{language === 'ar' ? 'اسم دخول الوسيط:' : 'Username:'} {mockOrder.moderatorUsername}</p>}
+                    {settings.showModeratorUsername && mockOrder.moderatorUsername && <p className="text-xs font-semibold break-words">{language === 'ar' ? 'الوسيط:' : 'Moderator:'} {mockOrder.moderatorUsername}</p>}
                     {settings.showCourierName && mockOrder.courierName && <p className="text-xs font-semibold break-words">{language === 'ar' ? 'المندوب:' : 'Courier:'} {mockOrder.courierName}</p>}
                 </div>
             </>
@@ -114,8 +114,6 @@ export function ReceiptPreview({ settings }: ReceiptPreviewProps) {
 
             {settings.showTotalItems && <div className="flex justify-between font-bold"><span>{language === 'ar' ? 'إجمالي القطع' : 'Total Items'}</span> <span>{totalItems}</span></div>}
             {settings.showTotalWeight && <div className="flex justify-between font-bold"><span>{language === 'ar' ? 'إجمالي الوزن' : 'Total Weight'}</span> <span>{totalWeight.toFixed(2)} kg</span></div>}
-            
-            {settings.showGrandTotal && (settings.showTotalItems || settings.showTotalWeight) && <Hr />}
             
             {settings.showGrandTotal && <div className="flex justify-between font-bold text-sm pt-1"><span>{language === 'ar' ? 'الإجمالي الكلي' : 'Total'}</span> <span>{total.toFixed(0)}</span></div>}
         </div>

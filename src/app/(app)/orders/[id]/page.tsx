@@ -158,7 +158,7 @@ function ReceiptView({ order, language, settings }: { order: Order; language: "a
                 <Hr />
                 <div className="receipt-thermal-info space-y-0.5">
                     {s.showModeratorName && order.moderatorName && <div className="info-item"><span>{language === 'ar' ? 'الوسيط' : 'Moderator'}:</span><span>{order.moderatorName}</span></div>}
-                    {s.showModeratorUsername && order.moderatorUsername && <div className="info-item"><span>{language === 'ar' ? 'اسم الدخول' : 'Username'}:</span><span>{order.moderatorUsername}</span></div>}
+                    {s.showModeratorUsername && order.moderatorUsername && <div className="info-item"><span>{language === 'ar' ? 'الوسيط' : 'Moderator'}:</span><span>{order.moderatorUsername}</span></div>}
                     {s.showCourierName && order.courierName && <div className="info-item"><span>{language === 'ar' ? 'المندوب' : 'Courier'}:</span><span>{order.courierName}</span></div>}
                 </div>
             </>
