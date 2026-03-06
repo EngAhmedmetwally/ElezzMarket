@@ -88,6 +88,7 @@ export function OrderForm({ onSuccess, orderToEdit }: OrderFormProps) {
   const [isSuccessModalOpen, setIsSuccessModalOpen] = React.useState(false);
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [activeProductSearchIndex, setActiveProductIndex] = React.useState<number | null>(null);
+  const [isCustomerDropdownOpen, setIsCustomerDropdownOpen] = React.useState(false);
 
   const { data: customers } = useRealtimeCachedCollection<Customer & {id: string}>('customers');
   const { data: allProducts } = useRealtimeCachedCollection<Product>('products');
@@ -176,6 +177,7 @@ export function OrderForm({ onSuccess, orderToEdit }: OrderFormProps) {
     setSelectedZone(zone || null);
     form.setValue("shippingCost", zone?.cost || 0);
     setCustomerSearch(""); 
+    setIsCustomerDropdownOpen(false);
   };
 
   const handleProductSelect = (index: number, product: Product) => {
@@ -480,29 +482,72 @@ export function OrderForm({ onSuccess, orderToEdit }: OrderFormProps) {
                             <FormItem>
                             <FormLabel>{language === 'ar' ? 'رقم الموبايل 1' : 'Phone Number 1'}</FormLabel>
                             <FormControl>
-                                <Input 
-                                    placeholder={language === 'ar' ? 'ابحث برقم الهاتف...' : 'Search by phone number...'} 
-                                    {...field} 
-                                    autoComplete="off"
-                                    disabled={isEditMode}
-                                />
+                                <div className="relative">
+                                    <Input 
+                                        placeholder={language === 'ar' ? 'ابحث برقم الهاتف...' : 'Search by phone number...'} 
+                                        {...field} 
+                                        autoComplete="off"
+                                        disabled={isEditMode}
+                                        className={cn(language === 'ar' ? "pl-9" : "pr-9")}
+                                        onFocus={() => setIsCustomerDropdownOpen(true)}
+                                        onBlur={() => setTimeout(() => setIsCustomerDropdownOpen(false), 200)}
+                                    />
+                                    {!isEditMode && (
+                                        <button
+                                            type="button"
+                                            className={cn(
+                                                "absolute top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground p-1",
+                                                language === 'ar' ? "left-2" : "right-2"
+                                            )}
+                                            onMouseDown={(e) => {
+                                                e.preventDefault();
+                                                setIsCustomerDropdownOpen(!isCustomerDropdownOpen);
+                                            }}
+                                        >
+                                            <ChevronDown className="h-4 w-4" />
+                                        </button>
+                                    )}
+                                </div>
                             </FormControl>
                             <FormMessage />
                             </FormItem>
                         )}/>
-                        {filteredCustomers.length > 0 && customerSearch && !isEditMode && (
+                        {(isCustomerDropdownOpen || (customerSearch && filteredCustomers.length > 0)) && !isEditMode && (
                             <Card className="absolute z-20 w-full mt-1 shadow-lg">
                                 <CardContent className="p-2 max-h-60 overflow-y-auto">
-                                    {filteredCustomers.map((customer: any) => (
-                                        <div 
-                                            key={customer.id} 
-                                            className="p-2 hover:bg-muted rounded-md cursor-pointer text-sm"
-                                            onClick={() => handleCustomerSelect(customer)}
-                                        >
-                                            <p className="font-medium">{customer.customerPhone1}</p>
-                                            <p className="text-muted-foreground">{customer.customerName}</p>
+                                    {filteredCustomers.length > 0 ? (
+                                        filteredCustomers.map((customer: any) => (
+                                            <div 
+                                                key={customer.id} 
+                                                className="p-2 hover:bg-muted rounded-md cursor-pointer text-sm"
+                                                onMouseDown={(e) => {
+                                                    e.preventDefault();
+                                                    handleCustomerSelect(customer);
+                                                }}
+                                            >
+                                                <p className="font-medium">{customer.customerPhone1}</p>
+                                                <p className="text-muted-foreground">{customer.customerName}</p>
+                                            </div>
+                                        ))
+                                    ) : customerSearch ? (
+                                        <div className="p-2 text-sm text-muted-foreground text-center">
+                                            {language === 'ar' ? 'لا توجد نتائج' : 'No results found'}
                                         </div>
-                                    ))}
+                                    ) : (
+                                        allCustomers.slice(0, 20).map((customer: any) => (
+                                            <div 
+                                                key={customer.id} 
+                                                className="p-2 hover:bg-muted rounded-md cursor-pointer text-sm"
+                                                onMouseDown={(e) => {
+                                                    e.preventDefault();
+                                                    handleCustomerSelect(customer);
+                                                }}
+                                            >
+                                                <p className="font-medium">{customer.customerPhone1}</p>
+                                                <p className="text-muted-foreground">{customer.customerName}</p>
+                                            </div>
+                                        ))
+                                    )}
                                 </CardContent>
                             </Card>
                         )}
