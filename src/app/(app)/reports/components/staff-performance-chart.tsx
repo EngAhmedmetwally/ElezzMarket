@@ -12,7 +12,7 @@ interface StaffPerformanceChartProps {
     barDataKey?: string;
     barLabel: string;
     formatter?: (value: number) => string;
-    layout?: 'vertical' | 'horizontal';
+    layout?: 'vertical' | 'horizontal'; // 'vertical' for columns (dates), 'horizontal' for bars (names)
     className?: string;
 }
 
@@ -20,7 +20,7 @@ export function StaffPerformanceChart({
     data, 
     barLabel, 
     formatter, 
-    layout = 'horizontal', // Default to horizontal for long names
+    layout = 'horizontal', 
     className 
 }: StaffPerformanceChartProps) {
   const isMobile = useIsMobile();
@@ -51,30 +51,31 @@ export function StaffPerformanceChart({
       );
   }
 
-  // Always use horizontal layout for long Arabic names
-  const isHorizontal = layout === 'horizontal';
+  // If layout is 'vertical', we want columns (standard for dates)
+  // If layout is 'horizontal', we want bars (standard for long names)
+  const isBars = layout === 'horizontal';
 
   return (
     <div className={cn("w-full bg-card rounded-xl border p-4 shadow-sm", isMobile ? "h-[350px]" : "h-[450px]", className)}>
         <ResponsiveContainer width="100%" height="100%">
             <BarChart 
                 data={data} 
-                layout={isHorizontal ? 'vertical' : 'horizontal'}
+                layout={isBars ? 'vertical' : 'horizontal'}
                 margin={{ 
-                    top: 10, 
-                    right: isHorizontal ? 40 : 30, 
-                    left: isHorizontal ? (isMobile ? 10 : 20) : 0, 
-                    bottom: isHorizontal ? 5 : 20 
+                    top: 20, 
+                    right: 30, 
+                    left: isBars ? (isMobile ? 10 : 20) : 0, 
+                    bottom: isBars ? 5 : 20 
                 }}
             >
                 <CartesianGrid 
-                    horizontal={!isHorizontal} 
-                    vertical={isHorizontal} 
+                    horizontal={!isBars} 
+                    vertical={isBars} 
                     strokeDasharray="3 3" 
                     opacity={0.2} 
                 />
                 
-                {isHorizontal ? (
+                {isBars ? (
                     <>
                         <XAxis 
                             type="number" 
@@ -88,15 +89,9 @@ export function StaffPerformanceChart({
                             type="category" 
                             tickLine={false} 
                             axisLine={false} 
-                            width={isMobile ? 120 : 180} 
+                            width={isMobile ? 80 : 120} 
                             tick={{ fontSize: 10, fill: 'currentColor' }} 
                             interval={0}
-                            tickFormatter={(val) => {
-                                if (typeof val === 'string' && val.length > 25) {
-                                    return `${val.substring(0, 22)}...`;
-                                }
-                                return val;
-                            }}
                         />
                     </>
                 ) : (
@@ -122,14 +117,19 @@ export function StaffPerformanceChart({
                 
                 <Tooltip
                     cursor={{ fill: 'hsl(var(--muted))', opacity: 0.1 }}
-                    contentStyle={{ borderRadius: '8px', fontSize: '12px' }}
+                    contentStyle={{ 
+                        borderRadius: '8px', 
+                        fontSize: '12px',
+                        backgroundColor: 'hsl(var(--card))',
+                        border: '1px solid hsl(var(--border))'
+                    }}
                     formatter={(value) => [valueFormatter(Number(value)), barLabel]}
                 />
                 <Bar 
                     dataKey="value" 
                     name={barLabel} 
-                    radius={isHorizontal ? [0, 4, 4, 0] : [4, 4, 0, 0]} 
-                    barSize={isMobile ? 15 : 25}
+                    radius={isBars ? [0, 4, 4, 0] : [4, 4, 0, 0]} 
+                    barSize={isMobile ? 20 : 35}
                     fill="hsl(var(--chart-1))"
                 >
                     {data.map((_, index) => (

@@ -171,10 +171,12 @@ export default function DailyRevenueReportPage() {
         .sort((a, b) => b.totalRevenue - a.totalRevenue);
   }, [revenueOrders, onHoldOrdersInRange, usersData]);
 
-  const chartData = dailyData.map(d => ({ 
-    name: format(new Date(d.date), "MMM d"), 
-    value: d.totalRevenue 
-  }));
+  const chartData = React.useMemo(() => {
+    return dailyData.map(d => ({ 
+        name: format(new Date(d.date), "MMM d"), 
+        value: d.totalRevenue 
+    }));
+  }, [dailyData]);
   
   if (isLoading) {
     return (
@@ -197,13 +199,14 @@ export default function DailyRevenueReportPage() {
       <Card className="min-w-0">
           <CardHeader>
               <CardTitle>{language === 'ar' ? 'إجمالي الإيرادات اليومية' : 'Total Daily Revenue'}</CardTitle>
+              <CardDescription>{language === 'ar' ? 'يوضح الرسم البياني مجموع مبيعات كل يوم بالجنيه' : 'Chart showing sum of sales per day in EGP'}</CardDescription>
           </CardHeader>
           <CardContent>
             <StaffPerformanceChart 
                 data={chartData} 
                 barLabel={language === 'ar' ? 'الإيراد' : 'Revenue'}
                 formatter={(value) => formatCurrency(value, language)}
-                layout="horizontal"
+                layout="vertical" // Changed to vertical for column bars
             />
           </CardContent>
       </Card>
@@ -236,6 +239,13 @@ export default function DailyRevenueReportPage() {
                     <TableCell className="text-end text-purple-600">{formatCurrency(row.totalOnHoldValue, language)}</TableCell>
                     </TableRow>
                 ))}
+                {dailyData.length === 0 && (
+                    <TableRow>
+                        <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">
+                            {language === 'ar' ? 'لا توجد بيانات للفترة المختارة' : 'No data for selected period'}
+                        </TableCell>
+                    </TableRow>
+                )}
                 </TableBody>
             </Table>
           </div>
@@ -268,6 +278,13 @@ export default function DailyRevenueReportPage() {
                         <TableCell className="text-end text-purple-600">{formatCurrency(row.totalOnHoldValue, language)}</TableCell>
                     </TableRow>
                 ))}
+                {moderatorRevenue.length === 0 && (
+                    <TableRow>
+                        <TableCell colSpan={5} className="h-24 text-center text-muted-foreground">
+                            {language === 'ar' ? 'لا توجد بيانات للفترة المختارة' : 'No data for selected period'}
+                        </TableCell>
+                    </TableRow>
+                )}
                 </TableBody>
             </Table>
           </div>
