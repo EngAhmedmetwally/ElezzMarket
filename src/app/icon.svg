@@ -1,0 +1,30 @@
+
+<svg
+  viewBox="0 0 512 512"
+  fill="none"
+  xmlns="http://www.w3.org/2000/svg"
+>
+  <circle cx="256" cy="256" r="256" fill="#FDE6A6" />
+  <text
+    x="256"
+    y="280"
+    text-anchor="middle"
+    fill="#007F4E"
+    style="font-size: 180px; font-weight: 900; font-family: 'Cairo', sans-serif;"
+  >
+    العز
+  </text>
+  <path
+    id="curve"
+    d="M 100,400 A 160,160 0 0,0 412,400"
+    fill="transparent"
+  />
+  <text
+    fill="#007F4E"
+    style="font-size: 36px; font-weight: 700; font-family: 'Cairo', sans-serif;"
+  >
+    <textPath href="#curve" startOffset="50%" text-anchor="middle">
+      جبنة مش أي جبنة
+    </textPath>
+  </text>
+</svg>

@@ -1,0 +1,169 @@
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 267 27% 95%;
+    --foreground: 266 20% 15%;
+    --card: 0 0% 100%;
+    --card-foreground: 266 20% 15%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 266 20% 15%;
+    --primary: 266 68% 32%;
+    --primary-foreground: 0 0% 98%;
+    --secondary: 0 0% 96.1%;
+    --secondary-foreground: 0 0% 9%;
+    --muted: 0 0% 96.1%;
+    --muted-foreground: 0 0% 45.1%;
+    --accent: 230 83% 60%;
+    --accent-foreground: 0 0% 98%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 0 0% 89.8%;
+    --input: 0 0% 89.8%;
+    --ring: 230 83% 60%;
+    --radius: 0.5rem;
+    
+    --chart-1: 221 83% 53%; /* Blue - 'تم التسجيل' */
+    --chart-2: 48 96% 51%; /* Yellow - 'قيد التجهيز' */
+    --chart-3: 25 84% 50%; /* Dark Orange - 'تم الشحن' */
+    --chart-4: 142 71% 45%; /* Green - 'مكتمل' */
+    --chart-5: 240 5% 65%; /* Grey - 'ملغي' */
+    --chart-6: 262 80% 58%; /* Purple - 'معلق' */
+
+    --sidebar-background: 267 27% 95%;
+    --sidebar-foreground: 266 20% 15%;
+    --sidebar-primary: 266 68% 32%;
+    --sidebar-primary-foreground: 0 0% 98%;
+    --sidebar-accent: 267 20% 90%;
+    --sidebar-accent-foreground: 266 20% 10%;
+    --sidebar-border: 0 0% 89.8%;
+    --sidebar-ring: 230 83% 60%;
+  }
+ 
+  .dark {
+    --background: 266 20% 8%;
+    --foreground: 266 10% 80%;
+    --card: 266 20% 12%;
+    --card-foreground: 266 10% 80%;
+    --popover: 266 20% 8%;
+    --popover-foreground: 266 10% 80%;
+    --primary: 266 70% 70%;
+    --primary-foreground: 266 68% 10%;
+    --secondary: 0 0% 14.9%;
+    --secondary-foreground: 0 0% 98%;
+    --muted: 0 0% 14.9%;
+    --muted-foreground: 0 0% 63.9%;
+    --accent: 230 83% 60%;
+    --accent-foreground: 0 0% 98%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 0 0% 14.9%;
+    --input: 0 0% 14.9%;
+    --ring: 230 83% 60%;
+
+    --chart-1: 221 83% 63%; /* Lighter Blue */
+    --chart-2: 48 96% 61%; /* Lighter Yellow */
+    --chart-3: 25 84% 60%; /* Lighter Dark Orange */
+    --chart-4: 142 71% 55%; /* Lighter Green */
+    --chart-5: 240 5% 55%; /* Lighter Grey */
+    --chart-6: 262 80% 68%; /* Lighter Purple */
+
+    --sidebar-background: 266 20% 8%;
+    --sidebar-foreground: 266 10% 80%;
+    --sidebar-primary: 266 70% 70%;
+    --sidebar-primary-foreground: 266 68% 10%;
+    --sidebar-accent: 266 20% 15%;
+    --sidebar-accent-foreground: 266 10% 90%;
+    --sidebar-border: 266 20% 15%;
+    --sidebar-ring: 230 83% 60%;
+  }
+}
+ 
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+  [dir="rtl"] body {
+    @apply font-arabic;
+  }
+
+  /* Receipt Styles */
+  .receipt-thermal {
+      font-family: 'Cairo', 'Courier New', Courier, monospace;
+      color: black;
+      background: white;
+      width: 72mm;
+      padding: 3mm;
+      box-sizing: border-box;
+  }
+  .receipt-thermal-header { @apply text-center mb-2; }
+  .receipt-thermal-header h1 { @apply text-lg font-bold break-words; }
+
+  .receipt-thermal-info, .receipt-thermal-summary { @apply text-xs; }
+  .receipt-thermal-info .info-item { @apply flex justify-between; }
+  .receipt-thermal-info .info-item span:first-child { @apply font-semibold; }
+  
+  .receipt-thermal-table { @apply w-full my-3 text-xs border-collapse; }
+  .receipt-thermal-table th { @apply text-start font-bold pb-1 border-b-2 border-dashed border-black; }
+  .receipt-thermal-table td { @apply pt-1 align-top text-start; }
+  .receipt-thermal-table .item-name { @apply break-words; }
+
+  .receipt-thermal-summary .summary-item { @apply flex justify-between; }
+  .receipt-thermal-summary .total { @apply font-bold text-sm pt-1; }
+
+  .receipt-thermal-footer { @apply text-center text-xs mt-3 break-words; }
+  
+  .receipt-thermal-hr { @apply border-t border-dashed border-black my-2; }
+
+  .receipt-container {
+    position: fixed;
+    top: -9999px;
+    left: -9999px;
+    opacity: 0;
+    pointer-events: none;
+    z-index: -100;
+  }
+}
+
+@page {
+  size: 80mm auto;
+  margin: 0;
+}
+
+@media print {
+  body {
+    background: white !important;
+    min-width: 0 !important;
+    padding: 0;
+    margin: 0;
+  }
+  body * {
+    visibility: hidden;
+  }
+  .print-hidden {
+    display: none !important;
+  }
+  .receipt-container,
+  .receipt-container * {
+    visibility: visible;
+  }
+  .receipt-container {
+    display: flex !important;
+    justify-content: center !important;
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    opacity: 1;
+  }
+  .receipt-thermal {
+    margin: 0 auto !important;
+  }
+}

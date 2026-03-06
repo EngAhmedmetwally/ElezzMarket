@@ -1,0 +1,11 @@
+
+{
+  "placeholderImages": [
+    {
+      "id": "app-logo",
+      "description": "الشعار الرسمي للعز ماركت",
+      "imageUrl": "/logo.png",
+      "imageHint": "dairy logo"
+    }
+  ]
+}
