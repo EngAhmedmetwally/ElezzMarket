@@ -489,7 +489,10 @@ export function OrderForm({ onSuccess, orderToEdit }: OrderFormProps) {
                                         autoComplete="off"
                                         disabled={isEditMode}
                                         className={cn(language === 'ar' ? "pl-9" : "pr-9")}
-                                        onFocus={() => setIsCustomerDropdownOpen(true)}
+                                        onFocus={(e) => {
+                                            setIsCustomerDropdownOpen(true);
+                                            e.currentTarget.select();
+                                        }}
                                         onBlur={() => setTimeout(() => setIsCustomerDropdownOpen(false), 200)}
                                     />
                                     {!isEditMode && (
@@ -651,7 +654,10 @@ export function OrderForm({ onSuccess, orderToEdit }: OrderFormProps) {
                                 placeholder={language === 'ar' ? 'اسم المنتج' : 'Product name'} 
                                 {...field}
                                 className={cn(language === 'ar' ? "pl-9" : "pr-9")}
-                                onFocus={() => setActiveProductIndex(index)}
+                                onFocus={(e) => {
+                                    setActiveProductIndex(index);
+                                    e.currentTarget.select();
+                                }}
                                 onBlur={() => setTimeout(() => setActiveProductIndex(null), 200)}
                                 onChange={(e) => {
                                     field.onChange(e);
