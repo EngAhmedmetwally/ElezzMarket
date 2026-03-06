@@ -16,7 +16,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { PlusCircle, Trash2, Search } from "lucide-react";
+import { PlusCircle, Trash2, Search, ChevronDown } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useLanguage } from "@/components/language-provider";
 import type { Customer, Product, OrderItem, ShippingZone, Commission, AppSettings, Order, OrderEditHistoryItem, PaymentMethod } from "@/lib/types";
@@ -605,6 +605,7 @@ export function OrderForm({ onSuccess, orderToEdit }: OrderFormProps) {
                                 <Input 
                                 placeholder={language === 'ar' ? 'اسم المنتج' : 'Product name'} 
                                 {...field}
+                                className={cn(language === 'ar' ? "pl-9" : "pr-9")}
                                 onFocus={() => setActiveProductIndex(index)}
                                 onBlur={() => setTimeout(() => setActiveProductIndex(null), 200)}
                                 onChange={(e) => {
@@ -622,6 +623,19 @@ export function OrderForm({ onSuccess, orderToEdit }: OrderFormProps) {
                                     }
                                 }}
                                 />
+                                <button
+                                    type="button"
+                                    className={cn(
+                                        "absolute top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground p-1",
+                                        language === 'ar' ? "left-2" : "right-2"
+                                    )}
+                                    onMouseDown={(e) => {
+                                        e.preventDefault();
+                                        setActiveProductIndex(activeProductSearchIndex === index ? null : index);
+                                    }}
+                                >
+                                    <ChevronDown className="h-4 w-4" />
+                                </button>
                                 {activeProductSearchIndex === index && products && (
                                     <Card className="absolute z-30 w-full mt-1 shadow-lg max-h-60 overflow-y-auto">
                                         <CardContent className="p-1">
