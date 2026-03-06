@@ -42,7 +42,7 @@ export default function OrdersPage() {
   const { user } = useUser();
   const { data: allOrders, isLoading } = useRealtimeCachedCollection<Order>('orders');
   
-  const [fromDate, setFromDate] = React.useState<Date | undefined>(new Date(new Date().getFullYear(), new Date().getMonth(), 1));
+  const [fromDate, setFromDate] = React.useState<Date | undefined>(new Date(2026, 2, 1));
   const [toDate, setToDate] = React.useState<Date | undefined>(new Date());
   
   const [visibleCount, setVisibleCount] = React.useState(20);
@@ -78,7 +78,8 @@ export default function OrdersPage() {
         dateFiltered = [];
     }
     
-    return [...dateFiltered].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    // Performance fix: Use string comparison for ISO dates instead of creating thousands of Date objects
+    return [...dateFiltered].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
   }, [allOrders, user, fromDate, toDate]);
 
   const displayedOrders = React.useMemo(() => {
@@ -119,7 +120,7 @@ export default function OrdersPage() {
             const sheetName = workbook.SheetNames[0];
             const worksheet = workbook.Sheets[sheetName];
             const json = XLSX.utils.sheet_to_json(worksheet);
-            console.log(json); // In a real app, you would process this data
+            console.log(json);
             toast({
                 title: language === 'ar' ? "اكتمل التحميل" : "Upload Complete",
                 description: language === 'ar' ? `تمت معالجة ${json.length} من الطلبات.` : `Processed ${json.length} orders.`,
@@ -134,12 +135,11 @@ export default function OrdersPage() {
         }
       };
       reader.readAsBinaryString(file);
-      event.target.value = ''; // Reset file input
+      event.target.value = '';
     }
   };
 
   const handleTemplateDownload = () => {
-    // Provide a template row with headers instead of real data
     const sheetData = [{
         'رقم الاوردر': '',
         'التاريخ': '',

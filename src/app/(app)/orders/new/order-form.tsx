@@ -234,7 +234,6 @@ export function OrderForm({ onSuccess, orderToEdit }: OrderFormProps) {
             }
 
             const now = new Date().toISOString();
-
             const historyDescriptions: string[] = [];
 
             const oldShippingCost = orderToEdit.shippingCost || 0;
@@ -265,14 +264,12 @@ export function OrderForm({ onSuccess, orderToEdit }: OrderFormProps) {
             }
 
             const updates: { [key: string]: any } = {};
-            
             const newItemsTotal = data.items.reduce((acc, item) => acc + (item.quantity || 0) * (item.price || 0), 0);
             const newTotal = newItemsTotal + newShippingCost;
-            
             const updatedData = { ...data, shippingCost: newShippingCost, total: newTotal, updatedAt: new Date().toISOString() };
             
             Object.keys(updatedData).forEach(key => {
-                if (key !== 'id') { // Don't update ID
+                if (key !== 'id') {
                     updates[`${orderPath}/${key}`] = (updatedData as any)[key];
                 }
             });
@@ -294,6 +291,7 @@ export function OrderForm({ onSuccess, orderToEdit }: OrderFormProps) {
 
             await update(ref(database), updates);
 
+            // Fetch and update cache
             const orderRef = ref(database, orderPath);
             const snapshot = await get(orderRef);
             if (snapshot.exists()) {
@@ -314,13 +312,8 @@ export function OrderForm({ onSuccess, orderToEdit }: OrderFormProps) {
             const existingCustomer = (customers || []).find(c => c.id === data.customerPhone1);
             if (existingCustomer && existingCustomer.customerName.trim().toLowerCase() !== data.customerName.trim().toLowerCase()) {
                  form.setError("customerName", { type: "manual", message: language === 'ar' ? `رقم الهاتف هذا مسجل للعميل "${existingCustomer.customerName}". يرجى استخدام البحث أو تصحيح الاسم.` : `This phone number is registered to "${existingCustomer.customerName}". Please use search or correct the name.` });
-                 toast({
-                    variant: "destructive",
-                    title: language === 'ar' ? 'بيانات العميل غير متطابقة' : 'Customer Data Mismatch',
-                    description: `${language === 'ar' ? 'رقم الهاتف الذي أدخلته مسجل باسم مختلف في قاعدة البيانات.' : 'The phone number you entered is registered under a different name in the database.'}`,
-                });
-                setIsSubmitting(false);
-                return;
+                 setIsSubmitting(false);
+                 return;
             }
 
             let orderId: string;
@@ -332,9 +325,8 @@ export function OrderForm({ onSuccess, orderToEdit }: OrderFormProps) {
             if (isAutoIdEnabled) {
                 const counterRef = ref(database, 'counters/orders');
                 const transactionResult = await runTransaction(counterRef, (currentCount) => (currentCount === null) ? 20001 : currentCount + 1);
-
                 if (!transactionResult.committed) {
-                    throw new Error(language === 'ar' ? 'فشل الحصول على رقم طلب جديد. قد يكون هناك ضغط على النظام، يرجى المحاولة مرة أخرى.' : 'Failed to get a new order ID. The system might be busy, please try again.');
+                    throw new Error(language === 'ar' ? 'فشل الحصول على رقم طلب جديد.' : 'Failed to get a new order ID.');
                 }
                 orderId = String(transactionResult.snapshot.val());
             } else {
@@ -365,18 +357,11 @@ export function OrderForm({ onSuccess, orderToEdit }: OrderFormProps) {
                 weight: item.weight,
             }));
 
-            // Update sales count and sold weight on product level
-            for (const item of resolvedItems) {
-                const productRef = ref(database, `products/${item.productId}`);
-                await runTransaction(productRef, (currentProduct) => {
-                    if (currentProduct) {
-                        currentProduct.salesCount = (currentProduct.salesCount || 0) + item.quantity;
-                        currentProduct.soldWeight = (currentProduct.soldWeight || 0) + ((item.weight || 0) * item.quantity);
-                    }
-                    return currentProduct;
-                });
-            }
-            
+            // Prepare commission
+            const commissionRulesSnap = await get(ref(database, 'commission-rules'));
+            const commissionRules = commissionRulesSnap.val();
+            const registrationCommissionAmount = commissionRules?.["تم التسجيل"]?.amount || 0;
+
             const statusHistory: any = {};
             const initialHistoryKey = push(child(orderRef, 'statusHistory')).key;
             statusHistory[initialHistoryKey!] = { status: 'تم التسجيل', createdAt: new Date().toISOString(), userName: user.name || user.email || 'Unknown', userId: user.id };
@@ -400,35 +385,58 @@ export function OrderForm({ onSuccess, orderToEdit }: OrderFormProps) {
                 createdAt: new Date().toISOString(),
                 updatedAt: new Date().toISOString(),
                 statusHistory,
-                totalCommission: 0,
+                totalCommission: registrationCommissionAmount,
             };
 
+            // 1. Core write
             await set(orderRef, newOrder);
+            
+            // 2. Immediate cache update for UI responsiveness
+            await idbPut('orders', { ...newOrder, id: orderId, path: orderPath });
+            syncEvents.emit('synced', 'orders');
 
+            // 3. Perform other updates in parallel to save time
+            const backgroundPromises: Promise<any>[] = [];
+            
             const updates: { [key: string]: any } = {};
             updates[`order-lookup/${orderId}`] = true;
             updates[`customer-orders/${data.customerPhone1}/${orderId}`] = true;
-
+            
+            // Check if customer needs to be created
             const customerRef = ref(database, `customers/${data.customerPhone1}`);
-            const customerSnapshot = await get(customerRef);
-            if (!customerSnapshot.exists()) {
-                const newCustomer: Customer = {
-                    customerName: data.customerName, facebookName: data.facebookName, customerPhone1: data.customerPhone1, customerPhone2: data.customerPhone2, customerAddress: data.customerAddress, zoning: data.zoning,
-                };
-                updates[`customers/${data.customerPhone1}`] = newCustomer; 
-            }
-            await update(ref(database), updates);
+            backgroundPromises.push(get(customerRef).then(async (snap) => {
+                if (!snap.exists()) {
+                    const newCustomer: Customer = {
+                        customerName: data.customerName, facebookName: data.facebookName, customerPhone1: data.customerPhone1, customerPhone2: data.customerPhone2, customerAddress: data.customerAddress, zoning: data.zoning,
+                    };
+                    await update(ref(database), { [`customers/${data.customerPhone1}`]: newCustomer });
+                }
+            }));
 
-            const commissionRulesSnap = await get(ref(database, 'commission-rules'));
-            const commissionRules = commissionRulesSnap.val();
-            const registrationCommissionAmount = commissionRules?.["تم التسجيل"]?.amount || 0;
+            // Product stats updates
+            resolvedItems.forEach(item => {
+                const productRef = ref(database, `products/${item.productId}`);
+                backgroundPromises.push(runTransaction(productRef, (currentProduct) => {
+                    if (currentProduct) {
+                        currentProduct.salesCount = (currentProduct.salesCount || 0) + item.quantity;
+                        currentProduct.soldWeight = (currentProduct.soldWeight || 0) + ((item.weight || 0) * item.quantity);
+                    }
+                    return currentProduct;
+                }));
+            });
+
+            // Registration commission
             if (registrationCommissionAmount !== 0) {
                 const newCommission: Omit<Commission, 'id'> = {
                     orderId: orderId, userId: user.id, orderStatus: "تم التسجيل", amount: registrationCommissionAmount, calculationDate: new Date().toISOString(), paymentStatus: 'Calculated',
                 };
-                await set(push(ref(database, 'commissions')), newCommission);
-                await runTransaction(child(orderRef, 'totalCommission'), (currentTotal) => (currentTotal || 0) + registrationCommissionAmount);
+                backgroundPromises.push(set(push(ref(database, 'commissions')), newCommission));
             }
+
+            backgroundPromises.push(update(ref(database), updates));
+
+            // Wait for all non-critical background tasks
+            await Promise.all(backgroundPromises);
 
             setNewOrderId(orderId);
             setIsSuccessModalOpen(true);
@@ -602,7 +610,6 @@ export function OrderForm({ onSuccess, orderToEdit }: OrderFormProps) {
                                 onChange={(e) => {
                                     field.onChange(e);
                                     setActiveProductIndex(index);
-                                    // Reset ID if text is changed manually without selecting
                                     const product = products?.find(p => p.name === e.target.value);
                                     if (product) {
                                         form.setValue(`items.${index}.price`, product.price);
@@ -625,7 +632,7 @@ export function OrderForm({ onSuccess, orderToEdit }: OrderFormProps) {
                                                         key={product.id} 
                                                         className="p-2 hover:bg-muted rounded-md cursor-pointer text-sm flex justify-between items-center"
                                                         onMouseDown={(e) => {
-                                                            e.preventDefault(); // Prevent blur
+                                                            e.preventDefault();
                                                             handleProductSelect(index, product);
                                                         }}
                                                     >
@@ -634,11 +641,6 @@ export function OrderForm({ onSuccess, orderToEdit }: OrderFormProps) {
                                                     </div>
                                                 ))
                                             }
-                                            {products.filter(p => p.name.toLowerCase().includes(field.value.toLowerCase())).length === 0 && (
-                                                <div className="p-2 text-muted-foreground text-xs text-center">
-                                                    {language === 'ar' ? 'لا توجد منتجات مطابقة' : 'No products found'}
-                                                </div>
-                                            )}
                                         </CardContent>
                                     </Card>
                                 )}
