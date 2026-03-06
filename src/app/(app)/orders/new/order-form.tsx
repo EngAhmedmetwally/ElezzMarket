@@ -396,6 +396,7 @@ export function OrderForm({ onSuccess, orderToEdit }: OrderFormProps) {
                 status: "تم التسجيل",
                 moderatorId: user.id,
                 moderatorName: user.name || user.email || 'Unknown',
+                moderatorUsername: user.username,
                 createdAt: new Date().toISOString(),
                 updatedAt: new Date().toISOString(),
                 statusHistory,

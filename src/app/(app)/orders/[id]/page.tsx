@@ -118,6 +118,7 @@ function ReceiptView({ order, language, settings }: { order: Order; language: "a
       mandatoryFooterText: '',
       showCourierName: true,
       showModeratorName: false,
+      showModeratorUsername: false,
       showTotalItems: true,
       showTotalWeight: true,
       logoSize: 100,
@@ -152,12 +153,13 @@ function ReceiptView({ order, language, settings }: { order: Order; language: "a
              {s.showCustomerAddress && order.customerAddress && <p className="text-xs break-words pt-1 text-start">{order.customerAddress}</p>}
         </div>
 
-        {(s.showCourierName && order.courierName || s.showModeratorName && order.moderatorName) && (
+        {(s.showCourierName && order.courierName || s.showModeratorName && order.moderatorName || s.showModeratorUsername && order.moderatorUsername) && (
             <>
                 <Hr />
                 <div className="receipt-thermal-info space-y-0.5">
-                    {s.showCourierName && order.courierName && <div className="info-item"><span>{language === 'ar' ? 'المندوب' : 'Courier'}:</span><span>{order.courierName}</span></div>}
                     {s.showModeratorName && order.moderatorName && <div className="info-item"><span>{language === 'ar' ? 'الوسيط' : 'Moderator'}:</span><span>{order.moderatorName}</span></div>}
+                    {s.showModeratorUsername && order.moderatorUsername && <div className="info-item"><span>{language === 'ar' ? 'اسم الدخول' : 'Username'}:</span><span>{order.moderatorUsername}</span></div>}
+                    {s.showCourierName && order.courierName && <div className="info-item"><span>{language === 'ar' ? 'المندوب' : 'Courier'}:</span><span>{order.courierName}</span></div>}
                 </div>
             </>
         )}

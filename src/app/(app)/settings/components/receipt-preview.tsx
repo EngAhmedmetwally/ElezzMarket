@@ -21,6 +21,7 @@ const mockOrder = {
   paymentMethod: "نقدي عند الاستلام",
   courierName: "عمر إبراهيم",
   moderatorName: "علي حسن",
+  moderatorUsername: "ali.hassan",
   items: [
     { productName: "منتج تجريبي 1", quantity: 2, price: 50.00, weight: 0.5 },
     { productName: "منتج آخر طويل جداً", quantity: 1, price: 120.50, weight: 1.2 },
@@ -59,7 +60,7 @@ export function ReceiptPreview({ settings }: ReceiptPreviewProps) {
             {settings.showDate && <p className="text-xs break-words">{language === 'ar' ? 'التاريخ:' : 'Date:'} {format(new Date(mockOrder.createdAt), "dd/MM/yyyy HH:mm")}</p>}
         </div>
         
-        {(settings.showOrderId || settings.showDate) && (settings.showCustomerName || settings.showFacebookName || settings.showCustomerPhone || settings.showCustomerAddress || settings.showPaymentMethod || settings.showCourierName || settings.showModeratorName) && <Hr />}
+        {(settings.showOrderId || settings.showDate) && (settings.showCustomerName || settings.showFacebookName || settings.showCustomerPhone || settings.showCustomerAddress || settings.showPaymentMethod || settings.showCourierName || settings.showModeratorName || settings.showModeratorUsername) && <Hr />}
         
         <div className="space-y-0.5">
             {settings.showCustomerName && <p className="text-xs font-semibold break-words">{language === 'ar' ? 'العميل:' : 'Customer:'} {mockOrder.customerName}</p>}
@@ -69,17 +70,18 @@ export function ReceiptPreview({ settings }: ReceiptPreviewProps) {
             {settings.showCustomerAddress && mockOrder.customerAddress && <p className="text-xs break-words text-start">{language === 'ar' ? 'العنوان:' : 'Address:'} {mockOrder.customerAddress}</p>}
         </div>
         
-        {(settings.showCourierName && mockOrder.courierName || settings.showModeratorName && mockOrder.moderatorName) && (
+        {(settings.showCourierName && mockOrder.courierName || settings.showModeratorName && mockOrder.moderatorName || settings.showModeratorUsername && mockOrder.moderatorUsername) && (
             <>
                 <Hr />
                 <div className="space-y-0.5">
                     {settings.showModeratorName && mockOrder.moderatorName && <p className="text-xs font-semibold break-words">{language === 'ar' ? 'الوسيط:' : 'Moderator:'} {mockOrder.moderatorName}</p>}
+                    {settings.showModeratorUsername && mockOrder.moderatorUsername && <p className="text-xs font-semibold break-words">{language === 'ar' ? 'اسم دخول الوسيط:' : 'Username:'} {mockOrder.moderatorUsername}</p>}
                     {settings.showCourierName && mockOrder.courierName && <p className="text-xs font-semibold break-words">{language === 'ar' ? 'المندوب:' : 'Courier:'} {mockOrder.courierName}</p>}
                 </div>
             </>
         )}
         
-        {(settings.showCustomerName || settings.showFacebookName || settings.showCustomerPhone || settings.showCustomerAddress || settings.showPaymentMethod || settings.showCourierName || settings.showModeratorName) && <Hr />}
+        {(settings.showCustomerName || settings.showFacebookName || settings.showCustomerPhone || settings.showCustomerAddress || settings.showPaymentMethod || settings.showCourierName || settings.showModeratorName || settings.showModeratorUsername) && <Hr />}
         
         <table className="w-full text-xs border-collapse">
             <thead>

@@ -60,6 +60,7 @@ const receiptSettingsSchema = z.object({
   showItemSubtotal: z.boolean().default(true),
   showCourierName: z.boolean().default(false),
   showModeratorName: z.boolean().default(false),
+  showModeratorUsername: z.boolean().default(false),
   showTotalItems: z.boolean().default(true),
   showTotalWeight: z.boolean().default(true),
 });
@@ -132,6 +133,7 @@ export default function SettingsPage() {
       showItemSubtotal: true,
       showCourierName: false,
       showModeratorName: false,
+      showModeratorUsername: false,
       showTotalItems: true,
       showTotalWeight: true,
     },

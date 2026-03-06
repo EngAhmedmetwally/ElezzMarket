@@ -98,6 +98,7 @@ export type Order = {
   totalCommission?: number;
   moderatorId: string;
   moderatorName: string;
+  moderatorUsername?: string;
   courierId?: string;
   courierName?: string;
   createdAt: string;
@@ -196,6 +197,7 @@ export type ReceiptSettings = {
   showItemWeight?: boolean;
   showCourierName?: boolean;
   showModeratorName?: boolean;
+  showModeratorUsername?: boolean;
   showTotalItems?: boolean;
   showTotalWeight?: boolean;
 };

@@ -124,6 +124,12 @@ export function ReceiptSettingsForm({ form, onSubmit, isAdmin }: ReceiptSettings
                     <FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl>
                     </FormItem>
                 )}/>
+                <FormField control={form.control} name="showModeratorUsername" render={({ field }) => (
+                    <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                    <div className="space-y-0.5"><FormLabel className="text-base">{language === 'ar' ? 'إظهار اسم دخول الوسيط' : 'Show Moderator Username'}</FormLabel></div>
+                    <FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl>
+                    </FormItem>
+                )}/>
             </div>
 
             <h4 className="text-md font-medium">{language === 'ar' ? 'جدول الأصناف' : 'Items Table'}</h4>
