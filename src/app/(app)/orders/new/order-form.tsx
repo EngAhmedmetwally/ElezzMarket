@@ -695,7 +695,7 @@ export function OrderForm({ onSuccess, orderToEdit }: OrderFormProps) {
                 ))}
             </div>
 
-            <Button type="button" variant="outline" size="sm" className="mt-4" onClick={() => append({ productId: "", productName: "", quantity: 1, price: 0, weight: undefined })}>
+            <Button type="button" variant="outline" size="sm" className="mt-4" onClick={() => append({ productId: "", productName: "", quantity: 1, price: 0, weight: undefined }, { shouldFocus: false })}>
                 <PlusCircle className="me-2 h-4 w-4" />
                 {language === 'ar' ? 'إضافة عنصر' : 'Add Item'}
             </Button>

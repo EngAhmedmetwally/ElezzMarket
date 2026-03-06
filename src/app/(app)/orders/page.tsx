@@ -30,7 +30,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useUser } from "@/firebase";
-import type { Order, OrderStatus } from "@/lib/types";
+import type { Order, OrderStatus, Product, ShippingZone, Customer } from "@/lib/types";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useRealtimeCachedCollection } from "@/hooks/use-realtime-cached-collection";
 
@@ -42,6 +42,11 @@ export default function OrdersPage() {
   const { user } = useUser();
   const { data: allOrders, isLoading } = useRealtimeCachedCollection<Order>('orders');
   
+  // Pre-load data for the OrderForm to ensure it's ready when the button is pressed
+  useRealtimeCachedCollection<Product>('products');
+  useRealtimeCachedCollection<ShippingZone>('shipping-zones');
+  useRealtimeCachedCollection<Customer & {id: string}>('customers');
+
   const [fromDate, setFromDate] = React.useState<Date | undefined>(new Date(2026, 2, 1));
   const [toDate, setToDate] = React.useState<Date | undefined>(new Date());
   
@@ -78,7 +83,6 @@ export default function OrdersPage() {
         dateFiltered = [];
     }
     
-    // Performance fix: Use string comparison for ISO dates instead of creating thousands of Date objects
     return [...dateFiltered].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
   }, [allOrders, user, fromDate, toDate]);
 
