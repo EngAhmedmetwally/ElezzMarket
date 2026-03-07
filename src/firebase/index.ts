@@ -11,10 +11,11 @@ export function initializeFirebase() {
   
   if (!getApps().length) {
     try {
-      // Always try to initialize with the explicit config to prevent no-options error
+      // Force initialization with config object to prevent app/no-options error
       firebaseApp = initializeApp(firebaseConfig);
     } catch (e) {
-      console.warn('Firebase initialization warning:', e);
+      console.error('Firebase initialization critical error:', e);
+      // Fallback only if absolutely necessary
       firebaseApp = getApp();
     }
   } else {

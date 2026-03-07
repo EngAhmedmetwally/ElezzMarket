@@ -23,7 +23,7 @@ import type { Customer, Product, OrderItem, ShippingZone, AppSettings, Order } f
 import { Card, CardContent } from "@/components/ui/card";
 import { cn, formatCurrency } from "@/lib/utils";
 import { useDatabase, useUser } from "@/firebase";
-import { ref, get, update, push, set, runTransaction, child } from "firebase/database";
+import { ref, get, update, push, set, runTransaction } from "firebase/database";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useRealtimeCachedCollection } from "@/hooks/use-realtime-cached-collection";
@@ -332,7 +332,7 @@ export function OrderForm({ onSuccess, orderToEdit }: OrderFormProps) {
                                 <span className="text-destructive ms-1">*</span>
                             </FormLabel>
                             <FormControl>
-                                <div className="relative">
+                                <div className="relative group">
                                     <Input 
                                         placeholder={language === 'ar' ? 'ابحث برقم الهاتف...' : 'Search by phone number...'} 
                                         {...field} 
@@ -346,7 +346,12 @@ export function OrderForm({ onSuccess, orderToEdit }: OrderFormProps) {
                                             setCustomerSearch(e.target.value);
                                         }}
                                     />
-                                    <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+                                    <div 
+                                        className="absolute right-3 top-1/2 -translate-y-1/2 cursor-pointer p-1"
+                                        onClick={() => setCustomerSearch(field.value || " ")}
+                                    >
+                                        <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                                    </div>
                                 </div>
                             </FormControl>
                             <FormMessage />
@@ -474,21 +479,27 @@ export function OrderForm({ onSuccess, orderToEdit }: OrderFormProps) {
                             <span className="text-destructive ms-1">*</span>
                         </FormLabel>
                         <FormControl>
-                            <div className="relative">
+                            <div className="relative group">
                                 <Input 
-                                placeholder={language === 'ar' ? 'اسم المنتج' : 'Product name'} 
-                                {...field}
-                                onFocus={(e) => {
-                                    e.target.select();
-                                    setActiveProductIndex(index);
-                                }}
-                                onBlur={() => setTimeout(() => setActiveProductIndex(null), 200)}
-                                onChange={(e) => {
-                                    field.onChange(e);
-                                    setActiveProductIndex(index);
-                                }}
+                                    placeholder={language === 'ar' ? 'اسم المنتج' : 'Product name'} 
+                                    {...field}
+                                    autoComplete="off"
+                                    onFocus={(e) => {
+                                        e.target.select();
+                                        setActiveProductIndex(index);
+                                    }}
+                                    onChange={(e) => {
+                                        field.onChange(e);
+                                        setActiveProductIndex(index);
+                                    }}
+                                    onBlur={() => setTimeout(() => setActiveProductIndex(null), 200)}
                                 />
-                                <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+                                <div 
+                                    className="absolute right-3 top-1/2 -translate-y-1/2 cursor-pointer p-1"
+                                    onClick={() => setActiveProductIndex(index)}
+                                >
+                                    <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                                </div>
                                 {activeProductSearchIndex === index && products && (
                                     <Card className="absolute z-30 w-full mt-1 shadow-lg max-h-60 overflow-y-auto">
                                         <CardContent className="p-1">

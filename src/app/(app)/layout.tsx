@@ -82,13 +82,13 @@ export default function AppLayout({ children }: { children: ReactNode }) {
   const isAdmin = user?.email === 'emergency.admin@elezz.com';
   const showSidebar = isAdmin || !isHomePage;
 
-  // MutationObserver to clean up aria-hidden and pointer-events left by dialogs
+  // Global MutationObserver to unlock screen after dialog closing
   useEffect(() => {
     const cleanup = () => {
       document.body.style.pointerEvents = 'auto';
       document.body.style.overflow = 'auto';
-      const hiddenElements = document.querySelectorAll('[aria-hidden="true"]');
-      hiddenElements.forEach(el => {
+      const blockedElements = document.querySelectorAll('[aria-hidden="true"], [data-aria-hidden="true"]');
+      blockedElements.forEach(el => {
         if (el === document.body || el.tagName === 'MAIN' || el.classList.contains('group/sidebar-wrapper')) {
           el.removeAttribute('aria-hidden');
           el.removeAttribute('data-aria-hidden');
@@ -97,17 +97,23 @@ export default function AppLayout({ children }: { children: ReactNode }) {
     };
 
     const observer = new MutationObserver((mutations) => {
-      const hasDialogRemoved = mutations.some(m => 
-        Array.from(m.removedNodes).some(n => n.nodeType === 1 && (n as HTMLElement).getAttribute('role') === 'dialog')
+      const hasStructuralChange = mutations.some(m => 
+        m.type === 'childList' || (m.type === 'attributes' && (m.attributeName === 'aria-hidden' || m.attributeName === 'style'))
       );
-      if (hasDialogRemoved) {
-        setTimeout(cleanup, 50); // Small delay to ensure Radix finished its processing
+      if (hasStructuralChange) {
+        // Debounce cleanup
+        setTimeout(cleanup, 50);
       }
     });
 
-    observer.observe(document.body, { childList: true });
+    observer.observe(document.body, { 
+      childList: true, 
+      subtree: true, 
+      attributes: true, 
+      attributeFilter: ['aria-hidden', 'style'] 
+    });
+    
     cleanup();
-
     return () => observer.disconnect();
   }, [pathname]);
 
