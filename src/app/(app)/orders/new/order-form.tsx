@@ -464,6 +464,13 @@ export function OrderForm({ onSuccess, orderToEdit }: OrderFormProps) {
                             </FormItem>
                         )}
                     />
+                    <FormField control={form.control} name="shippingCost" render={({ field }) => (
+                        <FormItem>
+                        <FormLabel>{language === 'ar' ? 'تكلفة الشحن' : 'Shipping Cost'}</FormLabel>
+                        <FormControl><Input type="number" {...field} onFocus={(e) => e.target.select()} /></FormControl>
+                        <FormMessage />
+                        </FormItem>
+                    )}/>
                 </div>
             </div>
             
