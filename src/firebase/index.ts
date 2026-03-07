@@ -5,17 +5,15 @@ import { firebaseConfig } from '@/firebase/config';
 import { initializeApp, getApps, getApp, FirebaseApp } from 'firebase/app';
 import { getDatabase } from 'firebase/database';
 
-// IMPORTANT: DO NOT MODIFY THIS FUNCTION
+// Explicitly use the firebaseConfig to ensure initialization succeeds even if auto-init fails.
 export function initializeFirebase() {
   let firebaseApp: FirebaseApp;
   
   if (!getApps().length) {
     try {
-      // Force initialization with config object to prevent app/no-options error
       firebaseApp = initializeApp(firebaseConfig);
     } catch (e) {
       console.error('Firebase initialization critical error:', e);
-      // Fallback only if absolutely necessary
       firebaseApp = getApp();
     }
   } else {
