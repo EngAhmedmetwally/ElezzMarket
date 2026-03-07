@@ -1,3 +1,4 @@
+
 "use client";
 
 import * as React from "react";
@@ -69,7 +70,7 @@ export default function LoginPage() {
             name: 'Emergency Admin',
             email: 'emergency.admin@elezz.com',
             role: 'Admin',
-            avatarUrl: '/avatars/01.png',
+            avatarUrl: `https://api.dicebear.com/7.x/avataaars/svg?seed=admin`,
             status: 'نشط',
             createdAt: new Date().toISOString(),
             orderVisibility: 'all'
@@ -167,7 +168,7 @@ export default function LoginPage() {
                   <FormItem>
                     <FormLabel>{language === 'ar' ? 'اسم المستخدم' : 'Username'}</FormLabel>
                     <FormControl>
-                      <Input placeholder={language === 'ar' ? 'ادخل اسم المستخدم' : 'Enter username'} {...field} />
+                      <Input placeholder={language === 'ar' ? 'ادخل اسم المستخدم' : 'Enter username'} {...field} onFocus={(e) => e.target.select()} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -180,7 +181,7 @@ export default function LoginPage() {
                   <FormItem>
                     <FormLabel>{language === 'ar' ? 'كلمة المرور' : 'Password'}</FormLabel>
                     <FormControl>
-                      <Input type="password" placeholder="••••••••" {...field} />
+                      <Input type="password" placeholder="••••••••" {...field} onFocus={(e) => e.target.select()} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>

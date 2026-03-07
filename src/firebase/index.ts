@@ -7,21 +7,21 @@ import { getDatabase } from 'firebase/database';
 
 // IMPORTANT: DO NOT MODIFY THIS FUNCTION
 export function initializeFirebase() {
+  let firebaseApp: FirebaseApp;
+  
   if (!getApps().length) {
-    let firebaseApp;
     try {
-      // In development or when hosting environment is not ready, 
-      // we explicitly use the config object to prevent 'no-options' error.
+      // Always try to initialize with the explicit config to prevent no-options error
       firebaseApp = initializeApp(firebaseConfig);
     } catch (e) {
-      console.warn('Fallback initialization failed:', e);
-      firebaseApp = initializeApp(firebaseConfig);
+      console.warn('Firebase initialization warning:', e);
+      firebaseApp = getApp();
     }
-
-    return getSdks(firebaseApp);
+  } else {
+    firebaseApp = getApp();
   }
 
-  return getSdks(getApp());
+  return getSdks(firebaseApp);
 }
 
 export function getSdks(firebaseApp: FirebaseApp) {

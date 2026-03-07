@@ -82,16 +82,16 @@ export default function AppLayout({ children }: { children: ReactNode }) {
   const isAdmin = user?.email === 'emergency.admin@elezz.com';
   const showSidebar = isAdmin || !isHomePage;
 
-  // Aggressive Cleanup for Pointer Events & Body Lock (Fixed freezing issue)
+  // MutationObserver to clean up aria-hidden and pointer-events left by dialogs
   useEffect(() => {
     const cleanup = () => {
       document.body.style.pointerEvents = 'auto';
       document.body.style.overflow = 'auto';
-      // Remove any lingering aria-hidden from body or main elements
       const hiddenElements = document.querySelectorAll('[aria-hidden="true"]');
       hiddenElements.forEach(el => {
-        if (el === document.body || el.tagName === 'MAIN') {
+        if (el === document.body || el.tagName === 'MAIN' || el.classList.contains('group/sidebar-wrapper')) {
           el.removeAttribute('aria-hidden');
+          el.removeAttribute('data-aria-hidden');
         }
       });
     };
@@ -100,7 +100,9 @@ export default function AppLayout({ children }: { children: ReactNode }) {
       const hasDialogRemoved = mutations.some(m => 
         Array.from(m.removedNodes).some(n => n.nodeType === 1 && (n as HTMLElement).getAttribute('role') === 'dialog')
       );
-      if (hasDialogRemoved) cleanup();
+      if (hasDialogRemoved) {
+        setTimeout(cleanup, 50); // Small delay to ensure Radix finished its processing
+      }
     });
 
     observer.observe(document.body, { childList: true });

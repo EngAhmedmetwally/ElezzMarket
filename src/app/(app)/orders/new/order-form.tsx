@@ -3,7 +3,7 @@
 
 import * as React from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useFieldArray, useForm } from "react-hook-form";
+import { useFieldArray, useForm, useWatch } from "react-hook-form";
 import * as z from "zod";
 import {
   Form,
@@ -16,10 +16,10 @@ import {
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { PlusCircle, Trash2 } from "lucide-react";
+import { PlusCircle, Trash2, ChevronDown } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useLanguage } from "@/components/language-provider";
-import type { Customer, Product, OrderItem, ShippingZone, Commission, AppSettings, Order, OrderEditHistoryItem } from "@/lib/types";
+import type { Customer, Product, OrderItem, ShippingZone, AppSettings, Order } from "@/lib/types";
 import { Card, CardContent } from "@/components/ui/card";
 import { cn, formatCurrency } from "@/lib/utils";
 import { useDatabase, useUser } from "@/firebase";
@@ -28,7 +28,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Skeleton } from "@/components/ui/skeleton";
 import { useRealtimeCachedCollection } from "@/hooks/use-realtime-cached-collection";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose } from "@/components/ui/dialog";
-import { Label } from "@/components/ui/label";
 import { idbPut } from "@/lib/db";
 import { syncEvents } from "@/lib/sync-events";
 
@@ -49,7 +48,7 @@ const orderFormSchema = z.object({
   items: z
     .array(
       z.object({
-        productId: z.string().optional(),
+        productId: z.string().min(1, "المنتج المحدد ليس من قائمة الاصناف"),
         productName: z.string().min(1, "اسم المنتج مطلوب"),
         quantity: z.coerce.number().int().min(1, "الكمية يجب أن تكون 1 على الأقل"),
         price: z.coerce.number().min(0, "السعر يجب أن يكون رقمًا موجبًا"),
@@ -81,7 +80,7 @@ export function OrderForm({ onSuccess, orderToEdit }: OrderFormProps) {
   const { data: customers } = useRealtimeCachedCollection<Customer & {id: string}>('customers');
   const { data: allProducts } = useRealtimeCachedCollection<Product>('products');
   const { data: shippingZones, isLoading: isLoadingZones } = useRealtimeCachedCollection<ShippingZone>('shipping-zones');
-  const { data: appSettingsCollection, isLoading: isLoadingAppSettings } = useRealtimeCachedCollection<AppSettings>('app-settings');
+  const { data: appSettingsCollection } = useRealtimeCachedCollection<AppSettings>('app-settings');
 
   const products = React.useMemo(() => allProducts?.filter(p => p.isActive), [allProducts]);
 
@@ -91,8 +90,6 @@ export function OrderForm({ onSuccess, orderToEdit }: OrderFormProps) {
   }, [appSettingsCollection]);
 
   const isAutoIdEnabled = appSettings?.autoGenerateOrderId === true;
-
-  const [selectedZone, setSelectedZone] = React.useState<ShippingZone | null>(null);
 
   const form = useForm<OrderFormValues>({
     resolver: zodResolver(orderFormSchema),
@@ -135,11 +132,8 @@ export function OrderForm({ onSuccess, orderToEdit }: OrderFormProps) {
                 weight: item.weight || undefined
             })),
         });
-        const zone = shippingZones?.find(z => z.name === orderToEdit.zoning);
-        setSelectedZone(zone || null);
     }
-  }, [isEditMode, orderToEdit, form, shippingZones]);
-
+  }, [isEditMode, orderToEdit, form]);
 
   const [customerSearch, setCustomerSearch] = React.useState("");
   const allCustomers = customers || [];
@@ -162,9 +156,9 @@ export function OrderForm({ onSuccess, orderToEdit }: OrderFormProps) {
     form.setValue("customerAddress", customer.customerAddress);
     form.setValue("zoning", customer.zoning);
     const zone = shippingZones?.find(z => z.name === customer.zoning);
-    setSelectedZone(zone || null);
     form.setValue("shippingCost", zone?.cost || 0);
     setCustomerSearch(""); 
+    form.trigger(["customerPhone1", "customerName", "customerAddress", "zoning"]);
   };
 
   const handleProductSelect = (index: number, product: Product) => {
@@ -175,21 +169,21 @@ export function OrderForm({ onSuccess, orderToEdit }: OrderFormProps) {
         form.setValue(`items.${index}.weight`, product.weight);
     }
     setActiveProductIndex(null);
+    form.trigger(`items.${index}.productId`);
   };
 
-  const watchedItems = form.watch("items");
-  const watchedShippingCost = form.watch("shippingCost");
-  const itemsTotal = watchedItems.reduce((acc, item) => acc + (Number(item.quantity) || 0) * (Number(item.price) || 0), 0);
-  const shippingCost = Number(watchedShippingCost) || 0;
-  const total = itemsTotal + shippingCost;
+  const watchedItems = useWatch({ control: form.control, name: "items" });
+  const watchedShippingCost = useWatch({ control: form.control, name: "shippingCost" });
+  
+  const itemsTotal = React.useMemo(() => {
+    return watchedItems.reduce((acc, item) => acc + (Number(item?.quantity) || 0) * (Number(item?.price) || 0), 0);
+  }, [watchedItems]);
+
+  const total = itemsTotal + (Number(watchedShippingCost) || 0);
 
   async function onSubmit(data: OrderFormValues) {
     if (!database || !user) {
-      toast({
-        variant: "destructive",
-        title: language === 'ar' ? 'خطأ' : 'Error',
-        description: language === 'ar' ? 'لا يمكن إنشاء الطلب. يرجى تسجيل الدخول أولاً.' : 'Cannot create order. Please sign in first.',
-      });
+      toast({ variant: "destructive", title: "Authentication Error" });
       return;
     }
 
@@ -197,83 +191,50 @@ export function OrderForm({ onSuccess, orderToEdit }: OrderFormProps) {
     try {
         if (isEditMode && orderToEdit) {
             let orderPath = orderToEdit.path;
-            if (!orderPath) {
-                if (orderToEdit.createdAt && orderToEdit.id) {
-                    const d = new Date(orderToEdit.createdAt);
-                    const year = d.getFullYear();
-                    const month = String(d.getMonth() + 1).padStart(2, '0');
-                    const day = String(d.getDate()).padStart(2, '0');
-                    orderPath = `orders/${year}/${month}/${day}/${orderToEdit.id}`;
-                } else {
-                     toast({ variant: "destructive", title: "Error", description: "Order path is missing." });
-                    setIsSubmitting(false);
-                    return;
-                }
+            if (!orderPath && orderToEdit.createdAt) {
+                const d = new Date(orderToEdit.createdAt);
+                orderPath = `orders/${d.getFullYear()}/${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')}/${orderToEdit.id}`;
             }
 
-            const now = new Date().toISOString();
-            const historyDescriptions: string[] = [];
+            if (!orderPath) throw new Error("Order path missing");
 
             const updates: { [key: string]: any } = {};
-            const newItemsTotal = data.items.reduce((acc, item) => acc + (item.quantity || 0) * (item.price || 0), 0);
-            const newTotal = newItemsTotal + (data.shippingCost || 0);
-            const updatedData = { ...data, total: newTotal, updatedAt: new Date().toISOString() };
+            const newTotal = data.items.reduce((acc, item) => acc + (item.quantity || 0) * (item.price || 0), 0) + (data.shippingCost || 0);
             
+            const updatedData = { ...data, total: newTotal, updatedAt: new Date().toISOString() };
             Object.keys(updatedData).forEach(key => {
                 if (key !== 'id') updates[`${orderPath}/${key}`] = (updatedData as any)[key];
             });
 
             await update(ref(database), updates);
-
-            const orderRef = ref(database, orderPath);
-            const snapshot = await get(orderRef);
+            const snapshot = await get(ref(database, orderPath));
             if (snapshot.exists()) {
                 await idbPut('orders', { ...snapshot.val(), id: orderToEdit.id, path: orderPath });
                 syncEvents.emit('synced', 'orders');
             }
 
-            toast({ title: language === 'ar' ? 'تم التحديث' : 'Updated' });
-            if (onSuccess) onSuccess();
-
+            toast({ title: language === 'ar' ? 'تم التحديث بنجاح' : 'Updated successfully' });
+            onSuccess?.();
         } else {
             let orderId: string;
-            const now = new Date();
-            const year = String(now.getFullYear());
-            const month = String(now.getMonth() + 1).padStart(2, '0');
-            const day = String(now.getDate()).padStart(2, '0');
-
             if (isAutoIdEnabled) {
-                const counterRef = ref(database, 'counters/orders');
-                const transactionResult = await runTransaction(counterRef, (currentCount) => (currentCount === null) ? 20001 : currentCount + 1);
-                if (!transactionResult.committed) throw new Error('Failed to get ID');
+                const transactionResult = await runTransaction(ref(database, 'counters/orders'), (current) => (current === null) ? 20001 : current + 1);
+                if (!transactionResult.committed) throw new Error('Failed to generate ID');
                 orderId = String(transactionResult.snapshot.val());
             } else {
                 if (!data.id) {
-                    form.setError("id", { type: "manual", message: "ID Required" });
+                    form.setError("id", { message: "ID Required" });
                     setIsSubmitting(false);
                     return;
                 }
                 orderId = data.id;
             }
             
-            const orderPath = `orders/${year}/${month}/${day}/${orderId}`;
-            const orderRef = ref(database, orderPath);
+            const now = new Date();
+            const orderPath = `orders/${now.getFullYear()}/${String(now.getMonth() + 1).padStart(2, '0')}/${String(now.getDate()).padStart(2, '0')}/${orderId}`;
             
-            const resolvedItems: OrderItem[] = data.items.map(item => ({
-                productId: item.productId!,
-                productName: item.productName,
-                quantity: item.quantity,
-                price: item.price,
-                weight: item.weight,
-            }));
-
             const commissionRulesSnap = await get(ref(database, 'commission-rules'));
-            const commissionRules = commissionRulesSnap.val();
-            const registrationCommissionAmount = commissionRules?.["تم التسجيل"]?.amount || 0;
-
-            const statusHistory: any = {};
-            const initialHistoryKey = push(child(orderRef, 'statusHistory')).key;
-            statusHistory[initialHistoryKey!] = { status: 'تم التسجيل', createdAt: new Date().toISOString(), userName: user.name || user.email || 'Unknown', userId: user.id };
+            const commissionAmount = commissionRulesSnap.val()?.["تم التسجيل"]?.amount || 0;
 
             const newOrder: Order = {
                 id: orderId,
@@ -284,35 +245,55 @@ export function OrderForm({ onSuccess, orderToEdit }: OrderFormProps) {
                 customerAddress: data.customerAddress,
                 zoning: data.zoning,
                 paymentMethod: data.paymentMethod,
-                items: resolvedItems,
-                shippingCost,
+                items: data.items as OrderItem[],
+                shippingCost: data.shippingCost || 0,
                 total,
                 status: "تم التسجيل",
                 moderatorId: user.id,
-                moderatorName: user.name || user.email || 'Unknown',
-                createdAt: new Date().toISOString(),
-                updatedAt: new Date().toISOString(),
-                statusHistory,
-                totalCommission: registrationCommissionAmount,
+                moderatorName: user.name || user.email || 'System',
+                createdAt: now.toISOString(),
+                updatedAt: now.toISOString(),
+                statusHistory: {
+                    [push(ref(database)).key!]: {
+                        status: 'تم التسجيل',
+                        createdAt: now.toISOString(),
+                        userName: user.name || user.email || 'System',
+                        userId: user.id
+                    }
+                },
+                totalCommission: commissionAmount,
             };
 
-            await set(orderRef, newOrder);
-            await idbPut('orders', { ...newOrder, id: orderId, path: orderPath });
+            await set(ref(database, orderPath), newOrder);
+            await idbPut('orders', { ...newOrder, path: orderPath });
             syncEvents.emit('synced', 'orders');
 
             const updates: { [key: string]: any } = {};
             updates[`order-lookup/${orderId}`] = true;
             updates[`customer-orders/${data.customerPhone1}/${orderId}`] = true;
             
-            const customerRef = ref(database, `customers/${data.customerPhone1}`);
-            const snap = await get(customerRef);
-            if (!snap.exists()) {
-                updates[`customers/${data.customerPhone1}`] = { customerName: data.customerName, facebookName: data.facebookName, customerPhone1: data.customerPhone1, customerPhone2: data.customerPhone2, customerAddress: data.customerAddress, zoning: data.zoning };
+            const custSnap = await get(ref(database, `customers/${data.customerPhone1}`));
+            if (!custSnap.exists()) {
+                updates[`customers/${data.customerPhone1}`] = { 
+                    customerName: data.customerName, 
+                    facebookName: data.facebookName, 
+                    customerPhone1: data.customerPhone1, 
+                    customerPhone2: data.customerPhone2, 
+                    customerAddress: data.customerAddress, 
+                    zoning: data.zoning 
+                };
             }
 
-            if (registrationCommissionAmount !== 0) {
+            if (commissionAmount !== 0) {
                 const commRef = push(ref(database, 'commissions'));
-                updates[`commissions/${commRef.key}`] = { orderId: orderId, userId: user.id, orderStatus: "تم التسجيل", amount: registrationCommissionAmount, calculationDate: new Date().toISOString(), paymentStatus: 'Calculated' };
+                updates[`commissions/${commRef.key}`] = { 
+                    orderId, 
+                    userId: user.id, 
+                    orderStatus: "تم التسجيل", 
+                    amount: commissionAmount, 
+                    calculationDate: now.toISOString(), 
+                    paymentStatus: 'Calculated' 
+                };
             }
 
             await update(ref(database), updates);
@@ -334,7 +315,7 @@ export function OrderForm({ onSuccess, orderToEdit }: OrderFormProps) {
                 <FormField control={form.control} name="id" render={({ field }) => (
                     <FormItem>
                     <FormLabel>{language === 'ar' ? 'رقم الطلب' : 'Order ID'}</FormLabel>
-                    <FormControl><Input placeholder={isAutoIdEnabled ? 'تلقائي' : 'أدخل الرقم'} {...field} disabled={isAutoIdEnabled} /></FormControl>
+                    <FormControl><Input placeholder={isAutoIdEnabled ? 'تلقائي' : 'أدخل الرقم'} {...field} disabled={isAutoIdEnabled} onFocus={(e) => e.target.select()} /></FormControl>
                     <FormMessage />
                     </FormItem>
                 )}/>
@@ -351,15 +332,22 @@ export function OrderForm({ onSuccess, orderToEdit }: OrderFormProps) {
                                 <span className="text-destructive ms-1">*</span>
                             </FormLabel>
                             <FormControl>
-                                <Input 
-                                    placeholder={language === 'ar' ? 'ابحث برقم الهاتف...' : 'Search by phone number...'} 
-                                    {...field} 
-                                    autoComplete="off"
-                                    onChange={(e) => {
-                                        field.onChange(e);
-                                        setCustomerSearch(e.target.value);
-                                    }}
-                                />
+                                <div className="relative">
+                                    <Input 
+                                        placeholder={language === 'ar' ? 'ابحث برقم الهاتف...' : 'Search by phone number...'} 
+                                        {...field} 
+                                        autoComplete="off"
+                                        onFocus={(e) => {
+                                            e.target.select();
+                                            setCustomerSearch(field.value);
+                                        }}
+                                        onChange={(e) => {
+                                            field.onChange(e);
+                                            setCustomerSearch(e.target.value);
+                                        }}
+                                    />
+                                    <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+                                </div>
                             </FormControl>
                             <FormMessage />
                             </FormItem>
@@ -390,21 +378,21 @@ export function OrderForm({ onSuccess, orderToEdit }: OrderFormProps) {
                             {language === 'ar' ? 'اسم العميل' : 'Customer Name'}
                             <span className="text-destructive ms-1">*</span>
                         </FormLabel>
-                        <FormControl><Input {...field} /></FormControl>
+                        <FormControl><Input {...field} onFocus={(e) => e.target.select()} /></FormControl>
                         <FormMessage />
                         </FormItem>
                     )}/>
                     <FormField control={form.control} name="facebookName" render={({ field }) => (
                         <FormItem>
                         <FormLabel>{language === 'ar' ? 'اسم فيسبوك' : 'Facebook Name'}</FormLabel>
-                        <FormControl><Input {...field} /></FormControl>
+                        <FormControl><Input {...field} onFocus={(e) => e.target.select()} /></FormControl>
                         <FormMessage />
                         </FormItem>
                     )}/>
                     <FormField control={form.control} name="customerPhone2" render={({ field }) => (
                         <FormItem>
                         <FormLabel>{language === 'ar' ? 'رقم الموبايل 2' : 'Phone Number 2'}</FormLabel>
-                        <FormControl><Input {...field} /></FormControl>
+                        <FormControl><Input {...field} onFocus={(e) => e.target.select()} /></FormControl>
                         <FormMessage />
                         </FormItem>
                     )}/>
@@ -414,7 +402,7 @@ export function OrderForm({ onSuccess, orderToEdit }: OrderFormProps) {
                             {language === 'ar' ? 'العنوان بالتفصيل' : 'Detailed Address'}
                             <span className="text-destructive ms-1">*</span>
                         </FormLabel>
-                        <FormControl><Input {...field} /></FormControl>
+                        <FormControl><Input {...field} onFocus={(e) => e.target.select()} /></FormControl>
                         <FormMessage />
                         </FormItem>
                     )}/>
@@ -425,10 +413,9 @@ export function OrderForm({ onSuccess, orderToEdit }: OrderFormProps) {
                             <span className="text-destructive ms-1">*</span>
                         </FormLabel>
                         {isLoadingZones ? <Skeleton className="h-10" /> : (
-                        <Select onValueChange={(zoneName) => {
-                            field.onChange(zoneName);
-                            const zone = shippingZones?.find(z => z.name === zoneName);
-                            setSelectedZone(zone || null);
+                        <Select onValueChange={(val) => {
+                            field.onChange(val);
+                            const zone = shippingZones?.find(z => z.name === val);
                             form.setValue("shippingCost", zone?.cost || 0);
                         }} value={field.value}>
                             <FormControl>
@@ -491,13 +478,17 @@ export function OrderForm({ onSuccess, orderToEdit }: OrderFormProps) {
                                 <Input 
                                 placeholder={language === 'ar' ? 'اسم المنتج' : 'Product name'} 
                                 {...field}
-                                onFocus={() => setActiveProductIndex(index)}
+                                onFocus={(e) => {
+                                    e.target.select();
+                                    setActiveProductIndex(index);
+                                }}
                                 onBlur={() => setTimeout(() => setActiveProductIndex(null), 200)}
                                 onChange={(e) => {
                                     field.onChange(e);
                                     setActiveProductIndex(index);
                                 }}
                                 />
+                                <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
                                 {activeProductSearchIndex === index && products && (
                                     <Card className="absolute z-30 w-full mt-1 shadow-lg max-h-60 overflow-y-auto">
                                         <CardContent className="p-1">
@@ -528,7 +519,7 @@ export function OrderForm({ onSuccess, orderToEdit }: OrderFormProps) {
                     <FormField control={form.control} name={`items.${index}.quantity`} render={({ field }) => (
                         <FormItem className="w-24">
                         <FormLabel className={cn(index > 0 && 'sr-only')}>الكمية</FormLabel>
-                        <FormControl><Input type="number" {...field} /></FormControl>
+                        <FormControl><Input type="number" {...field} onFocus={(e) => e.target.select()} /></FormControl>
                         <FormMessage />
                         </FormItem>
                     )}/>
@@ -546,7 +537,7 @@ export function OrderForm({ onSuccess, orderToEdit }: OrderFormProps) {
                 ))}
             </div>
 
-            <Button type="button" variant="outline" size="sm" className="mt-4" onClick={() => append({ productId: "", productName: "", quantity: 1, price: 0, weight: undefined })}>
+            <Button type="button" variant="outline" size="sm" className="mt-4" onClick={() => append({ productId: "", productName: "", quantity: 1, price: 0, weight: undefined }, { shouldFocus: false })}>
                 <PlusCircle className="me-2 h-4 w-4" />
                 إضافة صنف
             </Button>
@@ -560,7 +551,7 @@ export function OrderForm({ onSuccess, orderToEdit }: OrderFormProps) {
                     </div>
                     <div className="flex justify-between">
                         <p>{language === 'ar' ? 'تكلفة الشحن' : 'Shipping Cost'}</p>
-                        <p>{formatCurrency(shippingCost, language)}</p>
+                        <p>{formatCurrency(Number(watchedShippingCost) || 0, language)}</p>
                     </div>
                     <Separator className="my-2" />
                     <div className="flex justify-between font-bold text-lg">
@@ -585,7 +576,7 @@ export function OrderForm({ onSuccess, orderToEdit }: OrderFormProps) {
                 setNewOrderId(null);
             }
         }}>
-            <DialogContent>
+            <DialogContent onOpenAutoFocus={(e) => e.preventDefault()}>
                 <DialogHeader>
                     <DialogTitle>{language === 'ar' ? 'تم إنشاء الطلب بنجاح' : 'Order Created'}</DialogTitle>
                 </DialogHeader>
