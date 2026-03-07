@@ -29,12 +29,15 @@ export function UserNav() {
     router.replace('/');
   }
 
+  // Use a stable avatar fallback from DiceBear
+  const avatarUrl = user?.avatarUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user?.username || 'default'}`;
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button variant="ghost" className="relative h-8 w-8 rounded-full">
           <Avatar className="h-9 w-9">
-            <AvatarImage src={user?.avatarUrl || "/avatars/01.png"} alt={user?.name || ''} data-ai-hint="male avatar" />
+            <AvatarImage src={avatarUrl} alt={user?.name || ''} />
             <AvatarFallback>{user?.name?.charAt(0) || 'U'}</AvatarFallback>
           </Avatar>
         </Button>

@@ -16,10 +16,10 @@ import {
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { PlusCircle, Trash2, Search, ChevronDown } from "lucide-react";
+import { PlusCircle, Trash2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useLanguage } from "@/components/language-provider";
-import type { Customer, Product, OrderItem, ShippingZone, Commission, AppSettings, Order, OrderEditHistoryItem, PaymentMethod } from "@/lib/types";
+import type { Customer, Product, OrderItem, ShippingZone, Commission, AppSettings, Order, OrderEditHistoryItem } from "@/lib/types";
 import { Card, CardContent } from "@/components/ui/card";
 import { cn, formatCurrency } from "@/lib/utils";
 import { useDatabase, useUser } from "@/firebase";
@@ -56,18 +56,7 @@ const orderFormSchema = z.object({
         weight: z.coerce.number().optional(),
       })
     )
-    .min(1, "يجب أن يحتوي الطلب على عنصر واحد على الأقل.")
-    .superRefine((items, ctx) => {
-        items.forEach((item, index) => {
-            if (!item.productId) {
-                ctx.addIssue({
-                    path: [index, 'productName'],
-                    message: "المنتج المحدد غير موجود. يرجى الاختيار من القائمة.",
-                    code: z.ZodIssueCode.custom
-                });
-            }
-        });
-    }),
+    .min(1, "يجب أن يحتوي الطلب على عنصر واحد على الأقل."),
 });
 
 type OrderFormValues = z.infer<typeof orderFormSchema>;
@@ -88,7 +77,6 @@ export function OrderForm({ onSuccess, orderToEdit }: OrderFormProps) {
   const [isSuccessModalOpen, setIsSuccessModalOpen] = React.useState(false);
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [activeProductSearchIndex, setActiveProductIndex] = React.useState<number | null>(null);
-  const [isCustomerDropdownOpen, setIsCustomerDropdownOpen] = React.useState(false);
 
   const { data: customers } = useRealtimeCachedCollection<Customer & {id: string}>('customers');
   const { data: allProducts } = useRealtimeCachedCollection<Product>('products');
@@ -177,7 +165,6 @@ export function OrderForm({ onSuccess, orderToEdit }: OrderFormProps) {
     setSelectedZone(zone || null);
     form.setValue("shippingCost", zone?.cost || 0);
     setCustomerSearch(""); 
-    setIsCustomerDropdownOpen(false);
   };
 
   const handleProductSelect = (index: number, product: Product) => {
@@ -195,13 +182,6 @@ export function OrderForm({ onSuccess, orderToEdit }: OrderFormProps) {
   const itemsTotal = watchedItems.reduce((acc, item) => acc + (Number(item.quantity) || 0) * (Number(item.price) || 0), 0);
   const shippingCost = Number(watchedShippingCost) || 0;
   const total = itemsTotal + shippingCost;
-  const customerPhone1Value = form.watch("customerPhone1");
-  
-  React.useEffect(() => {
-      if(!isEditMode) {
-        setCustomerSearch(customerPhone1Value);
-      }
-  }, [customerPhone1Value, isEditMode]);
 
   async function onSubmit(data: OrderFormValues) {
     if (!database || !user) {
@@ -225,11 +205,7 @@ export function OrderForm({ onSuccess, orderToEdit }: OrderFormProps) {
                     const day = String(d.getDate()).padStart(2, '0');
                     orderPath = `orders/${year}/${month}/${day}/${orderToEdit.id}`;
                 } else {
-                     toast({
-                        variant: "destructive",
-                        title: "Error",
-                        description: "Order path or creation date is missing, cannot update.",
-                    });
+                     toast({ variant: "destructive", title: "Error", description: "Order path is missing." });
                     setIsSubmitting(false);
                     return;
                 }
@@ -238,86 +214,28 @@ export function OrderForm({ onSuccess, orderToEdit }: OrderFormProps) {
             const now = new Date().toISOString();
             const historyDescriptions: string[] = [];
 
-            const oldShippingCost = orderToEdit.shippingCost || 0;
-            const newShippingCost = data.shippingCost || 0;
-            if (oldShippingCost !== newShippingCost) {
-                historyDescriptions.push(`تغيير قيمة الشحن من ${formatCurrency(oldShippingCost, language)} إلى ${formatCurrency(newShippingCost, language)}`);
-            }
-
-            const oldItemsMap = new Map(orderToEdit.items.map(item => [item.productId, item]));
-            const newItemsMap = new Map(data.items.map(item => [item.productId!, item]));
-
-            for (const [productId, oldItem] of oldItemsMap.entries()) {
-                const newItem = newItemsMap.get(productId);
-                if (!newItem) {
-                    historyDescriptions.push(`حذف صنف: ${oldItem.productName}`);
-                } else {
-                    if (oldItem.quantity !== newItem.quantity) {
-                        const action = newItem.quantity > oldItem.quantity ? 'إضافة كمية' : 'تخفيض كمية';
-                        historyDescriptions.push(`${action} لـ ${newItem.productName} من ${oldItem.quantity} إلى ${newItem.quantity}`);
-                    }
-                }
-            }
-
-            for (const [productId, newItem] of newItemsMap.entries()) {
-                if (!oldItemsMap.has(productId)) {
-                    historyDescriptions.push(`إضافة صنف: ${newItem.productName} (الكمية: ${newItem.quantity})`);
-                }
-            }
-
             const updates: { [key: string]: any } = {};
             const newItemsTotal = data.items.reduce((acc, item) => acc + (item.quantity || 0) * (item.price || 0), 0);
-            const newTotal = newItemsTotal + newShippingCost;
-            const updatedData = { ...data, shippingCost: newShippingCost, total: newTotal, updatedAt: new Date().toISOString() };
+            const newTotal = newItemsTotal + (data.shippingCost || 0);
+            const updatedData = { ...data, total: newTotal, updatedAt: new Date().toISOString() };
             
             Object.keys(updatedData).forEach(key => {
-                if (key !== 'id') {
-                    updates[`${orderPath}/${key}`] = (updatedData as any)[key];
-                }
+                if (key !== 'id') updates[`${orderPath}/${key}`] = (updatedData as any)[key];
             });
-
-            if (historyDescriptions.length > 0) {
-                 historyDescriptions.forEach(desc => {
-                    const historyKey = push(child(ref(database), `${orderPath}/editHistory`)).key;
-                    if (historyKey) {
-                        const newHistoryEntry: Omit<OrderEditHistoryItem, 'id'> = {
-                            userId: user.id,
-                            userName: user.name || user.email || "Unknown",
-                            createdAt: now,
-                            description: desc,
-                        };
-                        updates[`${orderPath}/editHistory/${historyKey}`] = newHistoryEntry;
-                    }
-                });
-            }
 
             await update(ref(database), updates);
 
-            // Fetch and update cache
             const orderRef = ref(database, orderPath);
             const snapshot = await get(orderRef);
             if (snapshot.exists()) {
-                const updatedOrderFromDB = snapshot.val();
-                const orderToCache = { ...updatedOrderFromDB, id: orderToEdit.id, path: orderPath };
-                await idbPut('orders', orderToCache);
+                await idbPut('orders', { ...snapshot.val(), id: orderToEdit.id, path: orderPath });
                 syncEvents.emit('synced', 'orders');
             }
 
-            toast({
-                title: language === 'ar' ? 'تم تحديث الطلب' : 'Order Updated',
-                description: `${language === 'ar' ? 'تم تحديث الطلب رقم' : 'Order #'} ${orderToEdit.id} ${language === 'ar' ? 'بنجاح.' : 'has been updated.'}`
-            });
-
+            toast({ title: language === 'ar' ? 'تم التحديث' : 'Updated' });
             if (onSuccess) onSuccess();
 
         } else {
-            const existingCustomer = (customers || []).find(c => c.id === data.customerPhone1);
-            if (existingCustomer && existingCustomer.customerName.trim().toLowerCase() !== data.customerName.trim().toLowerCase()) {
-                 form.setError("customerName", { type: "manual", message: language === 'ar' ? `رقم الهاتف هذا مسجل للعميل "${existingCustomer.customerName}". يرجى استخدام البحث أو تصحيح الاسم.` : `This phone number is registered to "${existingCustomer.customerName}". Please use search or correct the name.` });
-                 setIsSubmitting(false);
-                 return;
-            }
-
             let orderId: string;
             const now = new Date();
             const year = String(now.getFullYear());
@@ -327,25 +245,15 @@ export function OrderForm({ onSuccess, orderToEdit }: OrderFormProps) {
             if (isAutoIdEnabled) {
                 const counterRef = ref(database, 'counters/orders');
                 const transactionResult = await runTransaction(counterRef, (currentCount) => (currentCount === null) ? 20001 : currentCount + 1);
-                if (!transactionResult.committed) {
-                    throw new Error(language === 'ar' ? 'فشل الحصول على رقم طلب جديد.' : 'Failed to get a new order ID.');
-                }
+                if (!transactionResult.committed) throw new Error('Failed to get ID');
                 orderId = String(transactionResult.snapshot.val());
             } else {
                 if (!data.id) {
-                    form.setError("id", { type: "manual", message: language === 'ar' ? "رقم الطلب مطلوب." : "Order ID is required." });
+                    form.setError("id", { type: "manual", message: "ID Required" });
                     setIsSubmitting(false);
                     return;
                 }
                 orderId = data.id;
-                const orderPathCheck = `orders/${year}/${month}/${day}/${orderId}`;
-                const orderRefCheck = ref(database, orderPathCheck);
-                const snapshot = await get(orderRefCheck);
-                if (snapshot.exists()) {
-                    form.setError("id", { type: "manual", message: language === 'ar' ? "رقم الطلب هذا موجود بالفعل." : "This Order ID already exists." });
-                    setIsSubmitting(false);
-                    return;
-                }
             }
             
             const orderPath = `orders/${year}/${month}/${day}/${orderId}`;
@@ -359,7 +267,6 @@ export function OrderForm({ onSuccess, orderToEdit }: OrderFormProps) {
                 weight: item.weight,
             }));
 
-            // Prepare commission
             const commissionRulesSnap = await get(ref(database, 'commission-rules'));
             const commissionRules = commissionRulesSnap.val();
             const registrationCommissionAmount = commissionRules?.["تم التسجيل"]?.amount || 0;
@@ -383,73 +290,37 @@ export function OrderForm({ onSuccess, orderToEdit }: OrderFormProps) {
                 status: "تم التسجيل",
                 moderatorId: user.id,
                 moderatorName: user.name || user.email || 'Unknown',
-                moderatorUsername: user.username,
                 createdAt: new Date().toISOString(),
                 updatedAt: new Date().toISOString(),
                 statusHistory,
                 totalCommission: registrationCommissionAmount,
             };
 
-            // 1. Core write
             await set(orderRef, newOrder);
-            
-            // 2. Immediate cache update for UI responsiveness
             await idbPut('orders', { ...newOrder, id: orderId, path: orderPath });
             syncEvents.emit('synced', 'orders');
 
-            // 3. Perform other updates in parallel to save time
-            const backgroundPromises: Promise<any>[] = [];
-            
             const updates: { [key: string]: any } = {};
             updates[`order-lookup/${orderId}`] = true;
             updates[`customer-orders/${data.customerPhone1}/${orderId}`] = true;
             
-            // Check if customer needs to be created
             const customerRef = ref(database, `customers/${data.customerPhone1}`);
-            backgroundPromises.push(get(customerRef).then(async (snap) => {
-                if (!snap.exists()) {
-                    const newCustomer: Customer = {
-                        customerName: data.customerName, facebookName: data.facebookName, customerPhone1: data.customerPhone1, customerPhone2: data.customerPhone2, customerAddress: data.customerAddress, zoning: data.zoning,
-                    };
-                    await update(ref(database), { [`customers/${data.customerPhone1}`]: newCustomer });
-                }
-            }));
-
-            // Product stats updates
-            resolvedItems.forEach(item => {
-                const productRef = ref(database, `products/${item.productId}`);
-                backgroundPromises.push(runTransaction(productRef, (currentProduct) => {
-                    if (currentProduct) {
-                        currentProduct.salesCount = (currentProduct.salesCount || 0) + item.quantity;
-                        currentProduct.soldWeight = (currentProduct.soldWeight || 0) + ((item.weight || 0) * item.quantity);
-                    }
-                    return currentProduct;
-                }));
-            });
-
-            // Registration commission
-            if (registrationCommissionAmount !== 0) {
-                const newCommission: Omit<Commission, 'id'> = {
-                    orderId: orderId, userId: user.id, orderStatus: "تم التسجيل", amount: registrationCommissionAmount, calculationDate: new Date().toISOString(), paymentStatus: 'Calculated',
-                };
-                backgroundPromises.push(set(push(ref(database, 'commissions')), newCommission));
+            const snap = await get(customerRef);
+            if (!snap.exists()) {
+                updates[`customers/${data.customerPhone1}`] = { customerName: data.customerName, facebookName: data.facebookName, customerPhone1: data.customerPhone1, customerPhone2: data.customerPhone2, customerAddress: data.customerAddress, zoning: data.zoning };
             }
 
-            backgroundPromises.push(update(ref(database), updates));
+            if (registrationCommissionAmount !== 0) {
+                const commRef = push(ref(database, 'commissions'));
+                updates[`commissions/${commRef.key}`] = { orderId: orderId, userId: user.id, orderStatus: "تم التسجيل", amount: registrationCommissionAmount, calculationDate: new Date().toISOString(), paymentStatus: 'Calculated' };
+            }
 
-            // Wait for all non-critical background tasks
-            await Promise.all(backgroundPromises);
-
+            await update(ref(database), updates);
             setNewOrderId(orderId);
             setIsSuccessModalOpen(true);
         }
     } catch(e: any) {
-        console.error("Order submission failed:", e);
-        toast({
-            variant: "destructive",
-            title: isEditMode ? (language === 'ar' ? 'فشل تحديث الطلب' : 'Order Update Failed') : (language === 'ar' ? 'فشل إنشاء الطلب' : 'Order Creation Failed'),
-            description: e.message,
-        });
+        toast({ variant: "destructive", title: "Error", description: e.message });
     } finally {
         setIsSubmitting(false);
     }
@@ -463,12 +334,7 @@ export function OrderForm({ onSuccess, orderToEdit }: OrderFormProps) {
                 <FormField control={form.control} name="id" render={({ field }) => (
                     <FormItem>
                     <FormLabel>{language === 'ar' ? 'رقم الطلب' : 'Order ID'}</FormLabel>
-                    <FormControl><Input 
-                        placeholder={isAutoIdEnabled ? (language === 'ar' ? 'سيتم إنشاؤه تلقائياً' : 'Will be auto-generated') : (language === 'ar' ? 'أدخل رقم الطلب' : 'Enter Order ID')} 
-                        {...field}
-                        value={field.value ?? ''}
-                        disabled={isAutoIdEnabled || isLoadingAppSettings} 
-                    /></FormControl>
+                    <FormControl><Input placeholder={isAutoIdEnabled ? 'تلقائي' : 'أدخل الرقم'} {...field} disabled={isAutoIdEnabled} /></FormControl>
                     <FormMessage />
                     </FormItem>
                 )}/>
@@ -485,75 +351,35 @@ export function OrderForm({ onSuccess, orderToEdit }: OrderFormProps) {
                                 <span className="text-destructive ms-1">*</span>
                             </FormLabel>
                             <FormControl>
-                                <div className="relative">
-                                    <Input 
-                                        placeholder={language === 'ar' ? 'ابحث برقم الهاتف...' : 'Search by phone number...'} 
-                                        {...field} 
-                                        autoComplete="off"
-                                        disabled={isEditMode}
-                                        className={cn(language === 'ar' ? "pl-9" : "pr-9")}
-                                        onFocus={(e) => {
-                                            setIsCustomerDropdownOpen(true);
-                                            e.currentTarget.select();
-                                        }}
-                                        onBlur={() => setTimeout(() => setIsCustomerDropdownOpen(false), 200)}
-                                    />
-                                    {!isEditMode && (
-                                        <button
-                                            type="button"
-                                            className={cn(
-                                                "absolute top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground p-1",
-                                                language === 'ar' ? "left-2" : "right-2"
-                                            )}
-                                            onMouseDown={(e) => {
-                                                e.preventDefault();
-                                                setIsCustomerDropdownOpen(!isCustomerDropdownOpen);
-                                            }}
-                                        >
-                                            <ChevronDown className="h-4 w-4" />
-                                        </button>
-                                    )}
-                                </div>
+                                <Input 
+                                    placeholder={language === 'ar' ? 'ابحث برقم الهاتف...' : 'Search by phone number...'} 
+                                    {...field} 
+                                    autoComplete="off"
+                                    onChange={(e) => {
+                                        field.onChange(e);
+                                        setCustomerSearch(e.target.value);
+                                    }}
+                                />
                             </FormControl>
                             <FormMessage />
                             </FormItem>
                         )}/>
-                        {(isCustomerDropdownOpen || (customerSearch && filteredCustomers.length > 0)) && !isEditMode && (
+                        {customerSearch && filteredCustomers.length > 0 && (
                             <Card className="absolute z-20 w-full mt-1 shadow-lg">
                                 <CardContent className="p-2 max-h-60 overflow-y-auto">
-                                    {filteredCustomers.length > 0 ? (
-                                        filteredCustomers.map((customer: any) => (
-                                            <div 
-                                                key={customer.id} 
-                                                className="p-2 hover:bg-muted rounded-md cursor-pointer text-sm"
-                                                onMouseDown={(e) => {
-                                                    e.preventDefault();
-                                                    handleCustomerSelect(customer);
-                                                }}
-                                            >
-                                                <p className="font-medium">{customer.customerPhone1}</p>
-                                                <p className="text-muted-foreground">{customer.customerName}</p>
-                                            </div>
-                                        ))
-                                    ) : customerSearch ? (
-                                        <div className="p-2 text-sm text-muted-foreground text-center">
-                                            {language === 'ar' ? 'لا توجد نتائج' : 'No results found'}
+                                    {filteredCustomers.map((customer: any) => (
+                                        <div 
+                                            key={customer.id} 
+                                            className="p-2 hover:bg-muted rounded-md cursor-pointer text-sm"
+                                            onMouseDown={(e) => {
+                                                e.preventDefault();
+                                                handleCustomerSelect(customer);
+                                            }}
+                                        >
+                                            <p className="font-medium">{customer.customerPhone1}</p>
+                                            <p className="text-muted-foreground">{customer.customerName}</p>
                                         </div>
-                                    ) : (
-                                        allCustomers.slice(0, 20).map((customer: any) => (
-                                            <div 
-                                                key={customer.id} 
-                                                className="p-2 hover:bg-muted rounded-md cursor-pointer text-sm"
-                                                onMouseDown={(e) => {
-                                                    e.preventDefault();
-                                                    handleCustomerSelect(customer);
-                                                }}
-                                            >
-                                                <p className="font-medium">{customer.customerPhone1}</p>
-                                                <p className="text-muted-foreground">{customer.customerName}</p>
-                                            </div>
-                                        ))
-                                    )}
+                                    ))}
                                 </CardContent>
                             </Card>
                         )}
@@ -564,27 +390,21 @@ export function OrderForm({ onSuccess, orderToEdit }: OrderFormProps) {
                             {language === 'ar' ? 'اسم العميل' : 'Customer Name'}
                             <span className="text-destructive ms-1">*</span>
                         </FormLabel>
-                        <FormControl>
-                            <Input 
-                                placeholder={language === 'ar' ? 'اسم العميل الكامل' : 'Full customer name'} 
-                                {...field} 
-                                disabled={isEditMode}
-                            />
-                        </FormControl>
+                        <FormControl><Input {...field} /></FormControl>
                         <FormMessage />
                         </FormItem>
                     )}/>
                     <FormField control={form.control} name="facebookName" render={({ field }) => (
                         <FormItem>
                         <FormLabel>{language === 'ar' ? 'اسم فيسبوك' : 'Facebook Name'}</FormLabel>
-                        <FormControl><Input placeholder={language === 'ar' ? 'اسم الملف الشخصي على فيسبوك' : 'Facebook profile name'} {...field}  disabled={isEditMode} /></FormControl>
+                        <FormControl><Input {...field} /></FormControl>
                         <FormMessage />
                         </FormItem>
                     )}/>
                     <FormField control={form.control} name="customerPhone2" render={({ field }) => (
                         <FormItem>
-                        <FormLabel>{language === 'ar' ? 'رقم الموبايل 2 (اختياري)' : 'Phone Number 2 (Optional)'}</FormLabel>
-                        <FormControl><Input placeholder={language === 'ar' ? 'رقم موبايل إضافي' : 'Additional phone number'} {...field} disabled={isEditMode} /></FormControl>
+                        <FormLabel>{language === 'ar' ? 'رقم الموبايل 2' : 'Phone Number 2'}</FormLabel>
+                        <FormControl><Input {...field} /></FormControl>
                         <FormMessage />
                         </FormItem>
                     )}/>
@@ -594,7 +414,7 @@ export function OrderForm({ onSuccess, orderToEdit }: OrderFormProps) {
                             {language === 'ar' ? 'العنوان بالتفصيل' : 'Detailed Address'}
                             <span className="text-destructive ms-1">*</span>
                         </FormLabel>
-                        <FormControl><Input placeholder={language === 'ar' ? 'عنوان الشارع، رقم المبنى، إلخ.' : 'Street address, building no., etc.'} {...field} disabled={isEditMode} /></FormControl>
+                        <FormControl><Input {...field} /></FormControl>
                         <FormMessage />
                         </FormItem>
                     )}/>
@@ -610,7 +430,7 @@ export function OrderForm({ onSuccess, orderToEdit }: OrderFormProps) {
                             const zone = shippingZones?.find(z => z.name === zoneName);
                             setSelectedZone(zone || null);
                             form.setValue("shippingCost", zone?.cost || 0);
-                        }} value={field.value} disabled={isEditMode}>
+                        }} value={field.value}>
                             <FormControl>
                             <SelectTrigger>
                                 <SelectValue placeholder={language === 'ar' ? 'اختر منطقة' : 'Select a zone'} />
@@ -638,7 +458,7 @@ export function OrderForm({ onSuccess, orderToEdit }: OrderFormProps) {
                                 <Select onValueChange={field.onChange} value={field.value}>
                                     <FormControl>
                                         <SelectTrigger>
-                                            <SelectValue placeholder={language === 'ar' ? 'اختر طريقة الدفع' : 'Select a payment method'} />
+                                            <SelectValue placeholder="اختر طريقة الدفع" />
                                         </SelectTrigger>
                                     </FormControl>
                                     <SelectContent>
@@ -659,9 +479,9 @@ export function OrderForm({ onSuccess, orderToEdit }: OrderFormProps) {
             <h3 className="text-lg font-medium mb-4">{language === 'ar' ? 'عناصر الطلب' : 'Order Items'}</h3>
             <div className="space-y-4">
                 {fields.map((field, index) => (
-                <div key={field.id} className="flex flex-wrap gap-4 items-start relative">
+                <div key={field.id} className="flex flex-wrap gap-4 items-end relative">
                     <FormField control={form.control} name={`items.${index}.productName`} render={({ field }) => (
-                        <FormItem className="flex-1 min-w-[150px]">
+                        <FormItem className="flex-1 min-w-[200px]">
                         <FormLabel className={cn(index > 0 && 'sr-only', "dark:text-yellow-400")}>
                             {language === 'ar' ? 'المنتج' : 'Product'}
                             <span className="text-destructive ms-1">*</span>
@@ -671,40 +491,13 @@ export function OrderForm({ onSuccess, orderToEdit }: OrderFormProps) {
                                 <Input 
                                 placeholder={language === 'ar' ? 'اسم المنتج' : 'Product name'} 
                                 {...field}
-                                className={cn(language === 'ar' ? "pl-9" : "pr-9")}
-                                onFocus={(e) => {
-                                    setActiveProductIndex(index);
-                                    e.currentTarget.select();
-                                }}
+                                onFocus={() => setActiveProductIndex(index)}
                                 onBlur={() => setTimeout(() => setActiveProductIndex(null), 200)}
                                 onChange={(e) => {
                                     field.onChange(e);
                                     setActiveProductIndex(index);
-                                    const product = products?.find(p => p.name === e.target.value);
-                                    if (product) {
-                                        form.setValue(`items.${index}.price`, product.price);
-                                        form.setValue(`items.${index}.productId`, product.id);
-                                        if (product.weight) {
-                                            form.setValue(`items.${index}.weight`, product.weight);
-                                        }
-                                    } else {
-                                        form.setValue(`items.${index}.productId`, '');
-                                    }
                                 }}
                                 />
-                                <button
-                                    type="button"
-                                    className={cn(
-                                        "absolute top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground p-1",
-                                        language === 'ar' ? "left-2" : "right-2"
-                                    )}
-                                    onMouseDown={(e) => {
-                                        e.preventDefault();
-                                        setActiveProductIndex(activeProductSearchIndex === index ? null : index);
-                                    }}
-                                >
-                                    <ChevronDown className="h-4 w-4" />
-                                </button>
                                 {activeProductSearchIndex === index && products && (
                                     <Card className="absolute z-30 w-full mt-1 shadow-lg max-h-60 overflow-y-auto">
                                         <CardContent className="p-1">
@@ -732,58 +525,30 @@ export function OrderForm({ onSuccess, orderToEdit }: OrderFormProps) {
                         <FormMessage />
                         </FormItem>
                     )}/>
-                    <FormField
-                        control={form.control}
-                        name={`items.${index}.weight`}
-                        render={({ field }) => (
-                        <FormItem className="w-24">
-                            <FormLabel className={cn(index > 0 && "sr-only")}>
-                            {language === "ar" ? "الوزن" : "Weight"}
-                            </FormLabel>
-                            <FormControl>
-                            <Input
-                                type="number"
-                                placeholder={language === "ar" ? "الوزن" : "Weight"}
-                                {...field}
-                                value={field.value ?? ''}
-                                step="any"
-                                disabled
-                            />
-                            </FormControl>
-                            <FormMessage />
-                        </FormItem>
-                        )}
-                    />
                     <FormField control={form.control} name={`items.${index}.quantity`} render={({ field }) => (
                         <FormItem className="w-24">
-                        <FormLabel className={cn(index > 0 && 'sr-only')}>
-                            {language === 'ar' ? 'الكمية' : 'Quantity'}
-                            <span className="text-destructive ms-1">*</span>
-                        </FormLabel>
-                        <FormControl><Input type="number" placeholder={language === 'ar' ? 'الكمية' : 'Qty'} {...field} /></FormControl>
+                        <FormLabel className={cn(index > 0 && 'sr-only')}>الكمية</FormLabel>
+                        <FormControl><Input type="number" {...field} /></FormControl>
                         <FormMessage />
                         </FormItem>
                     )}/>
                     <FormField control={form.control} name={`items.${index}.price`} render={({ field }) => (
                         <FormItem className="w-32">
-                        <FormLabel className={cn(index > 0 && 'sr-only')}>{language === 'ar' ? 'السعر (جنيه)' : 'Price (EGP)'}</FormLabel>
-                        <FormControl><Input type="number" placeholder={language === 'ar' ? 'السعر' : 'Price'} {...field} disabled /></FormControl>
+                        <FormLabel className={cn(index > 0 && 'sr-only')}>السعر</FormLabel>
+                        <FormControl><Input type="number" {...field} disabled /></FormControl>
                         <FormMessage />
                         </FormItem>
                     )}/>
-                    <div className={cn('pt-2', index > 0 && 'md:pt-8')}>
                     <Button type="button" variant="destructive" size="icon" onClick={() => remove(index)} disabled={fields.length === 1}>
                         <Trash2 className="h-4 w-4" />
-                        <span className="sr-only">{language === 'ar' ? 'إزالة عنصر' : 'Remove item'}</span>
                     </Button>
-                    </div>
                 </div>
                 ))}
             </div>
 
-            <Button type="button" variant="outline" size="sm" className="mt-4" onClick={() => append({ productId: "", productName: "", quantity: 1, price: 0, weight: undefined }, { shouldFocus: false })}>
+            <Button type="button" variant="outline" size="sm" className="mt-4" onClick={() => append({ productId: "", productName: "", quantity: 1, price: 0, weight: undefined })}>
                 <PlusCircle className="me-2 h-4 w-4" />
-                {language === 'ar' ? 'إضافة عنصر' : 'Add Item'}
+                إضافة صنف
             </Button>
             
             <Separator className="my-6" />
@@ -793,26 +558,9 @@ export function OrderForm({ onSuccess, orderToEdit }: OrderFormProps) {
                         <p>{language === 'ar' ? 'مجموع المنتجات' : 'Items Subtotal'}</p>
                         <p>{formatCurrency(itemsTotal, language)}</p>
                     </div>
-                    <div className="flex justify-between items-center">
-                        <Label>{language === 'ar' ? 'تكلفة الشحن' : 'Shipping Cost'}</Label>
-                        <FormField
-                            control={form.control}
-                            name="shippingCost"
-                            render={({ field }) => (
-                                <FormItem className="w-32">
-                                    <FormControl>
-                                        <Input
-                                            type="number"
-                                            className="text-end"
-                                            {...field}
-                                            value={field.value ?? ''}
-                                            step="any"
-                                        />
-                                    </FormControl>
-                                    <FormMessage />
-                                </FormItem>
-                            )}
-                        />
+                    <div className="flex justify-between">
+                        <p>{language === 'ar' ? 'تكلفة الشحن' : 'Shipping Cost'}</p>
+                        <p>{formatCurrency(shippingCost, language)}</p>
                     </div>
                     <Separator className="my-2" />
                     <div className="flex justify-between font-bold text-lg">
@@ -824,9 +572,7 @@ export function OrderForm({ onSuccess, orderToEdit }: OrderFormProps) {
 
             <div className="flex justify-end gap-2">
             <Button type="submit" disabled={isSubmitting}>
-                {isSubmitting 
-                    ? (language === 'ar' ? 'جاري الحفظ...' : 'Saving...') 
-                    : isEditMode ? (language === 'ar' ? 'حفظ التغييرات' : 'Save Changes') : (language === 'ar' ? 'إنشاء الطلب' : 'Create Order')}
+                {isSubmitting ? "جاري الحفظ..." : isEditMode ? "حفظ التغييرات" : "إنشاء الطلب"}
             </Button>
             </div>
         </form>
@@ -837,21 +583,18 @@ export function OrderForm({ onSuccess, orderToEdit }: OrderFormProps) {
                 if (onSuccess) onSuccess();
                 form.reset();
                 setNewOrderId(null);
-                setSelectedZone(null);
             }
         }}>
             <DialogContent>
                 <DialogHeader>
-                    <DialogTitle>{language === 'ar' ? 'تم إنشاء الطلب بنجاح' : 'Order Created Successfully'}</DialogTitle>
+                    <DialogTitle>{language === 'ar' ? 'تم إنشاء الطلب بنجاح' : 'Order Created'}</DialogTitle>
                 </DialogHeader>
                 <div className="py-4 text-center">
-                    <p className="text-lg">{language === 'ar' ? `تم تسجيل الطلب رقم` : `Order registered with number`}</p>
-                    <p className="text-2xl font-bold text-primary mt-2">{newOrderId}</p>
+                    <p className="text-lg">رقم الطلب:</p>
+                    <p className="text-2xl font-bold text-primary">{newOrderId}</p>
                 </div>
                 <DialogFooter>
-                    <DialogClose asChild>
-                        <Button>{language === 'ar' ? 'موافق' : 'OK'}</Button>
-                    </DialogClose>
+                    <DialogClose asChild><Button>موافق</Button></DialogClose>
                 </DialogFooter>
             </DialogContent>
         </Dialog>

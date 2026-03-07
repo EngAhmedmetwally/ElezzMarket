@@ -23,13 +23,10 @@ import {
   Package,
   FileText,
   ShoppingBag,
-  RotateCcw,
   BadgePercent,
   Users2,
-  CalendarDays,
   Truck,
   Settings,
-  FileX,
   Clock,
   CircleDollarSign,
 } from "lucide-react";
@@ -85,14 +82,20 @@ export default function AppLayout({ children }: { children: ReactNode }) {
   const isAdmin = user?.email === 'emergency.admin@elezz.com';
   const showSidebar = isAdmin || !isHomePage;
 
-  // Aggressive Cleanup for Pointer Events & Body Lock
+  // Aggressive Cleanup for Pointer Events & Body Lock (Fixed freezing issue)
   useEffect(() => {
     const cleanup = () => {
       document.body.style.pointerEvents = 'auto';
       document.body.style.overflow = 'auto';
+      // Remove any lingering aria-hidden from body or main elements
+      const hiddenElements = document.querySelectorAll('[aria-hidden="true"]');
+      hiddenElements.forEach(el => {
+        if (el === document.body || el.tagName === 'MAIN') {
+          el.removeAttribute('aria-hidden');
+        }
+      });
     };
 
-    // Global listener for escape key and mutations
     const observer = new MutationObserver((mutations) => {
       const hasDialogRemoved = mutations.some(m => 
         Array.from(m.removedNodes).some(n => n.nodeType === 1 && (n as HTMLElement).getAttribute('role') === 'dialog')
@@ -101,20 +104,14 @@ export default function AppLayout({ children }: { children: ReactNode }) {
     });
 
     observer.observe(document.body, { childList: true });
-    
-    // Also cleanup on path change
     cleanup();
 
     return () => observer.disconnect();
   }, [pathname]);
 
   const visibleNavItems = React.useMemo(() => {
-    if (isAdmin) {
-      return navItems;
-    }
-    if (!user?.permissions) {
-      return [];
-    }
+    if (isAdmin) return navItems;
+    if (!user?.permissions) return [];
 
     const permissions = user.permissions as any;
 
@@ -130,9 +127,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
             return null;
         }
         if (item.id && permissions[item.id]) {
-            if (permissions[item.id].view) {
-                return item;
-            }
+            if (permissions[item.id].view) return item;
         }
         return null;
     }).filter((item): item is NonNullable<typeof item> => item !== null);
@@ -175,7 +170,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
                     <>
                       <SidebarMenuButton
                         asChild
-                        isActive={pathname.startsWith(item.href) && !item.children.some(child => pathname === child.href && child.href !== item.href)}
+                        isActive={pathname.startsWith(item.href)}
                         tooltip={language === 'ar' ? item.arLabel : item.label}
                       >
                         <Link href={item.href!}>

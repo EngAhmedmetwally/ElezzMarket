@@ -3,7 +3,7 @@
 
 import * as React from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm, type FieldPath } from "react-hook-form";
+import { useForm } from "react-hook-form";
 import * as z from "zod";
 import {
   Form,
@@ -29,7 +29,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import type { User, AppSettings, Permissions } from "@/lib/types";
 import { useDatabase, useDoc, useMemoFirebase } from "@/firebase";
-import { ref, set, push, update, get } from "firebase/database";
+import { ref, set, push, update } from "firebase/database";
 
 
 const permissionsSchema = z.object({
@@ -89,13 +89,6 @@ const getUserFormSchema = (isEditMode: boolean) => z.object({
             });
         }
         if (!isEditMode && (!data.password || data.password.length < 6)) {
-             ctx.addIssue({
-                code: z.ZodIssueCode.custom,
-                message: "كلمة المرور يجب أن لا تقل عن 6 أحرف",
-                path: ['password'],
-            });
-        }
-        if (isEditMode && data.password && data.password.length > 0 && data.password.length < 6) {
              ctx.addIssue({
                 code: z.ZodIssueCode.custom,
                 message: "كلمة المرور يجب أن لا تقل عن 6 أحرف",
@@ -204,7 +197,6 @@ export function AddUserForm({ onSuccess, userToEdit }: AddUserFormProps) {
 
   React.useEffect(() => {
     if (userToEdit) {
-      // Safely merge permissions
       const basePerms = userToEdit.permissions || defaultPermissions;
       const reportPerms = (userToEdit.permissions?.reports || defaultPermissions.reports) as any;
 
@@ -240,19 +232,15 @@ export function AddUserForm({ onSuccess, userToEdit }: AddUserFormProps) {
     }
     
     let finalPermissions: any = data.permissions;
-    if (data.role === 'Courier') {
-        finalPermissions = defaultPermissions; // Basic courier set
-    }
+    if (data.role === 'Courier') finalPermissions = defaultPermissions;
 
     try {
         if (isEditMode && userToEdit) {
             const userRef = ref(database, `users/${userToEdit.id}`);
-            const username = data.role === 'Courier' ? userToEdit.username : (data.username || userToEdit.username);
-            
             const userDataToUpdate: any = {
               name: data.fullName,
-              username: username,
-              email: `${username}@elezz.com`,
+              username: data.username || userToEdit.username,
+              email: `${data.username || userToEdit.username}@elezz.com`,
               role: data.role,
               phone1: data.phone1 || "",
               phone2: data.phone2 || "",
@@ -283,7 +271,7 @@ export function AddUserForm({ onSuccess, userToEdit }: AddUserFormProps) {
                 permissions: finalPermissions as any,
                 createdAt: new Date().toISOString(),
                 status: "نشط",
-                avatarUrl: `/avatars/0${(Math.floor(Math.random() * 6)) + 1}.png`
+                avatarUrl: `https://api.dicebear.com/7.x/avataaars/svg?seed=${username}`
             };
 
             await set(newUserRef, newUser);
