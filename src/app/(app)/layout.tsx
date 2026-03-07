@@ -82,13 +82,14 @@ export default function AppLayout({ children }: { children: ReactNode }) {
   const isAdmin = user?.email === 'emergency.admin@elezz.com';
   const showSidebar = isAdmin || !isHomePage;
 
-  // Global MutationObserver to unlock screen after dialog closing
+  // AGGRESSIVE CLEANUP: Global MutationObserver to unlock screen and remove aria-hidden blocking
   useEffect(() => {
     const cleanup = () => {
       document.body.style.pointerEvents = 'auto';
       document.body.style.overflow = 'auto';
       const blockedElements = document.querySelectorAll('[aria-hidden="true"], [data-aria-hidden="true"]');
       blockedElements.forEach(el => {
+        // We specifically target elements that Radix might leave blocked
         if (el === document.body || el.tagName === 'MAIN' || el.classList.contains('group/sidebar-wrapper')) {
           el.removeAttribute('aria-hidden');
           el.removeAttribute('data-aria-hidden');
@@ -101,8 +102,8 @@ export default function AppLayout({ children }: { children: ReactNode }) {
         m.type === 'childList' || (m.type === 'attributes' && (m.attributeName === 'aria-hidden' || m.attributeName === 'style'))
       );
       if (hasStructuralChange) {
-        // Debounce cleanup
-        setTimeout(cleanup, 50);
+        // Debounce slightly to allow Radix to finish its cycles
+        setTimeout(cleanup, 100);
       }
     });
 

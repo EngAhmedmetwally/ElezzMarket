@@ -527,6 +527,13 @@ export function OrderForm({ onSuccess, orderToEdit }: OrderFormProps) {
                         <FormMessage />
                         </FormItem>
                     )}/>
+                    <FormField control={form.control} name={`items.${index}.weight`} render={({ field }) => (
+                        <FormItem className="w-20">
+                        <FormLabel className={cn(index > 0 && 'sr-only')}>الوزن</FormLabel>
+                        <FormControl><Input type="number" step="any" {...field} value={field.value ?? ''} onFocus={(e) => e.target.select()} /></FormControl>
+                        <FormMessage />
+                        </FormItem>
+                    )}/>
                     <FormField control={form.control} name={`items.${index}.quantity`} render={({ field }) => (
                         <FormItem className="w-24">
                         <FormLabel className={cn(index > 0 && 'sr-only')}>الكمية</FormLabel>
