@@ -480,7 +480,10 @@ export function OrderForm({ onSuccess, orderToEdit }: OrderFormProps) {
                     <div className="relative md:col-span-2">
                         <FormField control={form.control} name="customerPhone1" render={({ field }) => (
                             <FormItem>
-                            <FormLabel>{language === 'ar' ? 'رقم الموبايل 1' : 'Phone Number 1'}</FormLabel>
+                            <FormLabel className="dark:text-yellow-400">
+                                {language === 'ar' ? 'رقم الموبايل 1' : 'Phone Number 1'}
+                                <span className="text-destructive ms-1">*</span>
+                            </FormLabel>
                             <FormControl>
                                 <div className="relative">
                                     <Input 
@@ -557,7 +560,10 @@ export function OrderForm({ onSuccess, orderToEdit }: OrderFormProps) {
                     </div>
                     <FormField control={form.control} name="customerName" render={({ field }) => (
                         <FormItem>
-                        <FormLabel>{language === 'ar' ? 'اسم العميل' : 'Customer Name'}</FormLabel>
+                        <FormLabel className="dark:text-yellow-400">
+                            {language === 'ar' ? 'اسم العميل' : 'Customer Name'}
+                            <span className="text-destructive ms-1">*</span>
+                        </FormLabel>
                         <FormControl>
                             <Input 
                                 placeholder={language === 'ar' ? 'اسم العميل الكامل' : 'Full customer name'} 
@@ -584,14 +590,20 @@ export function OrderForm({ onSuccess, orderToEdit }: OrderFormProps) {
                     )}/>
                     <FormField control={form.control} name="customerAddress" render={({ field }) => (
                         <FormItem className="md:col-span-2">
-                        <FormLabel>{language === 'ar' ? 'العنوان بالتفصيل' : 'Detailed Address'}</FormLabel>
+                        <FormLabel className="dark:text-yellow-400">
+                            {language === 'ar' ? 'العنوان بالتفصيل' : 'Detailed Address'}
+                            <span className="text-destructive ms-1">*</span>
+                        </FormLabel>
                         <FormControl><Input placeholder={language === 'ar' ? 'عنوان الشارع، رقم المبنى، إلخ.' : 'Street address, building no., etc.'} {...field} disabled={isEditMode} /></FormControl>
                         <FormMessage />
                         </FormItem>
                     )}/>
                     <FormField control={form.control} name="zoning" render={({ field }) => (
                         <FormItem>
-                        <FormLabel>{language === 'ar' ? 'المنطقة' : 'Zoning'}</FormLabel>
+                        <FormLabel className="dark:text-yellow-400">
+                            {language === 'ar' ? 'المنطقة' : 'Zoning'}
+                            <span className="text-destructive ms-1">*</span>
+                        </FormLabel>
                         {isLoadingZones ? <Skeleton className="h-10" /> : (
                         <Select onValueChange={(zoneName) => {
                             field.onChange(zoneName);
@@ -619,7 +631,10 @@ export function OrderForm({ onSuccess, orderToEdit }: OrderFormProps) {
                         name="paymentMethod"
                         render={({ field }) => (
                             <FormItem>
-                                <FormLabel>{language === 'ar' ? 'طريقة الدفع' : 'Payment Method'}</FormLabel>
+                                <FormLabel className="dark:text-yellow-400">
+                                    {language === 'ar' ? 'طريقة الدفع' : 'Payment Method'}
+                                    <span className="text-destructive ms-1">*</span>
+                                </FormLabel>
                                 <Select onValueChange={field.onChange} value={field.value}>
                                     <FormControl>
                                         <SelectTrigger>
@@ -647,7 +662,10 @@ export function OrderForm({ onSuccess, orderToEdit }: OrderFormProps) {
                 <div key={field.id} className="flex flex-wrap gap-4 items-start relative">
                     <FormField control={form.control} name={`items.${index}.productName`} render={({ field }) => (
                         <FormItem className="flex-1 min-w-[150px]">
-                        <FormLabel className={cn(index > 0 && 'sr-only')}>{language === 'ar' ? 'المنتج' : 'Product'}</FormLabel>
+                        <FormLabel className={cn(index > 0 && 'sr-only', "dark:text-yellow-400")}>
+                            {language === 'ar' ? 'المنتج' : 'Product'}
+                            <span className="text-destructive ms-1">*</span>
+                        </FormLabel>
                         <FormControl>
                             <div className="relative">
                                 <Input 
@@ -738,7 +756,10 @@ export function OrderForm({ onSuccess, orderToEdit }: OrderFormProps) {
                     />
                     <FormField control={form.control} name={`items.${index}.quantity`} render={({ field }) => (
                         <FormItem className="w-24">
-                        <FormLabel className={cn(index > 0 && 'sr-only')}>{language === 'ar' ? 'الكمية' : 'Quantity'}</FormLabel>
+                        <FormLabel className={cn(index > 0 && 'sr-only')}>
+                            {language === 'ar' ? 'الكمية' : 'Quantity'}
+                            <span className="text-destructive ms-1">*</span>
+                        </FormLabel>
                         <FormControl><Input type="number" placeholder={language === 'ar' ? 'الكمية' : 'Qty'} {...field} /></FormControl>
                         <FormMessage />
                         </FormItem>
