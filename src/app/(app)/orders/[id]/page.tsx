@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { StatusBadge } from "@/components/status-badge";
-import { Printer, Search, Edit, History, Share2, Loader2 } from "lucide-react";
+import { Printer, Search, Edit, History, Share2, Loader2, MessageSquare } from "lucide-react";
 import { useLanguage } from "@/components/language-provider";
 import type { Order, OrderStatus, StatusHistoryItem, User, Commission, ReceiptSettings, OrderEditHistoryItem, OrderStatusConfig, OrderItem } from "@/lib/types";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -713,6 +713,15 @@ export default function OrderDetailsPage() {
                       <p className="text-sm text-muted-foreground">{order.customerAddress}</p>
                        <p className="text-sm text-muted-foreground">{language === 'ar' ? 'المنطقة:' : 'Zoning:'} {order.zoning}</p>
                         {order.paymentMethod && <p className="text-sm font-medium">{language === 'ar' ? 'طريقة الدفع:' : 'Payment Method:'} <span className="font-normal text-muted-foreground">{order.paymentMethod}</span></p>}
+                        {order.notes && (
+                            <div className="mt-4 p-3 bg-muted rounded-md border-l-4 border-primary">
+                                <div className="flex items-center gap-2 mb-1">
+                                    <MessageSquare className="h-4 w-4 text-primary" />
+                                    <span className="font-bold text-xs">{language === 'ar' ? 'ملاحظات الطلب:' : 'Order Notes:'}</span>
+                                </div>
+                                <p className="text-sm">{order.notes}</p>
+                            </div>
+                        )}
                   </CardContent>
               </Card>
                <Card>

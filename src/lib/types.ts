@@ -105,6 +105,7 @@ export type Order = {
   updatedAt: string;
   statusHistory: Record<string, StatusHistoryItem>;
   editHistory?: Record<string, OrderEditHistoryItem>;
+  notes?: string;
 };
 
 export type CommissionRule = {

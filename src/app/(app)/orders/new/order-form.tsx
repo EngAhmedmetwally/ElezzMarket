@@ -30,6 +30,7 @@ import { useRealtimeCachedCollection } from "@/hooks/use-realtime-cached-collect
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose } from "@/components/ui/dialog";
 import { idbPut } from "@/lib/db";
 import { syncEvents } from "@/lib/sync-events";
+import { Textarea } from "@/components/ui/textarea";
 
 const orderFormSchema = z.object({
   id: z.string().optional(),
@@ -45,6 +46,7 @@ const orderFormSchema = z.object({
       required_error: "طريقة الدفع مطلوبة",
   }),
   shippingCost: z.coerce.number().min(0, "تكلفة الشحن يجب أن تكون رقمًا موجبًا").optional(),
+  notes: z.string().optional(),
   items: z
     .array(
       z.object({
@@ -103,6 +105,7 @@ export function OrderForm({ onSuccess, orderToEdit }: OrderFormProps) {
       zoning: "",
       paymentMethod: "نقدي عند الاستلام",
       shippingCost: 0,
+      notes: "",
       items: [{ productId: "", productName: "", quantity: 1, price: 0, weight: undefined }],
     },
   });
@@ -124,6 +127,7 @@ export function OrderForm({ onSuccess, orderToEdit }: OrderFormProps) {
             zoning: orderToEdit.zoning,
             paymentMethod: orderToEdit.paymentMethod || "نقدي عند الاستلام",
             shippingCost: orderToEdit.shippingCost || 0,
+            notes: orderToEdit.notes || "",
             items: orderToEdit.items.map(item => ({
                 productId: item.productId,
                 productName: item.productName,
@@ -249,6 +253,7 @@ export function OrderForm({ onSuccess, orderToEdit }: OrderFormProps) {
                 shippingCost: data.shippingCost || 0,
                 total,
                 status: "تم التسجيل",
+                notes: data.notes || "",
                 moderatorId: user.id,
                 moderatorName: user.name || user.email || 'System',
                 createdAt: now.toISOString(),
@@ -256,6 +261,7 @@ export function OrderForm({ onSuccess, orderToEdit }: OrderFormProps) {
                 statusHistory: {
                     [push(ref(database)).key!]: {
                         status: 'تم التسجيل',
+                        notes: data.notes || "",
                         createdAt: now.toISOString(),
                         userName: user.name || user.email || 'System',
                         userId: user.id
@@ -468,6 +474,13 @@ export function OrderForm({ onSuccess, orderToEdit }: OrderFormProps) {
                         <FormItem>
                         <FormLabel>{language === 'ar' ? 'تكلفة الشحن' : 'Shipping Cost'}</FormLabel>
                         <FormControl><Input type="number" {...field} onFocus={(e) => e.target.select()} /></FormControl>
+                        <FormMessage />
+                        </FormItem>
+                    )}/>
+                    <FormField control={form.control} name="notes" render={({ field }) => (
+                        <FormItem className="md:col-span-2">
+                        <FormLabel>{language === 'ar' ? 'ملاحظات الطلب' : 'Order Notes'}</FormLabel>
+                        <FormControl><Textarea placeholder={language === 'ar' ? 'أضف أي ملاحظات إضافية هنا...' : 'Add any additional notes here...'} {...field} onFocus={(e) => e.target.select()} /></FormControl>
                         <FormMessage />
                         </FormItem>
                     )}/>
