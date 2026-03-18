@@ -9,6 +9,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormDescription } fr
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Slider } from "@/components/ui/slider";
+import { Textarea } from "@/components/ui/textarea";
 
 interface ReceiptSettingsFormProps {
     form: ReturnType<typeof useForm<any>>;
@@ -191,9 +192,9 @@ export function ReceiptSettingsForm({ form, onSubmit, isAdmin }: ReceiptSettings
              <h4 className="text-md font-medium">{language === 'ar' ? 'ذيل الإيصال' : 'Footer'}</h4>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-center pl-4 border-l-2 md:border-r-2 rtl:border-r-2 rtl:border-l-0">
                 <FormField control={form.control} name="footerText" render={({ field }) => (
-                    <FormItem>
+                    <FormItem className="md:col-span-2">
                     <FormLabel>{language === 'ar' ? 'نص ذيل الإيصال' : 'Footer Text'}</FormLabel>
-                    <FormControl><Input {...field} value={field.value ?? ''} /></FormControl>
+                    <FormControl><Textarea {...field} value={field.value ?? ''} className="min-h-[100px]" /></FormControl>
                     </FormItem>
                 )}/>
             </div>
@@ -204,7 +205,7 @@ export function ReceiptSettingsForm({ form, onSubmit, isAdmin }: ReceiptSettings
                     <FormField control={form.control} name="mandatoryFooterText" render={({ field }) => (
                         <FormItem>
                         <FormLabel>{language === 'ar' ? 'نص ذيل الإيصال الإجباري' : 'Mandatory Footer Text'}</FormLabel>
-                        <FormControl><Input {...field} value={field.value ?? ''} /></FormControl>
+                        <FormControl><Textarea {...field} value={field.value ?? ''} className="min-h-[100px]" /></FormControl>
                         <FormDescription>{language === 'ar' ? 'هذا النص سيظهر دائماً في نهاية الإيصال ولا يمكن للمستخدمين الآخرين تغييره.' : 'This text will always appear at the end of the receipt and cannot be changed by other users.'}</FormDescription>
                         </FormItem>
                     )}/>
