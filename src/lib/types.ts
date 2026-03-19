@@ -187,6 +187,7 @@ export type ReceiptSettings = {
   showCustomerPhone?: boolean;
   showCustomerAddress?: boolean;
   showPaymentMethod?: boolean;
+  showOrderNotes?: boolean;
   showItemsSubtotal?: boolean;
   showShippingCost?: boolean;
   showGrandTotal?: boolean;

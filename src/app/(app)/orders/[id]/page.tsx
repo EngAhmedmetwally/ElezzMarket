@@ -114,6 +114,7 @@ function ReceiptView({ order, language, settings }: { order: Order; language: "a
       showOrderId: true, showDate: true, showCustomerName: true, showFacebookName: true, showCustomerPhone: true, showCustomerAddress: true, showPaymentMethod: true,
       showItemWeight: false, showItemPrice: true, showItemSubtotal: true,
       showItemsSubtotal: true, showShippingCost: true, showGrandTotal: true,
+      showOrderNotes: false,
       footerText: language === 'ar' ? 'شكراً لتعاملكم معنا!' : 'Thank you!',
       mandatoryFooterText: '',
       showCourierName: true,
@@ -160,6 +161,16 @@ function ReceiptView({ order, language, settings }: { order: Order; language: "a
                     {s.showModeratorName && order.moderatorName && <div className="info-item"><span>{language === 'ar' ? 'الوسيط' : 'Moderator'}:</span><span>{order.moderatorName}</span></div>}
                     {s.showModeratorUsername && order.moderatorUsername && <div className="info-item"><span>{language === 'ar' ? 'الوسيط' : 'Moderator'}:</span><span>{order.moderatorUsername}</span></div>}
                     {s.showCourierName && order.courierName && <div className="info-item"><span>{language === 'ar' ? 'المندوب' : 'Courier'}:</span><span>{order.courierName}</span></div>}
+                </div>
+            </>
+        )}
+
+        {s.showOrderNotes && order.notes && (
+            <>
+                <Hr />
+                <div className="receipt-thermal-info" style={{ backgroundColor: '#f9f9f9', padding: '4px' }}>
+                    <p className="font-bold">{language === 'ar' ? 'ملاحظات الطلب:' : 'Order Notes:'}</p>
+                    <p style={{ fontSize: '10px', fontStyle: 'italic', lineHeight: '1.2' }}>{order.notes}</p>
                 </div>
             </>
         )}

@@ -22,6 +22,7 @@ const mockOrder = {
   courierName: "عمر إبراهيم",
   moderatorName: "علي حسن",
   moderatorUsername: "ali.hassan",
+  notes: "يرجى الاتصال قبل الوصول بـ 15 دقيقة، والتأكد من تغليف الجبن جيداً.",
   items: [
     { productName: "منتج تجريبي 1", quantity: 2, price: 50.00, weight: 0.5 },
     { productName: "منتج آخر طويل جداً", quantity: 1, price: 120.50, weight: 1.2 },
@@ -80,8 +81,18 @@ export function ReceiptPreview({ settings }: ReceiptPreviewProps) {
                 </div>
             </>
         )}
+
+        {settings.showOrderNotes && mockOrder.notes && (
+            <>
+                <Hr />
+                <div className="bg-muted/30 p-1.5 rounded-sm">
+                    <p className="font-bold mb-0.5">{language === 'ar' ? 'ملاحظات الطلب:' : 'Order Notes:'}</p>
+                    <p className="italic text-[10px] leading-tight">{mockOrder.notes}</p>
+                </div>
+            </>
+        )}
         
-        {(settings.showCustomerName || settings.showFacebookName || settings.showCustomerPhone || settings.showCustomerAddress || settings.showPaymentMethod || settings.showCourierName || settings.showModeratorName || settings.showModeratorUsername) && <Hr />}
+        {(settings.showCustomerName || settings.showFacebookName || settings.showCustomerPhone || settings.showCustomerAddress || settings.showPaymentMethod || settings.showCourierName || settings.showModeratorName || settings.showModeratorUsername || settings.showOrderNotes) && <Hr />}
         
         <table className="w-full text-xs border-collapse">
             <thead>
