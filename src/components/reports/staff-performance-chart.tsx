@@ -51,48 +51,29 @@ export function StaffPerformanceChart({
       );
   }
 
-  const isVertical = layout === 'vertical';
+  const isVerticalBars = layout === 'vertical';
 
   return (
     <div className={cn("w-full bg-card rounded-xl border p-4 shadow-sm", isMobile ? "h-[350px]" : "h-[450px]", className)}>
         <ResponsiveContainer width="100%" height="100%">
             <BarChart 
                 data={data} 
-                layout={isVertical ? 'vertical' : 'horizontal'}
+                layout={isVerticalBars ? 'horizontal' : 'vertical'}
                 margin={{ 
                     top: 20, 
                     right: 30, 
-                    left: isVertical ? (isMobile ? 10 : 20) : 0, 
-                    bottom: isVertical ? 5 : 20 
+                    left: !isVerticalBars ? (isMobile ? 10 : 20) : 0, 
+                    bottom: isVerticalBars ? 20 : 5 
                 }}
             >
                 <CartesianGrid 
-                    horizontal={!isVertical} 
-                    vertical={isVertical} 
+                    horizontal={isVerticalBars} 
+                    vertical={!isVerticalBars} 
                     strokeDasharray="3 3" 
                     opacity={0.2} 
                 />
                 
-                {isVertical ? (
-                    <>
-                        <XAxis 
-                            type="number" 
-                            tick={{ fontSize: 10, fill: 'currentColor' }}
-                            tickLine={false}
-                            axisLine={false}
-                            tickFormatter={valueFormatter}
-                        />
-                        <YAxis 
-                            dataKey="name" 
-                            type="category" 
-                            tickLine={false} 
-                            axisLine={false} 
-                            width={isMobile ? 80 : 120} 
-                            tick={{ fontSize: 10, fill: 'currentColor' }} 
-                            interval={0}
-                        />
-                    </>
-                ) : (
+                {isVerticalBars ? (
                     <>
                         <XAxis
                             dataKey="name"
@@ -111,24 +92,49 @@ export function StaffPerformanceChart({
                             tickFormatter={valueFormatter}
                         />
                     </>
+                ) : (
+                    <>
+                        <XAxis 
+                            type="number" 
+                            tick={{ fontSize: 10, fill: 'currentColor' }}
+                            tickLine={false}
+                            axisLine={false}
+                            tickFormatter={valueFormatter}
+                        />
+                        <YAxis 
+                            dataKey="name" 
+                            type="category" 
+                            tickLine={false} 
+                            axisLine={false} 
+                            width={isMobile ? 80 : 120} 
+                            tick={{ fontSize: 10, fill: 'currentColor' }} 
+                            interval={0}
+                        />
+                    </>
                 )}
                 
                 <Tooltip
                     cursor={{ fill: 'hsl(var(--muted))', opacity: 0.1 }}
-                    contentStyle={{ 
-                        borderRadius: '8px', 
-                        fontSize: '12px',
-                        backgroundColor: 'hsl(var(--card))',
-                        border: '1px solid hsl(var(--border))',
-                        textAlign: language === 'ar' ? 'right' : 'left'
+                    content={({ active, payload }) => {
+                        if (active && payload && payload.length) {
+                            const item = payload[0].payload;
+                            return (
+                                <div className="bg-card border rounded-lg p-3 shadow-xl text-xs min-w-[120px]">
+                                    <p className="font-bold text-primary mb-2 border-b pb-1">{item.name}</p>
+                                    <p className="text-muted-foreground flex justify-between gap-4">
+                                        <span>{barLabel}:</span>
+                                        <span className="font-mono text-foreground font-bold">{valueFormatter(item.value)}</span>
+                                    </p>
+                                </div>
+                            );
+                        }
+                        return null;
                     }}
-                    labelStyle={{ fontWeight: 'bold', color: 'hsl(var(--primary))', marginBottom: '4px' }}
-                    formatter={(value) => [valueFormatter(Number(value)), barLabel]}
                 />
                 <Bar 
                     dataKey="value" 
                     name={barLabel} 
-                    radius={isVertical ? [0, 4, 4, 0] : [4, 4, 0, 0]} 
+                    radius={isVerticalBars ? [4, 4, 0, 0] : [0, 4, 4, 0]} 
                     barSize={isMobile ? 15 : 25}
                     fill="hsl(var(--chart-1))"
                 >

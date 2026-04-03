@@ -51,29 +51,31 @@ export function StaffPerformanceChart({
       );
   }
 
-  const isBars = layout === 'horizontal';
+  // layout="horizontal" means bars go horizontal (Categories on Y axis)
+  // layout="vertical" means bars go vertical (Categories on X axis)
+  const isHorizontalBars = layout === 'horizontal';
 
   return (
     <div className={cn("w-full bg-card rounded-xl border p-4 shadow-sm", isMobile ? "h-[350px]" : "h-[450px]", className)}>
         <ResponsiveContainer width="100%" height="100%">
             <BarChart 
                 data={data} 
-                layout={isBars ? 'vertical' : 'horizontal'}
+                layout={isHorizontalBars ? 'vertical' : 'horizontal'}
                 margin={{ 
                     top: 20, 
                     right: 40, 
-                    left: isBars ? (isMobile ? 10 : 20) : 0, 
-                    bottom: isBars ? 5 : 20 
+                    left: isHorizontalBars ? (isMobile ? 10 : 20) : 0, 
+                    bottom: isHorizontalBars ? 5 : 20 
                 }}
             >
                 <CartesianGrid 
-                    horizontal={!isBars} 
-                    vertical={isBars} 
+                    horizontal={!isHorizontalBars} 
+                    vertical={isHorizontalBars} 
                     strokeDasharray="3 3" 
                     opacity={0.2} 
                 />
                 
-                {isBars ? (
+                {isHorizontalBars ? (
                     <>
                         <XAxis 
                             type="number" 
@@ -115,20 +117,26 @@ export function StaffPerformanceChart({
                 
                 <Tooltip
                     cursor={{ fill: 'hsl(var(--muted))', opacity: 0.1 }}
-                    contentStyle={{ 
-                        borderRadius: '8px', 
-                        fontSize: '12px',
-                        backgroundColor: 'hsl(var(--card))',
-                        border: '1px solid hsl(var(--border))',
-                        textAlign: language === 'ar' ? 'right' : 'left'
+                    content={({ active, payload }) => {
+                        if (active && payload && payload.length) {
+                            const item = payload[0].payload;
+                            return (
+                                <div className="bg-card border rounded-lg p-3 shadow-xl text-xs min-w-[120px]">
+                                    <p className="font-bold text-primary mb-2 border-b pb-1">{item.name}</p>
+                                    <p className="text-muted-foreground flex justify-between gap-4">
+                                        <span>{barLabel}:</span>
+                                        <span className="font-mono text-foreground font-bold">{valueFormatter(item.value)}</span>
+                                    </p>
+                                </div>
+                            );
+                        }
+                        return null;
                     }}
-                    labelStyle={{ fontWeight: 'bold', color: 'hsl(var(--primary))', marginBottom: '4px' }}
-                    formatter={(value) => [valueFormatter(Number(value)), barLabel]}
                 />
                 <Bar 
                     dataKey="value" 
                     name={barLabel} 
-                    radius={isBars ? [0, 4, 4, 0] : [4, 4, 0, 0]} 
+                    radius={isHorizontalBars ? [0, 4, 4, 0] : [4, 4, 0, 0]} 
                     barSize={isMobile ? 20 : 35}
                     fill="hsl(var(--chart-1))"
                 >
