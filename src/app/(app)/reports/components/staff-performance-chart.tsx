@@ -62,7 +62,7 @@ export function StaffPerformanceChart({
                 data={data} 
                 layout={isBars ? 'vertical' : 'horizontal'}
                 margin={{ 
-                    top: 30, 
+                    top: 40, 
                     right: 40, 
                     left: isBars ? (isMobile ? 10 : 20) : 0, 
                     bottom: isBars ? 5 : 20 
@@ -134,6 +134,12 @@ export function StaffPerformanceChart({
                     barSize={isMobile ? 20 : 35}
                     fill="hsl(var(--chart-1))"
                 >
+                    <LabelList 
+                        dataKey="name" 
+                        position={isBars ? "insideLeft" : "top"} 
+                        offset={isBars ? 10 : 25}
+                        style={{ fontSize: '9px', fill: isBars ? '#fff' : 'hsl(var(--primary))', fontWeight: 'bold' }}
+                    />
                     <LabelList 
                         dataKey="value" 
                         position={isBars ? "right" : "top"} 

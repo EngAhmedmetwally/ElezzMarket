@@ -60,7 +60,7 @@ export function StaffPerformanceChart({
                 data={data} 
                 layout={isVertical ? 'vertical' : 'horizontal'}
                 margin={{ 
-                    top: 30, 
+                    top: 40, 
                     right: 30, 
                     left: isVertical ? (isMobile ? 10 : 20) : 0, 
                     bottom: isVertical ? 5 : 20 
@@ -87,15 +87,9 @@ export function StaffPerformanceChart({
                             type="category" 
                             tickLine={false} 
                             axisLine={false} 
-                            width={isMobile ? 120 : 180} 
+                            width={isMobile ? 80 : 120} 
                             tick={{ fontSize: 10, fill: 'currentColor' }} 
                             interval={0}
-                            tickFormatter={(val) => {
-                                if (typeof val === 'string' && val.length > 25) {
-                                    return `${val.substring(0, 22)}...`;
-                                }
-                                return val;
-                            }}
                         />
                     </>
                 ) : (
@@ -138,6 +132,12 @@ export function StaffPerformanceChart({
                     barSize={isMobile ? 15 : 25}
                     fill="hsl(var(--chart-1))"
                 >
+                    <LabelList 
+                        dataKey="name" 
+                        position={isVertical ? "insideLeft" : "top"} 
+                        offset={isVertical ? 5 : 25}
+                        style={{ fontSize: '9px', fill: isVertical ? '#fff' : 'hsl(var(--primary))', fontWeight: 'bold' }}
+                    />
                     <LabelList 
                         dataKey="value" 
                         position={isVertical ? "right" : "top"} 

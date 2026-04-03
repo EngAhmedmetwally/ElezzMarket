@@ -60,7 +60,7 @@ export function DailyProductChart({ data: productOrders, productName }: DailyPro
       </CardHeader>
       <CardContent>
         <ChartContainer config={chartConfig} className="h-[300px] w-full">
-          <BarChart accessibilityLayer data={dailyData} margin={{ top: 25, right: 20, left: -10, bottom: 0 }}>
+          <BarChart accessibilityLayer data={dailyData} margin={{ top: 40, right: 20, left: -10, bottom: 0 }}>
             <CartesianGrid vertical={false} />
             <XAxis
               dataKey="name"
@@ -79,6 +79,12 @@ export function DailyProductChart({ data: productOrders, productName }: DailyPro
                 />}
             />
             <Bar dataKey="value" fill="var(--color-quantity)" radius={4} name={language === 'ar' ? 'الكمية' : 'Quantity'}>
+                <LabelList 
+                    dataKey="name" 
+                    position="top" 
+                    offset={25}
+                    style={{ fontSize: '9px', fill: 'hsl(var(--primary))', fontWeight: 'bold' }}
+                />
                 <LabelList 
                     dataKey="value" 
                     position="top" 

@@ -40,7 +40,7 @@ export function CommissionChart({ data: chartData }: CommissionChartProps) {
           <BarChart 
             accessibilityLayer 
             data={chartData} 
-            margin={{ left: isMobile ? -12 : -5, right: isMobile ? 12 : 15, top: 25, bottom: 5 }}
+            margin={{ left: isMobile ? -12 : -5, right: isMobile ? 12 : 15, top: 40, bottom: 5 }}
           >
             <CartesianGrid vertical={false} />
             <XAxis
@@ -72,6 +72,12 @@ export function CommissionChart({ data: chartData }: CommissionChartProps) {
               />}
             />
             <Bar dataKey="totalCommission" fill="var(--color-totalCommission)" radius={4}>
+                <LabelList 
+                    dataKey="moderator" 
+                    position="top" 
+                    offset={25}
+                    style={{ fontSize: '9px', fill: 'hsl(var(--primary))', fontWeight: 'bold' }}
+                />
                 <LabelList 
                     dataKey="totalCommission" 
                     position="top" 

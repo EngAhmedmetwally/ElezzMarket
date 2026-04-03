@@ -37,7 +37,7 @@ export function PeakTimeChart({ data: chartData }: PeakTimeChartProps) {
       </CardHeader>
       <CardContent>
         <ChartContainer config={chartConfig} className="h-[300px] w-full">
-          <BarChart accessibilityLayer data={chartData} margin={{ top: 25, right: 20, left: -10, bottom: 0 }}>
+          <BarChart accessibilityLayer data={chartData} margin={{ top: 40, right: 20, left: -10, bottom: 0 }}>
             <CartesianGrid vertical={false} />
             <XAxis
               dataKey="hour"
@@ -52,6 +52,13 @@ export function PeakTimeChart({ data: chartData }: PeakTimeChartProps) {
               content={<ChartTooltipContent indicator="dot" labelFormatter={(label) => `${language === 'ar' ? 'الساعة' : 'Hour'} ${label}`} />}
             />
             <Bar dataKey="orders" fill="var(--color-orders)" radius={4}>
+                <LabelList 
+                    dataKey="hour" 
+                    position="top" 
+                    offset={25}
+                    formatter={(val: string) => `${language === 'ar' ? 'ساعة' : 'Hr'} ${val.split(':')[0]}`}
+                    style={{ fontSize: '9px', fill: 'hsl(var(--primary))', fontWeight: 'bold' }}
+                />
                 <LabelList 
                     dataKey="orders" 
                     position="top" 
