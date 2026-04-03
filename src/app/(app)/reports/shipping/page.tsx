@@ -13,6 +13,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { StaffPerformanceChart } from "../components/staff-performance-chart";
 import { Separator } from "@/components/ui/separator";
 import { formatCurrency } from "@/lib/utils";
+import { subDays } from "date-fns";
 
 function ShippingReportSkeleton() {
   return (
@@ -40,12 +41,12 @@ function ShippingReportSkeleton() {
 
 export default function ShippingReportPage() {
   const { language } = useLanguage();
-  // Default to March 2026
+  // Default to last 7 days
   const [fromDate, setFromDate] = React.useState<Date | undefined>(
-    new Date(2026, 2, 1)
+    subDays(new Date(), 7)
   );
   const [toDate, setToDate] = React.useState<Date | undefined>(
-    new Date(2026, 2, 31, 23, 59, 59)
+    new Date()
   );
   
   const { data: allOrders, isLoading: isLoadingOrders } = useRealtimeCachedCollection<Order>('orders');

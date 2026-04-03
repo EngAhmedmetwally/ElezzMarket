@@ -12,6 +12,7 @@ import type { Order, User, PaymentMethod } from "@/lib/types";
 import { Skeleton } from "@/components/ui/skeleton";
 import { formatCurrency } from "@/lib/utils";
 import { StaffPerformanceChart } from "../components/staff-performance-chart";
+import { subDays } from "date-fns";
 
 const paymentMethods: PaymentMethod[] = ["نقدي عند الاستلام", "انستا باى", "فودافون كاش", "اورانج كاش"];
 
@@ -33,19 +34,18 @@ function CourierCollectionSkeleton() {
             <Skeleton className="h-12 w-full" />
           </div>
         </CardContent>
-      </Card>
-    </div>
+      </div>
   );
 }
 
 export default function CourierCollectionReportPage() {
   const { language } = useLanguage();
-  // Default to March 2026
+  // Default to last 7 days
   const [fromDate, setFromDate] = React.useState<Date | undefined>(
-    new Date(2026, 2, 1)
+    subDays(new Date(), 7)
   );
   const [toDate, setToDate] = React.useState<Date | undefined>(
-    new Date(2026, 2, 31, 23, 59, 59)
+    new Date()
   );
   
   const { data: allOrders, isLoading: isLoadingOrders } = useRealtimeCachedCollection<Order>('orders');

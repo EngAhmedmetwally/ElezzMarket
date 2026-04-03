@@ -13,6 +13,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { StaffPerformanceChart } from "../components/staff-performance-chart";
 import { formatCurrency } from "@/lib/utils";
 import { StaffActivityChart } from "../components/staff-activity-chart";
+import { subDays } from "date-fns";
 
 const statusOrder: OrderStatus[] = ["تم التسجيل", "قيد التجهيز", "تم الشحن", "معلق", "مكتمل", "ملغي"];
 
@@ -34,9 +35,9 @@ function StaffReportSkeleton() {
 export default function StaffReportPage() {
   const { language } = useLanguage();
   
-  // Default to March 2026 for the user's specific data
-  const [fromDate, setFromDate] = React.useState<Date | undefined>(new Date(2026, 2, 1));
-  const [toDate, setToDate] = React.useState<Date | undefined>(new Date(2026, 2, 31, 23, 59, 59));
+  // Default to last 7 days
+  const [fromDate, setFromDate] = React.useState<Date | undefined>(subDays(new Date(), 7));
+  const [toDate, setToDate] = React.useState<Date | undefined>(new Date());
   
   const { data: allOrders, isLoading: isLoadingOrders } = useRealtimeCachedCollection<Order>('orders');
   const { data: usersData, isLoading: isLoadingUsers } = useRealtimeCachedCollection<User>('users');

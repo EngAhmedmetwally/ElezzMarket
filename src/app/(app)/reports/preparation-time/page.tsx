@@ -11,7 +11,7 @@ import { useRealtimeCachedCollection } from "@/hooks/use-realtime-cached-collect
 import type { Order } from "@/lib/types";
 import { Skeleton } from "@/components/ui/skeleton";
 import { StaffPerformanceChart } from "../components/staff-performance-chart";
-import { format } from "date-fns";
+import { format, subDays } from "date-fns";
 
 type PreparationTimeData = {
   date: string;
@@ -64,8 +64,9 @@ function formatDuration(minutes: number, lang: 'ar' | 'en') {
 
 export default function PreparationTimeReportPage() {
   const { language } = useLanguage();
+  // Default to last 7 days
   const [fromDate, setFromDate] = React.useState<Date | undefined>(
-    new Date(new Date().getFullYear(), new Date().getMonth(), 1)
+    subDays(new Date(), 7)
   );
   const [toDate, setToDate] = React.useState<Date | undefined>(new Date());
   
@@ -75,7 +76,7 @@ export default function PreparationTimeReportPage() {
     if (!allOrders || !fromDate || !toDate) return [];
     
     const from = fromDate.getTime();
-    const to = new Date(toDate).setHours(23, 59, 59, 999);
+    const to = toDate.getTime() + (24 * 60 * 60 * 1000); // end of day
 
     const dailyDurations: Map<string, number[]> = new Map();
 
@@ -92,7 +93,6 @@ export default function PreparationTimeReportPage() {
             const processingDate = new Date(processing.createdAt);
             const processingTime = processingDate.getTime();
             
-            // The report is based on when orders enter "processing"
             if (processingTime < from || processingTime > to) return;
             
             const shippedDate = new Date(shipped.createdAt);

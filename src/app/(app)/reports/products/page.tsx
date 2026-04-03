@@ -13,6 +13,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { DatePicker } from "@/components/ui/datepicker";
 import Link from "next/link";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { subDays } from "date-fns";
 
 function ProductsReportSkeleton() {
   return (
@@ -39,12 +40,12 @@ export default function ProductsReportPage() {
   const { language } = useLanguage();
   const isMobile = useIsMobile();
   
-  // Set default range to March 2026 for the user's specific data
+  // Default to last 7 days
   const [fromDate, setFromDate] = React.useState<Date | undefined>(
-    new Date(2026, 2, 1)
+    subDays(new Date(), 7)
   );
   const [toDate, setToDate] = React.useState<Date | undefined>(
-    new Date(2026, 2, 31, 23, 59, 59)
+    new Date()
   );
 
   const { data: allOrders, isLoading } = useRealtimeCachedCollection<Order>('orders');

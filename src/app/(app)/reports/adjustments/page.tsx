@@ -13,11 +13,13 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { formatCurrency } from "@/lib/utils";
 import { StaffPerformanceChart } from "../components/staff-performance-chart";
 import { Badge } from "@/components/ui/badge";
+import { subDays } from "date-fns";
 
 export default function AdjustmentsReportPage() {
     const { language } = useLanguage();
+    // Default to last 7 days
     const [fromDate, setFromDate] = React.useState<Date | undefined>(
-        new Date(new Date().getFullYear(), new Date().getMonth(), 1)
+        subDays(new Date(), 7)
     );
     const [toDate, setToDate] = React.useState<Date | undefined>(new Date());
 

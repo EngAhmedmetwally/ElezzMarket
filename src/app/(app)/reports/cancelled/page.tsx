@@ -11,7 +11,7 @@ import { useRealtimeCachedCollection } from "@/hooks/use-realtime-cached-collect
 import type { Order, StatusHistoryItem } from "@/lib/types";
 import { Skeleton } from "@/components/ui/skeleton";
 import { StaffPerformanceChart } from "../components/staff-performance-chart";
-import { format } from "date-fns";
+import { format, subDays } from "date-fns";
 import { formatCurrency } from "@/lib/utils";
 
 type CancelledOrderInfo = {
@@ -54,8 +54,9 @@ function CancelledReportSkeleton() {
 
 export default function CancelledOrdersReportPage() {
   const { language } = useLanguage();
+  // Default to last 7 days
   const [fromDate, setFromDate] = React.useState<Date | undefined>(
-    new Date(new Date().getFullYear(), new Date().getMonth(), 1)
+    subDays(new Date(), 7)
   );
   const [toDate, setToDate] = React.useState<Date | undefined>(new Date());
   
@@ -65,7 +66,7 @@ export default function CancelledOrdersReportPage() {
     if (!allOrders || !fromDate || !toDate) return [];
     
     const from = fromDate.getTime();
-    const to = new Date(toDate).setHours(23, 59, 59, 999);
+    const to = toDate.getTime() + (24 * 60 * 60 * 1000);
 
     const ordersInDateRange = allOrders.filter(order => {
         if (order.status !== 'ملغي') return false;

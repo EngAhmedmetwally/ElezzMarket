@@ -11,7 +11,7 @@ import { useRealtimeCachedCollection } from "@/hooks/use-realtime-cached-collect
 import type { Order, User, PaymentMethod } from "@/lib/types";
 import { Skeleton } from "@/components/ui/skeleton";
 import { StaffPerformanceChart } from "../components/staff-performance-chart";
-import { format } from "date-fns";
+import { format, subDays } from "date-fns";
 import { formatCurrency } from "@/lib/utils";
 
 const paymentMethods: PaymentMethod[] = ["نقدي عند الاستلام", "انستا باى", "فودافون كاش", "اورانج كاش"];
@@ -43,12 +43,12 @@ function DailyReportSkeleton() {
 export default function DailyRevenueReportPage() {
   const { language } = useLanguage();
   
-  // Default to March 2026 for the current view
+  // Default to last 7 days
   const [fromDate, setFromDate] = React.useState<Date | undefined>(
-    new Date(2026, 2, 1)
+    subDays(new Date(), 7)
   );
   const [toDate, setToDate] = React.useState<Date | undefined>(
-    new Date(2026, 2, 31, 23, 59, 59)
+    new Date()
   );
   
   const { data: allOrders, isLoading: isLoadingOrders } = useRealtimeCachedCollection<Order>('orders');
@@ -58,7 +58,7 @@ export default function DailyRevenueReportPage() {
   const { revenueOrders, onHoldOrdersInRange } = React.useMemo(() => {
     if (!allOrders || !fromDate || !toDate) return { revenueOrders: [], onHoldOrdersInRange: [] };
     const from = fromDate.getTime();
-    const to = toDate.getTime();
+    const to = new Date(toDate).setHours(23, 59, 59, 999);
 
     const revenue: Order[] = [];
     const onHold: Order[] = [];
@@ -206,7 +206,7 @@ export default function DailyRevenueReportPage() {
                 data={chartData} 
                 barLabel={language === 'ar' ? 'الإيراد' : 'Revenue'}
                 formatter={(value) => formatCurrency(value, language)}
-                layout="vertical" // Changed to vertical for column bars
+                layout="vertical"
             />
           </CardContent>
       </Card>

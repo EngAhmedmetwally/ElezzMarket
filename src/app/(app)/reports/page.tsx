@@ -12,11 +12,13 @@ import { useRealtimeCachedCollection } from "@/hooks/use-realtime-cached-collect
 import type { User, Commission } from "@/lib/types";
 import { Skeleton } from "@/components/ui/skeleton";
 import { formatCurrency } from "@/lib/utils";
+import { subDays } from "date-fns";
 
 export default function ReportsPage() {
     const { language } = useLanguage();
+    // Default to last 7 days
     const [fromDate, setFromDate] = React.useState<Date | undefined>(
-        new Date(new Date().getFullYear(), new Date().getMonth(), 1)
+        subDays(new Date(), 7)
     );
     const [toDate, setToDate] = React.useState<Date | undefined>(new Date());
 
@@ -38,7 +40,7 @@ export default function ReportsPage() {
 
         const totalInPeriod = filteredCommissions.reduce((sum, c) => sum + (Number(c.amount) || 0), 0);
 
-        // 2. Group by userId to identify all earners (including those not in usersData like Emergency Admin)
+        // 2. Group by userId to identify all earners
         const earnersMap = new Map<string, number>();
         filteredCommissions.forEach(c => {
             const current = earnersMap.get(c.userId) || 0;
