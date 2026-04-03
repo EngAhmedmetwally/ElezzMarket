@@ -34,7 +34,8 @@ function CourierCollectionSkeleton() {
             <Skeleton className="h-12 w-full" />
           </div>
         </CardContent>
-      </div>
+      </Card>
+    </div>
   );
 }
 
@@ -55,7 +56,7 @@ export default function CourierCollectionReportPage() {
     if (!allOrders || !fromDate || !toDate) return [];
     
     const from = fromDate.getTime();
-    const to = toDate.getTime();
+    const to = toDate.getTime() + (24 * 60 * 60 * 1000);
 
     return allOrders.filter(order => {
         if (!order.createdAt) return false;
@@ -171,10 +172,9 @@ export default function CourierCollectionReportPage() {
           <CardContent>
             <StaffPerformanceChart 
                 data={chartData} 
-                barDataKey="value"
                 barLabel={language === 'ar' ? 'المبلغ' : 'Amount'}
                 formatter={(value) => formatCurrency(value, language)}
-                layout="vertical"
+                layout="horizontal"
             />
           </CardContent>
       </Card>
