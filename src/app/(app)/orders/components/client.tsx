@@ -7,11 +7,9 @@ import {
   flexRender,
   getCoreRowModel,
   getSortedRowModel,
-  getFilteredRowModel,
   useReactTable,
   type ColumnDef,
   type SortingState,
-  type ColumnFiltersState,
 } from "@tanstack/react-table";
 
 import {
@@ -44,20 +42,24 @@ interface DataTableProps<TData extends Order, TValue> {
   data: TData[];
   onUpdate: () => void;
   statuses: OrderStatus[];
+  searchTerm: string;
+  onSearchChange: (value: string) => void;
+  statusFilter: string;
+  onStatusChange: (value: string) => void;
 }
 
 export function OrdersClient<TData extends Order, TValue>({
   columns,
   data,
   onUpdate,
-  statuses
+  statuses,
+  searchTerm,
+  onSearchChange,
+  statusFilter,
+  onStatusChange
 }: DataTableProps<TData, TValue>) {
   const router = useRouter();
   const [sorting, setSorting] = React.useState<SortingState>([]);
-  const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>(
-    []
-  );
-  const [globalFilter, setGlobalFilter] = React.useState("");
   const [rowSelection, setRowSelection] = React.useState({});
   const { language } = useLanguage();
   const isMobile = useIsMobile();
@@ -68,14 +70,9 @@ export function OrdersClient<TData extends Order, TValue>({
     getCoreRowModel: getCoreRowModel(),
     onSortingChange: setSorting,
     getSortedRowModel: getSortedRowModel(),
-    onColumnFiltersChange: setColumnFilters,
-    onGlobalFilterChange: setGlobalFilter,
-    getFilteredRowModel: getFilteredRowModel(),
     onRowSelectionChange: setRowSelection,
     state: {
       sorting,
-      columnFilters,
-      globalFilter,
       rowSelection,
     },
   });
@@ -91,15 +88,13 @@ export function OrdersClient<TData extends Order, TValue>({
     <div className="flex flex-wrap items-center gap-4 py-4">
         <Input
           placeholder={language === 'ar' ? 'بحث (رقم طلب, عميل, هاتف, فيسبوك)...' : 'Search (ID, customer, phone, facebook)...'}
-          value={globalFilter ?? ""}
-          onChange={(event) => setGlobalFilter(event.target.value)}
+          value={searchTerm}
+          onChange={(event) => onSearchChange(event.target.value)}
           className="max-w-sm"
         />
         <Select
-          value={(table.getColumn("status")?.getFilterValue() as string) ?? ""}
-          onValueChange={(value) =>
-            table.getColumn("status")?.setFilterValue(value === "all" ? "" : value)
-          }
+          value={statusFilter}
+          onValueChange={onStatusChange}
         >
           <SelectTrigger className="w-full max-w-xs">
             <SelectValue placeholder={language === 'ar' ? "فلترة حسب الحالة" : "Filter by status"} />

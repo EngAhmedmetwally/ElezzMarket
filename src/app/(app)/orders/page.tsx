@@ -42,7 +42,7 @@ export default function OrdersPage() {
   const { user } = useUser();
   const { data: allOrders, isLoading } = useRealtimeCachedCollection<Order>('orders');
   
-  // Pre-load data for the OrderForm to ensure it's ready when the button is pressed
+  // Pre-load data for the OrderForm
   useRealtimeCachedCollection<Product>('products');
   useRealtimeCachedCollection<ShippingZone>('shipping-zones');
   useRealtimeCachedCollection<Customer & {id: string}>('customers');
@@ -50,41 +50,66 @@ export default function OrdersPage() {
   const [fromDate, setFromDate] = React.useState<Date | undefined>(new Date(2026, 2, 1));
   const [toDate, setToDate] = React.useState<Date | undefined>(new Date());
   
+  // Filter States
+  const [searchTerm, setSearchTerm] = React.useState("");
+  const [statusFilter, setStatusFilter] = React.useState("all");
   const [visibleCount, setVisibleCount] = React.useState(20);
 
   const columns = getOrderColumns(language, () => {});
   
   const filteredOrders = React.useMemo(() => {
-    if (!allOrders || !fromDate || !toDate) return [];
+    if (!allOrders) return [];
     
-    const from = fromDate.getTime();
-    const to = new Date(toDate).setHours(23, 59, 59, 999);
-    
-    let dateFiltered = allOrders.filter(order => {
-        if (!order.createdAt) return false;
-        const orderDate = new Date(order.createdAt).getTime();
-        return orderDate >= from && orderDate <= to;
-    });
+    let result = [...allOrders];
 
+    // 1. User Visibility Filter
     if (user) {
         const isAdmin = user.role === 'Admin';
         const canSeeAll = user.orderVisibility === 'all' || (user.role === 'Moderator' && user.orderVisibility !== 'own');
 
         if (!isAdmin && !canSeeAll) {
              if (user.role === 'Moderator') {
-                 dateFiltered = dateFiltered.filter(order => order.moderatorId === user.id);
+                 result = result.filter(order => order.moderatorId === user.id);
              } else if (user.role === 'Courier') {
-                 dateFiltered = dateFiltered.filter(order => order.courierId === user.id);
+                 result = result.filter(order => order.courierId === user.id);
              } else {
-                 dateFiltered = [];
+                 result = [];
              }
         }
     } else {
-        dateFiltered = [];
+        result = [];
+    }
+
+    // 2. Date Filter
+    if (fromDate && toDate) {
+        const from = fromDate.getTime();
+        const to = new Date(toDate).setHours(23, 59, 59, 999);
+        result = result.filter(order => {
+            if (!order.createdAt) return false;
+            const orderDate = new Date(order.createdAt).getTime();
+            return orderDate >= from && orderDate <= to;
+        });
+    }
+
+    // 3. Search Filter (Global)
+    if (searchTerm) {
+        const lowerSearch = searchTerm.toLowerCase();
+        result = result.filter(order => 
+            (order.id && order.id.toLowerCase().includes(lowerSearch)) ||
+            (order.customerName && order.customerName.toLowerCase().includes(lowerSearch)) ||
+            (order.customerPhone1 && order.customerPhone1.includes(searchTerm)) ||
+            (order.customerPhone2 && order.customerPhone2.includes(searchTerm)) ||
+            (order.facebookName && order.facebookName.toLowerCase().includes(lowerSearch))
+        );
+    }
+
+    // 4. Status Filter
+    if (statusFilter !== "all") {
+        result = result.filter(order => order.status === statusFilter);
     }
     
-    return [...dateFiltered].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
-  }, [allOrders, user, fromDate, toDate]);
+    return result.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  }, [allOrders, user, fromDate, toDate, searchTerm, statusFilter]);
 
   const displayedOrders = React.useMemo(() => {
     return filteredOrders.slice(0, visibleCount);
@@ -96,10 +121,7 @@ export default function OrdersPage() {
     setVisibleCount(prevCount => prevCount + 20);
   };
   
-  const uniqueOrderStatuses = React.useMemo(() => {
-    const definedStatuses: OrderStatus[] = ["تم التسجيل", "قيد التجهيز", "تم الشحن", "معلق", "مكتمل", "ملغي"];
-    return definedStatuses;
-  }, []);
+  const uniqueOrderStatuses: OrderStatus[] = ["تم التسجيل", "قيد التجهيز", "تم الشحن", "معلق", "مكتمل", "ملغي"];
 
   const ordersByStatus = React.useMemo(() => {
     const statusCounts = filteredOrders.reduce((acc, order) => {
@@ -124,7 +146,6 @@ export default function OrdersPage() {
             const sheetName = workbook.SheetNames[0];
             const worksheet = workbook.Sheets[sheetName];
             const json = XLSX.utils.sheet_to_json(worksheet);
-            console.log(json);
             toast({
                 title: language === 'ar' ? "اكتمل التحميل" : "Upload Complete",
                 description: language === 'ar' ? `تمت معالجة ${json.length} من الطلبات.` : `Processed ${json.length} orders.`,
@@ -255,7 +276,16 @@ export default function OrdersPage() {
         </div>
       ) : (
         <>
-          <OrdersClient data={displayedOrders} columns={columns} statuses={uniqueOrderStatuses} onUpdate={() => {}} />
+          <OrdersClient 
+            data={displayedOrders} 
+            columns={columns} 
+            statuses={uniqueOrderStatuses} 
+            searchTerm={searchTerm}
+            onSearchChange={setSearchTerm}
+            statusFilter={statusFilter}
+            onStatusChange={setStatusFilter}
+            onUpdate={() => {}} 
+          />
           {hasMoreOrders && (
             <div className="flex justify-center mt-4">
               <Button onClick={loadMoreOrders} variant="outline">
