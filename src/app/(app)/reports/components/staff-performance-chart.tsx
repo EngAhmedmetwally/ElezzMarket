@@ -2,7 +2,7 @@
 "use client"
 
 import * as React from "react";
-import { Bar, BarChart, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from "recharts";
+import { Bar, BarChart, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, LabelList } from "recharts";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useLanguage } from "@/components/language-provider";
 import { cn } from "@/lib/utils";
@@ -62,8 +62,8 @@ export function StaffPerformanceChart({
                 data={data} 
                 layout={isBars ? 'vertical' : 'horizontal'}
                 margin={{ 
-                    top: 20, 
-                    right: 30, 
+                    top: 30, 
+                    right: 40, 
                     left: isBars ? (isMobile ? 10 : 20) : 0, 
                     bottom: isBars ? 5 : 20 
                 }}
@@ -121,8 +121,10 @@ export function StaffPerformanceChart({
                         borderRadius: '8px', 
                         fontSize: '12px',
                         backgroundColor: 'hsl(var(--card))',
-                        border: '1px solid hsl(var(--border))'
+                        border: '1px solid hsl(var(--border))',
+                        textAlign: language === 'ar' ? 'right' : 'left'
                     }}
+                    labelStyle={{ fontWeight: 'bold', color: 'hsl(var(--primary))', marginBottom: '4px' }}
                     formatter={(value) => [valueFormatter(Number(value)), barLabel]}
                 />
                 <Bar 
@@ -132,6 +134,13 @@ export function StaffPerformanceChart({
                     barSize={isMobile ? 20 : 35}
                     fill="hsl(var(--chart-1))"
                 >
+                    <LabelList 
+                        dataKey="value" 
+                        position={isBars ? "right" : "top"} 
+                        formatter={valueFormatter}
+                        style={{ fontSize: '10px', fill: 'currentColor', fontWeight: 'bold' }}
+                        offset={10}
+                    />
                     {data.map((_, index) => (
                         <Cell key={`cell-${index}`} fill="hsl(var(--chart-1))" />
                     ))}

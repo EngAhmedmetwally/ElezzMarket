@@ -1,7 +1,7 @@
 
 "use client"
 
-import { Bar, BarChart, XAxis, YAxis, CartesianGrid, Tooltip, Legend } from "recharts";
+import { Bar, BarChart, XAxis, YAxis, CartesianGrid, Tooltip, Legend, LabelList } from "recharts";
 import {
   ChartContainer,
   ChartTooltip,
@@ -64,7 +64,7 @@ export function StaffActivityChart({ data }: StaffActivityChartProps) {
             accessibilityLayer 
             data={chartData} 
             layout="vertical"
-            margin={{ top: 20, right: 20, left: isMobile ? 10 : 20, bottom: 0 }}
+            margin={{ top: 20, right: 30, left: isMobile ? 10 : 20, bottom: 0 }}
           >
             <CartesianGrid horizontal={false} />
             <YAxis
@@ -88,6 +88,7 @@ export function StaffActivityChart({ data }: StaffActivityChartProps) {
               cursor={{ fill: 'hsl(var(--muted))' }}
               content={<ChartTooltipContent 
                 indicator="dot" 
+                labelFormatter={(label) => label}
               />}
             />
             <Legend wrapperStyle={{ fontSize: '12px' }} />

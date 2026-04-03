@@ -2,7 +2,7 @@
 "use client"
 
 import * as React from "react";
-import { Bar, BarChart, XAxis, YAxis, CartesianGrid, Tooltip } from "recharts";
+import { Bar, BarChart, XAxis, YAxis, CartesianGrid, Tooltip, LabelList } from "recharts";
 import {
   Card,
   CardContent,
@@ -60,7 +60,7 @@ export function DailyProductChart({ data: productOrders, productName }: DailyPro
       </CardHeader>
       <CardContent>
         <ChartContainer config={chartConfig} className="h-[300px] w-full">
-          <BarChart accessibilityLayer data={dailyData} margin={{ top: 20, right: 20, left: -10, bottom: 0 }}>
+          <BarChart accessibilityLayer data={dailyData} margin={{ top: 25, right: 20, left: -10, bottom: 0 }}>
             <CartesianGrid vertical={false} />
             <XAxis
               dataKey="name"
@@ -74,10 +74,18 @@ export function DailyProductChart({ data: productOrders, productName }: DailyPro
               cursor={false}
               content={<ChartTooltipContent 
                 indicator="dot" 
+                labelFormatter={(label) => label}
                 formatter={(value) => `${value} ${language === 'ar' ? 'وحدة' : 'units'}`}
                 />}
             />
-            <Bar dataKey="value" fill="var(--color-quantity)" radius={4} name={language === 'ar' ? 'الكمية' : 'Quantity'}/>
+            <Bar dataKey="value" fill="var(--color-quantity)" radius={4} name={language === 'ar' ? 'الكمية' : 'Quantity'}>
+                <LabelList 
+                    dataKey="value" 
+                    position="top" 
+                    style={{ fontSize: '10px', fill: 'currentColor', fontWeight: 'bold' }}
+                    offset={10}
+                />
+            </Bar>
           </BarChart>
         </ChartContainer>
       </CardContent>

@@ -1,7 +1,7 @@
 
 "use client";
 
-import { Bar, BarChart, XAxis, YAxis, CartesianGrid, Tooltip } from "recharts";
+import { Bar, BarChart, XAxis, YAxis, CartesianGrid, Tooltip, LabelList } from "recharts";
 import {
   Card,
   CardContent,
@@ -37,7 +37,7 @@ export function PeakTimeChart({ data: chartData }: PeakTimeChartProps) {
       </CardHeader>
       <CardContent>
         <ChartContainer config={chartConfig} className="h-[300px] w-full">
-          <BarChart accessibilityLayer data={chartData} margin={{ top: 20, right: 20, left: -10, bottom: 0 }}>
+          <BarChart accessibilityLayer data={chartData} margin={{ top: 25, right: 20, left: -10, bottom: 0 }}>
             <CartesianGrid vertical={false} />
             <XAxis
               dataKey="hour"
@@ -49,9 +49,16 @@ export function PeakTimeChart({ data: chartData }: PeakTimeChartProps) {
             <YAxis allowDecimals={false} />
             <Tooltip
               cursor={false}
-              content={<ChartTooltipContent indicator="dot" />}
+              content={<ChartTooltipContent indicator="dot" labelFormatter={(label) => `${language === 'ar' ? 'الساعة' : 'Hour'} ${label}`} />}
             />
-            <Bar dataKey="orders" fill="var(--color-orders)" radius={4} />
+            <Bar dataKey="orders" fill="var(--color-orders)" radius={4}>
+                <LabelList 
+                    dataKey="orders" 
+                    position="top" 
+                    style={{ fontSize: '10px', fill: 'currentColor', fontWeight: 'bold' }}
+                    offset={10}
+                />
+            </Bar>
           </BarChart>
         </ChartContainer>
       </CardContent>

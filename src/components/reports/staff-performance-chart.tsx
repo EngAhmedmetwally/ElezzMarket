@@ -2,7 +2,7 @@
 "use client"
 
 import * as React from "react";
-import { Bar, BarChart, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from "recharts";
+import { Bar, BarChart, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, LabelList } from "recharts";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useLanguage } from "@/components/language-provider";
 import { cn } from "@/lib/utils";
@@ -60,7 +60,7 @@ export function StaffPerformanceChart({
                 data={data} 
                 layout={isVertical ? 'vertical' : 'horizontal'}
                 margin={{ 
-                    top: 10, 
+                    top: 30, 
                     right: 30, 
                     left: isVertical ? (isMobile ? 10 : 20) : 0, 
                     bottom: isVertical ? 5 : 20 
@@ -121,7 +121,14 @@ export function StaffPerformanceChart({
                 
                 <Tooltip
                     cursor={{ fill: 'hsl(var(--muted))', opacity: 0.1 }}
-                    contentStyle={{ borderRadius: '8px', fontSize: '12px' }}
+                    contentStyle={{ 
+                        borderRadius: '8px', 
+                        fontSize: '12px',
+                        backgroundColor: 'hsl(var(--card))',
+                        border: '1px solid hsl(var(--border))',
+                        textAlign: language === 'ar' ? 'right' : 'left'
+                    }}
+                    labelStyle={{ fontWeight: 'bold', color: 'hsl(var(--primary))', marginBottom: '4px' }}
                     formatter={(value) => [valueFormatter(Number(value)), barLabel]}
                 />
                 <Bar 
@@ -129,7 +136,15 @@ export function StaffPerformanceChart({
                     name={barLabel} 
                     radius={isVertical ? [0, 4, 4, 0] : [4, 4, 0, 0]} 
                     barSize={isMobile ? 15 : 25}
+                    fill="hsl(var(--chart-1))"
                 >
+                    <LabelList 
+                        dataKey="value" 
+                        position={isVertical ? "right" : "top"} 
+                        formatter={valueFormatter}
+                        style={{ fontSize: '10px', fill: 'currentColor', fontWeight: 'bold' }}
+                        offset={10}
+                    />
                     {data.map((_, index) => (
                         <Cell key={`cell-${index}`} fill="hsl(var(--chart-1))" />
                     ))}

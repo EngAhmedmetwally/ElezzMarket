@@ -1,7 +1,7 @@
 
 "use client"
 
-import { Bar, BarChart, XAxis, YAxis, CartesianGrid, Tooltip } from "recharts";
+import { Bar, BarChart, XAxis, YAxis, CartesianGrid, Tooltip, LabelList } from "recharts";
 import {
   ChartContainer,
   ChartTooltip,
@@ -36,11 +36,11 @@ export function CommissionChart({ data: chartData }: CommissionChartProps) {
         <CardTitle>{chartTitle}</CardTitle>
       </CardHeader>
       <CardContent>
-        <ChartContainer config={chartConfig} className="h-[300px] w-full">
+        <ChartContainer config={chartConfig} className="h-[350px] w-full">
           <BarChart 
             accessibilityLayer 
             data={chartData} 
-            margin={{ left: isMobile ? -12 : -5, right: isMobile ? 12 : 15, top: 5, bottom: 5 }}
+            margin={{ left: isMobile ? -12 : -5, right: isMobile ? 12 : 15, top: 25, bottom: 5 }}
           >
             <CartesianGrid vertical={false} />
             <XAxis
@@ -71,7 +71,15 @@ export function CommissionChart({ data: chartData }: CommissionChartProps) {
                 labelFormatter={(label) => label}
               />}
             />
-            <Bar dataKey="totalCommission" fill="var(--color-totalCommission)" radius={4} />
+            <Bar dataKey="totalCommission" fill="var(--color-totalCommission)" radius={4}>
+                <LabelList 
+                    dataKey="totalCommission" 
+                    position="top" 
+                    formatter={(val: number) => shortFormatCurrency(val)}
+                    style={{ fontSize: '10px', fill: 'currentColor', fontWeight: 'bold' }}
+                    offset={10}
+                />
+            </Bar>
           </BarChart>
         </ChartContainer>
       </CardContent>
