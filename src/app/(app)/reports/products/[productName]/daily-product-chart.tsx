@@ -2,7 +2,7 @@
 "use client"
 
 import * as React from "react";
-import { Bar, BarChart, XAxis, YAxis, CartesianGrid, Tooltip, LabelList } from "recharts";
+import { Bar, BarChart, XAxis, YAxis, CartesianGrid, Tooltip } from "recharts";
 import {
   Card,
   CardContent,
@@ -21,7 +21,7 @@ import type { ProductOrder } from "../[productName]/page";
 const chartConfig = {
   quantity: {
     label: "Quantity",
-    color: "hsl(var(--chart-1))", // Reverted to Blue
+    color: "hsl(var(--chart-1))",
   },
 };
 
@@ -60,7 +60,7 @@ export function DailyProductChart({ data: productOrders, productName }: DailyPro
       </CardHeader>
       <CardContent>
         <ChartContainer config={chartConfig} className="h-[300px] w-full">
-          <BarChart accessibilityLayer data={dailyData} margin={{ top: 40, right: 20, left: -10, bottom: 0 }}>
+          <BarChart accessibilityLayer data={dailyData} margin={{ top: 20, right: 20, left: -10, bottom: 0 }}>
             <CartesianGrid vertical={false} />
             <XAxis
               dataKey="name"
@@ -78,20 +78,7 @@ export function DailyProductChart({ data: productOrders, productName }: DailyPro
                 formatter={(value) => `${value} ${language === 'ar' ? 'وحدة' : 'units'}`}
                 />}
             />
-            <Bar dataKey="value" fill="var(--color-quantity)" radius={4} name={language === 'ar' ? 'الكمية' : 'Quantity'}>
-                <LabelList 
-                    dataKey="name" 
-                    position="top" 
-                    offset={25}
-                    style={{ fontSize: '9px', fill: 'hsl(var(--primary))', fontWeight: 'bold' }}
-                />
-                <LabelList 
-                    dataKey="value" 
-                    position="top" 
-                    style={{ fontSize: '10px', fill: 'currentColor', fontWeight: 'bold' }}
-                    offset={10}
-                />
-            </Bar>
+            <Bar dataKey="value" fill="var(--color-quantity)" radius={4} name={language === 'ar' ? 'الكمية' : 'Quantity'} />
           </BarChart>
         </ChartContainer>
       </CardContent>

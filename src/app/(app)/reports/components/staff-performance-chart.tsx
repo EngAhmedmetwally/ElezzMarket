@@ -2,7 +2,7 @@
 "use client"
 
 import * as React from "react";
-import { Bar, BarChart, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, LabelList } from "recharts";
+import { Bar, BarChart, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from "recharts";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useLanguage } from "@/components/language-provider";
 import { cn } from "@/lib/utils";
@@ -51,8 +51,6 @@ export function StaffPerformanceChart({
       );
   }
 
-  // If layout is 'vertical', we want columns (standard for dates)
-  // If layout is 'horizontal', we want bars (standard for long names)
   const isBars = layout === 'horizontal';
 
   return (
@@ -62,7 +60,7 @@ export function StaffPerformanceChart({
                 data={data} 
                 layout={isBars ? 'vertical' : 'horizontal'}
                 margin={{ 
-                    top: 40, 
+                    top: 20, 
                     right: 40, 
                     left: isBars ? (isMobile ? 10 : 20) : 0, 
                     bottom: isBars ? 5 : 20 
@@ -134,19 +132,6 @@ export function StaffPerformanceChart({
                     barSize={isMobile ? 20 : 35}
                     fill="hsl(var(--chart-1))"
                 >
-                    <LabelList 
-                        dataKey="name" 
-                        position={isBars ? "insideLeft" : "top"} 
-                        offset={isBars ? 10 : 25}
-                        style={{ fontSize: '9px', fill: isBars ? '#fff' : 'hsl(var(--primary))', fontWeight: 'bold' }}
-                    />
-                    <LabelList 
-                        dataKey="value" 
-                        position={isBars ? "right" : "top"} 
-                        formatter={valueFormatter}
-                        style={{ fontSize: '10px', fill: 'currentColor', fontWeight: 'bold' }}
-                        offset={10}
-                    />
                     {data.map((_, index) => (
                         <Cell key={`cell-${index}`} fill="hsl(var(--chart-1))" />
                     ))}

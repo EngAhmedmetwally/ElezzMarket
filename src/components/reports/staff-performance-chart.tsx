@@ -2,7 +2,7 @@
 "use client"
 
 import * as React from "react";
-import { Bar, BarChart, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, LabelList } from "recharts";
+import { Bar, BarChart, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from "recharts";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useLanguage } from "@/components/language-provider";
 import { cn } from "@/lib/utils";
@@ -60,7 +60,7 @@ export function StaffPerformanceChart({
                 data={data} 
                 layout={isVertical ? 'vertical' : 'horizontal'}
                 margin={{ 
-                    top: 40, 
+                    top: 20, 
                     right: 30, 
                     left: isVertical ? (isMobile ? 10 : 20) : 0, 
                     bottom: isVertical ? 5 : 20 
@@ -132,19 +132,6 @@ export function StaffPerformanceChart({
                     barSize={isMobile ? 15 : 25}
                     fill="hsl(var(--chart-1))"
                 >
-                    <LabelList 
-                        dataKey="name" 
-                        position={isVertical ? "insideLeft" : "top"} 
-                        offset={isVertical ? 5 : 25}
-                        style={{ fontSize: '9px', fill: isVertical ? '#fff' : 'hsl(var(--primary))', fontWeight: 'bold' }}
-                    />
-                    <LabelList 
-                        dataKey="value" 
-                        position={isVertical ? "right" : "top"} 
-                        formatter={valueFormatter}
-                        style={{ fontSize: '10px', fill: 'currentColor', fontWeight: 'bold' }}
-                        offset={10}
-                    />
                     {data.map((_, index) => (
                         <Cell key={`cell-${index}`} fill="hsl(var(--chart-1))" />
                     ))}

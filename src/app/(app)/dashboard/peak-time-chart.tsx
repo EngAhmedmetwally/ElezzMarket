@@ -1,7 +1,7 @@
 
 "use client";
 
-import { Bar, BarChart, XAxis, YAxis, CartesianGrid, Tooltip, LabelList } from "recharts";
+import { Bar, BarChart, XAxis, YAxis, CartesianGrid, Tooltip } from "recharts";
 import {
   Card,
   CardContent,
@@ -18,7 +18,7 @@ import { useLanguage } from "@/components/language-provider";
 const chartConfig = {
   orders: {
     label: "Orders",
-    color: "hsl(var(--chart-1))", // Reverted to Blue
+    color: "hsl(var(--chart-1))",
   },
 };
 
@@ -37,7 +37,7 @@ export function PeakTimeChart({ data: chartData }: PeakTimeChartProps) {
       </CardHeader>
       <CardContent>
         <ChartContainer config={chartConfig} className="h-[300px] w-full">
-          <BarChart accessibilityLayer data={chartData} margin={{ top: 40, right: 20, left: -10, bottom: 0 }}>
+          <BarChart accessibilityLayer data={chartData} margin={{ top: 20, right: 20, left: -10, bottom: 0 }}>
             <CartesianGrid vertical={false} />
             <XAxis
               dataKey="hour"
@@ -51,21 +51,7 @@ export function PeakTimeChart({ data: chartData }: PeakTimeChartProps) {
               cursor={false}
               content={<ChartTooltipContent indicator="dot" labelFormatter={(label) => `${language === 'ar' ? 'الساعة' : 'Hour'} ${label}`} />}
             />
-            <Bar dataKey="orders" fill="var(--color-orders)" radius={4}>
-                <LabelList 
-                    dataKey="hour" 
-                    position="top" 
-                    offset={25}
-                    formatter={(val: string) => `${language === 'ar' ? 'ساعة' : 'Hr'} ${val.split(':')[0]}`}
-                    style={{ fontSize: '9px', fill: 'hsl(var(--primary))', fontWeight: 'bold' }}
-                />
-                <LabelList 
-                    dataKey="orders" 
-                    position="top" 
-                    style={{ fontSize: '10px', fill: 'currentColor', fontWeight: 'bold' }}
-                    offset={10}
-                />
-            </Bar>
+            <Bar dataKey="orders" fill="var(--color-orders)" radius={4} />
           </BarChart>
         </ChartContainer>
       </CardContent>
