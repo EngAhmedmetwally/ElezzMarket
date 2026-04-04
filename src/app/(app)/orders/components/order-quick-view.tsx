@@ -183,8 +183,8 @@ export function OrderQuickView({ orderId, onClose }: OrderQuickViewProps) {
   const canEditOrder = (order.status === 'تم التسجيل' || order.status === 'قيد التجهيز') && (authUser?.role === 'Admin' || authUser?.permissions?.orders?.edit);
 
   return (
-    <div className="flex flex-col h-full bg-background relative">
-      <div className="p-6 pb-2 border-b flex justify-between items-center bg-muted/10">
+    <div className="flex flex-col h-[90vh] bg-background relative overflow-hidden">
+      <div className="p-6 pb-4 border-b flex justify-between items-center bg-muted/10 shrink-0">
         <div>
             <h2 className="text-2xl font-bold flex items-center gap-2">
                 #{order.id}
@@ -192,15 +192,7 @@ export function OrderQuickView({ orderId, onClose }: OrderQuickViewProps) {
             </h2>
             <p className="text-sm text-muted-foreground">{format(new Date(order.createdAt), "PPP p")}</p>
         </div>
-        <div className="flex gap-2">
-            <Button variant="outline" size="icon" onClick={() => setIsHistoryOpen(true)} title={language === 'ar' ? 'سجل التعديلات' : 'Edit History'}><History className="h-4 w-4" /></Button>
-            {canEditOrder && (
-                <Button variant="outline" size="icon" onClick={() => setIsEditOpen(true)} title={language === 'ar' ? 'تعديل' : 'Edit'}><Edit className="h-4 w-4" /></Button>
-            )}
-            <Button variant="outline" size="icon" onClick={() => setIsSharePreviewOpen(true)} title={language === 'ar' ? 'مشاركة' : 'Share'}><Share2 className="h-4 w-4" /></Button>
-            <Button variant="outline" size="icon" onClick={() => window.print()} title={language === 'ar' ? 'طباعة' : 'Print'}><Printer className="h-4 w-4" /></Button>
-            <Button variant="ghost" size="icon" onClick={onClose} className="h-8 w-8">✕</Button>
-        </div>
+        <Button variant="ghost" size="icon" onClick={onClose} className="h-8 w-8">✕</Button>
       </div>
 
       <ScrollArea className="flex-1">
@@ -253,7 +245,7 @@ export function OrderQuickView({ orderId, onClose }: OrderQuickViewProps) {
                             )}
                             <div className="sm:col-span-2 space-y-1">
                                 <p className="text-xs text-muted-foreground">{language === 'ar' ? 'العنوان التفصيلي' : 'Full Address'}</p>
-                                <p className="flex items-start gap-2 font-medium bg-muted/50 p-2 rounded border">
+                                <p className="flex items-start gap-2 font-medium bg-muted/50 p-2 rounded border text-start">
                                     <MapPin className="h-4 w-4 mt-1 text-primary shrink-0" />
                                     {order.customerAddress}
                                 </p>
@@ -309,11 +301,36 @@ export function OrderQuickView({ orderId, onClose }: OrderQuickViewProps) {
             </div>
 
             <div className="md:col-span-4 space-y-6">
-                <Card className="border-primary/20">
+                {/* Actions Stacked Vertically */}
+                <Card className="border-primary/20 bg-primary/5">
+                    <CardHeader className="p-4 pb-2"><CardTitle className="text-sm font-bold">{language === 'ar' ? 'الإجراءات' : 'Actions'}</CardTitle></CardHeader>
+                    <CardContent className="p-4 pt-2 flex flex-col gap-3">
+                        <Button variant="outline" className="w-full justify-start h-11" onClick={() => setIsHistoryOpen(true)}>
+                            <History className="me-2 h-4 w-4" />
+                            {language === 'ar' ? 'سجل التعديلات' : 'Edit History'}
+                        </Button>
+                        {canEditOrder && (
+                            <Button variant="outline" className="w-full justify-start h-11" onClick={() => setIsEditOpen(true)}>
+                                <Edit className="me-2 h-4 w-4" />
+                                {language === 'ar' ? 'تعديل البيانات' : 'Edit Order'}
+                            </Button>
+                        )}
+                        <Button variant="outline" className="w-full justify-start h-11" onClick={() => setIsSharePreviewOpen(true)}>
+                            <Share2 className="me-2 h-4 w-4" />
+                            {language === 'ar' ? 'مشاركة كصورة' : 'Share Image'}
+                        </Button>
+                        <Button variant="default" className="w-full justify-start h-11" onClick={() => window.print()}>
+                            <Printer className="me-2 h-4 w-4" />
+                            {language === 'ar' ? 'طباعة الفاتورة' : 'Print Receipt'}
+                        </Button>
+                    </CardContent>
+                </Card>
+
+                <Card className="border-orange-500/20">
                     <CardHeader className="p-4 pb-2"><CardTitle className="text-sm font-bold">{language === 'ar' ? 'تغيير الحالة' : 'Change Status'}</CardTitle></CardHeader>
                     <CardContent className="p-4 pt-0">
                         <Select onValueChange={(val: OrderStatus) => { setSelectedStatus(val); setIsNoteModalOpen(true); }} disabled={availableStatuses.length === 0}>
-                            <SelectTrigger className="w-full"><SelectValue placeholder={language === 'ar' ? "اختر حالة جديدة" : "Update status"} /></SelectTrigger>
+                            <SelectTrigger className="w-full h-11"><SelectValue placeholder={language === 'ar' ? "اختر حالة جديدة" : "Update status"} /></SelectTrigger>
                             <SelectContent>
                                 {availableStatuses.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
                             </SelectContent>

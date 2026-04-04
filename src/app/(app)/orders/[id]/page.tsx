@@ -95,7 +95,6 @@ export default function OrderDetailsPage() {
   const [isSharePreviewOpen, setIsSharePreviewOpen] = React.useState(false);
   const [note, setNote] = React.useState("");
   const [selectedStatus, setSelectedStatus] = React.useState<OrderStatus | null>(null);
-  const [searchOrderId, setSearchOrderId] = React.useState("");
   const [isSharing, setIsSharing] = React.useState(false);
   const receiptRef = React.useRef<HTMLDivElement>(null);
 
@@ -168,18 +167,11 @@ export default function OrderDetailsPage() {
   return (
     <>
       <div className="print-hidden space-y-8">
-        <PageHeader title={`${language === 'ar' ? 'طلب' : 'Order'} ${order.id}`}>
-          <div className="flex gap-2">
-            <Button variant="outline" onClick={() => setIsHistoryModalOpen(true)}><History className="me-2 h-4 w-4" />{language === 'ar' ? 'سجل التعديلات' : 'History'}</Button>
-            {canEditOrder && <Button onClick={() => setIsEditModalOpen(true)}><Edit className="me-2 h-4 w-4" />{language === 'ar' ? 'تعديل' : 'Edit'}</Button>}
-            <Button variant="outline" onClick={() => setIsSharePreviewOpen(true)}><Share2 className="me-2 h-4 w-4" />{language === 'ar' ? 'مشاركة' : 'Share'}</Button>
-            <Button onClick={() => window.print()}><Printer className="me-2 h-4 w-4" />{language === 'ar' ? 'طباعة' : 'Print'}</Button>
-          </div>
-        </PageHeader>
+        <PageHeader title={`${language === 'ar' ? 'طلب' : 'Order'} ${order.id}`} />
 
         <PendingOrdersList />
 
-        {/* Barized Notes Section */}
+        {/* Notes Section - Prominent */}
         {order.notes && (
             <Card className="border-yellow-400 bg-yellow-50 dark:bg-yellow-900/20 shadow-md">
                 <CardContent className="p-6">
@@ -187,7 +179,7 @@ export default function OrderDetailsPage() {
                         <MessageSquare className="h-6 w-6" />
                         <h3 className="text-lg font-bold">{language === 'ar' ? 'ملاحظات الطلب الهامة' : 'Important Order Notes'}</h3>
                     </div>
-                    <p className="text-base font-medium leading-relaxed">{order.notes}</p>
+                    <p className="text-base font-medium leading-relaxed text-start">{order.notes}</p>
                 </CardContent>
             </Card>
         )}
@@ -226,7 +218,7 @@ export default function OrderDetailsPage() {
                         )}
                         <div className="sm:col-span-2 space-y-1">
                             <label className="text-xs text-muted-foreground uppercase">{language === 'ar' ? 'العنوان بالتفصيل' : 'Address'}</label>
-                            <p className="flex items-start gap-2 text-base font-medium bg-muted/30 p-3 rounded-lg border">
+                            <p className="flex items-start gap-2 text-base font-medium bg-muted/30 p-3 rounded-lg border text-start">
                                 <MapPin className="h-5 w-5 mt-0.5 text-primary shrink-0" />
                                 {order.customerAddress}
                             </p>
@@ -278,12 +270,37 @@ export default function OrderDetailsPage() {
              <StatusHistoryTimeline history={order.statusHistory} />
           </div>
           <div className="space-y-8">
+              {/* Vertical Action Buttons */}
+              <Card className="border-primary/20 bg-primary/5">
+                  <CardHeader><CardTitle>{language === 'ar' ? 'الإجراءات' : 'Actions'}</CardTitle></CardHeader>
+                  <CardContent className="flex flex-col gap-3">
+                      <Button variant="outline" className="w-full justify-start h-11" onClick={() => setIsHistoryModalOpen(true)}>
+                          <History className="me-2 h-4 w-4" />
+                          {language === 'ar' ? 'سجل التعديلات' : 'Edit History'}
+                      </Button>
+                      {canEditOrder && (
+                          <Button variant="outline" className="w-full justify-start h-11" onClick={() => setIsEditModalOpen(true)}>
+                              <Edit className="me-2 h-4 w-4" />
+                              {language === 'ar' ? 'تعديل البيانات' : 'Edit Order'}
+                          </Button>
+                      )}
+                      <Button variant="outline" className="w-full justify-start h-11" onClick={() => setIsSharePreviewOpen(true)}>
+                          <Share2 className="me-2 h-4 w-4" />
+                          {language === 'ar' ? 'مشاركة كصورة' : 'Share Image'}
+                      </Button>
+                      <Button variant="default" className="w-full justify-start h-11" onClick={() => window.print()}>
+                          <Printer className="me-2 h-4 w-4" />
+                          {language === 'ar' ? 'طباعة الفاتورة' : 'Print Receipt'}
+                      </Button>
+                  </CardContent>
+              </Card>
+
               <Card>
-                  <CardHeader><CardTitle>Status</CardTitle></CardHeader>
+                  <CardHeader><CardTitle>{language === 'ar' ? 'تغيير الحالة' : 'Change Status'}</CardTitle></CardHeader>
                   <CardContent className="space-y-4">
                       <StatusBadge status={order.status} className="w-full text-center py-2" />
                        <Select onValueChange={(val: OrderStatus) => { setSelectedStatus(val); setIsNoteModalOpen(true); }} disabled={availableStatuses.length === 0}>
-                          <SelectTrigger><SelectValue placeholder="Change status" /></SelectTrigger>
+                          <SelectTrigger className="h-11"><SelectValue placeholder={language === 'ar' ? "اختر حالة جديدة" : "Update status"} /></SelectTrigger>
                           <SelectContent>{availableStatuses.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent>
                       </Select>
                   </CardContent>
@@ -308,13 +325,13 @@ export default function OrderDetailsPage() {
         
         <Dialog open={isSharePreviewOpen} onOpenChange={setIsSharePreviewOpen}>
             <DialogContent className="sm:max-w-md max-h-[90vh] flex flex-col p-0 overflow-hidden">
-                <DialogHeader className="p-6 pb-2"><DialogTitle>Receipt Preview</DialogTitle></DialogHeader>
+                <DialogHeader className="p-6 pb-2"><DialogTitle>{language === 'ar' ? 'معاينة الإيصال' : 'Receipt Preview'}</DialogTitle></DialogHeader>
                 <ScrollArea className="flex-1 px-6 bg-muted/30">
                     <div className="py-6 flex justify-center"><div ref={receiptRef} className="inline-block shadow-lg border bg-white scale-95 origin-top"><ReceiptView order={order} language={language} settings={receiptSettings} /></div></div>
                 </ScrollArea>
                 <DialogFooter className="p-6 border-t bg-background">
-                    <Button variant="outline" onClick={() => setIsSharePreviewOpen(false)}>Cancel</Button>
-                    <Button onClick={executeSharing} disabled={isSharing}>{isSharing ? <Loader2 className="animate-spin h-4 w-4 mr-2" /> : <Share2 className="h-4 w-4 mr-2" />}Confirm & Send</Button>
+                    <Button variant="outline" onClick={() => setIsSharePreviewOpen(false)}>{language === 'ar' ? 'إلغاء' : 'Cancel'}</Button>
+                    <Button onClick={executeSharing} disabled={isSharing}>{isSharing ? <Loader2 className="animate-spin h-4 w-4 mr-2" /> : <Share2 className="h-4 w-4 mr-2" />}{language === 'ar' ? 'تأكيد وإرسال' : 'Confirm & Send'}</Button>
                 </DialogFooter>
             </DialogContent>
         </Dialog>
