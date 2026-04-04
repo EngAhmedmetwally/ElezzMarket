@@ -163,8 +163,12 @@ export default function StaffReportPage() {
       <PageHeader title={language === 'ar' ? 'تقرير أداء الموظفين' : 'Staff Performance Report'} />
       
       <div className="flex flex-col sm:flex-row items-center gap-4">
-        <DatePicker date={fromDate} onDateChange={setFromDate} placeholder={language === 'ar' ? 'من تاريخ' : 'From date'} />
-        <DatePicker date={toDate} onDateChange={setToDate} placeholder={language === 'ar' ? 'إلى تاريخ' : 'To date'} />
+        <div className="flex-1 w-full">
+          <DatePicker date={fromDate} onDateChange={setFromDate} placeholder={language === 'ar' ? 'من تاريخ' : 'From date'} />
+        </div>
+        <div className="flex-1 w-full">
+          <DatePicker date={toDate} onDateChange={setToDate} placeholder={language === 'ar' ? 'إلى تاريخ' : 'To date'} />
+        </div>
       </div>
 
        <div className="overflow-hidden">
@@ -181,7 +185,7 @@ export default function StaffReportPage() {
                   <StaffPerformanceChart 
                       data={topModeratorsByOrders} 
                       barLabel={language === 'ar' ? 'طلبات' : 'Orders'}
-                      layout="vertical"
+                      layout="horizontal"
                   />
                   <div className="overflow-x-auto rounded-lg border">
                     <Table>
@@ -214,7 +218,7 @@ export default function StaffReportPage() {
                       data={topEarners} 
                       barLabel={language === 'ar' ? 'صافي الربح' : 'Net Profit'}
                       formatter={(val) => formatCurrency(val, language)}
-                      layout="vertical"
+                      layout="horizontal"
                   />
                   <div className="overflow-x-auto rounded-lg border">
                     <Table>

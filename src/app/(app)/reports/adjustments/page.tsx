@@ -82,8 +82,12 @@ export default function AdjustmentsReportPage() {
       <PageHeader title={language === 'ar' ? 'تقرير الخصومات والمكافآت' : 'Bonuses & Discounts Report'} />
       
       <div className="flex flex-col sm:flex-row items-center gap-4 mb-4">
-          <DatePicker date={fromDate} onDateChange={setFromDate} placeholder={language === 'ar' ? 'من تاريخ' : 'From Date'} />
-          <DatePicker date={toDate} onDateChange={setToDate} placeholder={language === 'ar' ? 'إلى تاريخ' : 'To Date'} />
+          <div className="flex-1 w-full">
+            <DatePicker date={fromDate} onDateChange={setFromDate} placeholder={language === 'ar' ? 'من تاريخ' : 'From Date'} />
+          </div>
+          <div className="flex-1 w-full">
+            <DatePicker date={toDate} onDateChange={setToDate} placeholder={language === 'ar' ? 'إلى تاريخ' : 'To Date'} />
+          </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

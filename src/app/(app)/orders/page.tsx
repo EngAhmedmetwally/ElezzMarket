@@ -33,6 +33,7 @@ import { useUser } from "@/firebase";
 import type { Order, OrderStatus, Product, ShippingZone, Customer } from "@/lib/types";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useRealtimeCachedCollection } from "@/hooks/use-realtime-cached-collection";
+import { subDays } from "date-fns";
 
 
 export default function OrdersPage() {
@@ -47,7 +48,8 @@ export default function OrdersPage() {
   useRealtimeCachedCollection<ShippingZone>('shipping-zones');
   useRealtimeCachedCollection<Customer & {id: string}>('customers');
 
-  const [fromDate, setFromDate] = React.useState<Date | undefined>(new Date(2026, 2, 1));
+  // Default to last 7 days
+  const [fromDate, setFromDate] = React.useState<Date | undefined>(subDays(new Date(), 7));
   const [toDate, setToDate] = React.useState<Date | undefined>(new Date());
   
   // Filter States
@@ -243,12 +245,18 @@ export default function OrdersPage() {
         />
       </PageHeader>
       
-      <div className="grid md:grid-cols-4 gap-4 mb-4">
-        <div className="md:col-span-3 grid sm:grid-cols-2 gap-4">
-          <DatePicker date={fromDate} onDateChange={setFromDate} placeholder={language === 'ar' ? 'من تاريخ' : 'From date'} />
-          <DatePicker date={toDate} onDateChange={setToDate} placeholder={language === 'ar' ? 'إلى تاريخ' : 'To date'} />
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 mb-4 items-start">
+        <div className="lg:col-span-3 space-y-4">
+          <div className="flex flex-col sm:flex-row gap-4">
+            <div className="flex-1">
+              <DatePicker date={fromDate} onDateChange={setFromDate} placeholder={language === 'ar' ? 'من تاريخ' : 'From date'} />
+            </div>
+            <div className="flex-1">
+              <DatePicker date={toDate} onDateChange={setToDate} placeholder={language === 'ar' ? 'إلى تاريخ' : 'To date'} />
+            </div>
+          </div>
         </div>
-        <Card className="md:col-span-1">
+        <Card className="lg:col-span-1">
             <CardHeader className="p-4">
                 <CardTitle className="text-sm font-medium">{language === 'ar' ? 'ملخص الحالات' : 'Status Summary'}</CardTitle>
             </CardHeader>

@@ -192,8 +192,12 @@ export default function DailyRevenueReportPage() {
       <PageHeader title={language === 'ar' ? 'تقرير الإيراد اليومي' : 'Daily Revenue Report'} />
       
       <div className="flex flex-col sm:flex-row items-center gap-4">
-        <DatePicker date={fromDate} onDateChange={setFromDate} placeholder={language === 'ar' ? 'من تاريخ' : 'From date'} />
-        <DatePicker date={toDate} onDateChange={setToDate} placeholder={language === 'ar' ? 'إلى تاريخ' : 'To date'} />
+        <div className="flex-1 w-full">
+          <DatePicker date={fromDate} onDateChange={setFromDate} placeholder={language === 'ar' ? 'من تاريخ' : 'From date'} />
+        </div>
+        <div className="flex-1 w-full">
+          <DatePicker date={toDate} onDateChange={setToDate} placeholder={language === 'ar' ? 'إلى تاريخ' : 'To date'} />
+        </div>
       </div>
       
       <Card className="min-w-0">

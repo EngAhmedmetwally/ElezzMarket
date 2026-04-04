@@ -123,8 +123,12 @@ export default function ProductsReportPage() {
       <PageHeader title={language === 'ar' ? 'تقرير المنتجات' : 'Products Report'} />
 
       <div className="flex flex-col sm:flex-row items-center gap-4">
-        <DatePicker date={fromDate} onDateChange={setFromDate} placeholder={language === 'ar' ? 'من تاريخ' : 'From date'} />
-        <DatePicker date={toDate} onDateChange={setToDate} placeholder={language === 'ar' ? 'إلى تاريخ' : 'To date'} />
+        <div className="flex-1 w-full">
+          <DatePicker date={fromDate} onDateChange={setFromDate} placeholder={language === 'ar' ? 'من تاريخ' : 'From date'} />
+        </div>
+        <div className="flex-1 w-full">
+          <DatePicker date={toDate} onDateChange={setToDate} placeholder={language === 'ar' ? 'إلى تاريخ' : 'To date'} />
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
@@ -136,7 +140,7 @@ export default function ProductsReportPage() {
                 <StaffPerformanceChart 
                     data={topQtyChartData} 
                     barLabel={language === 'ar' ? 'الكمية' : 'Quantity'}
-                    layout="vertical"
+                    layout="horizontal"
                 />
             </CardContent>
         </Card>
@@ -149,7 +153,7 @@ export default function ProductsReportPage() {
                     data={topWeightChartData} 
                     barLabel={language === 'ar' ? 'الوزن (كجم)' : 'Weight (kg)'}
                     formatter={(val) => `${val} kg`}
-                    layout="vertical"
+                    layout="horizontal"
                 />
             </CardContent>
         </Card>
