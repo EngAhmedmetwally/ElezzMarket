@@ -114,7 +114,7 @@ function ReceiptView({ order, language, settings }: { order: Order; language: "a
       showOrderId: true, showDate: true, showCustomerName: true, showFacebookName: true, showCustomerPhone: true, showCustomerAddress: true, showPaymentMethod: true,
       showItemWeight: false, showItemPrice: true, showItemSubtotal: true,
       showItemsSubtotal: true, showShippingCost: true, showGrandTotal: true,
-      showOrderNotes: false,
+      showOrderNotes: true,
       footerText: language === 'ar' ? 'شكراً لتعاملكم معنا!' : 'Thank you!',
       mandatoryFooterText: '',
       showCourierName: true,
