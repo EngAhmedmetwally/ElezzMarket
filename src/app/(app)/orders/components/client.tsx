@@ -67,17 +67,38 @@ export function OrdersClient<TData extends Order, TValue>({
   const { language } = useLanguage();
   const isMobile = useIsMobile();
 
-  // Long Press Detection Logic
+  // Long Press Detection Logic with movement tracking to fix scroll
   const timerRef = React.useRef<NodeJS.Timeout | null>(null);
   const isLongPress = React.useRef(false);
+  const startPos = React.useRef({ x: 0, y: 0 });
+  const hasMoved = React.useRef(false);
 
-  const onTouchStart = (id: string) => {
+  const onTouchStart = (e: React.PointerEvent, id: string) => {
     isLongPress.current = false;
+    hasMoved.current = false;
+    startPos.current = { x: e.clientX, y: e.clientY };
+    
     timerRef.current = setTimeout(() => {
-      isLongPress.current = true;
-      if (window.navigator.vibrate) window.navigator.vibrate(50);
-      setPreviewOrderId(id);
-    }, 500); // 500ms for long press
+      if (!hasMoved.current) {
+        isLongPress.current = true;
+        if (window.navigator.vibrate) window.navigator.vibrate(50);
+        setPreviewOrderId(id);
+      }
+    }, 600); // Increased slightly for better scroll tolerance
+  };
+
+  const onTouchMove = (e: React.PointerEvent) => {
+    const moveX = Math.abs(e.clientX - startPos.current.x);
+    const moveY = Math.abs(e.clientY - startPos.current.y);
+    
+    // If moved more than 10px, it's a scroll attempt
+    if (moveX > 10 || moveY > 10) {
+      hasMoved.current = true;
+      if (timerRef.current) {
+        clearTimeout(timerRef.current);
+        timerRef.current = null;
+      }
+    }
   };
 
   const onTouchEnd = (order: TData) => {
@@ -85,7 +106,7 @@ export function OrdersClient<TData extends Order, TValue>({
       clearTimeout(timerRef.current);
       timerRef.current = null;
     }
-    if (!isLongPress.current) {
+    if (!isLongPress.current && !hasMoved.current) {
       handleRowClick(order);
     }
   };
@@ -152,8 +173,9 @@ export function OrdersClient<TData extends Order, TValue>({
                 <Card 
                   key={row.id} 
                   data-state={row.getIsSelected() && "selected"} 
-                  className="data-[state=selected]:bg-muted/50 cursor-pointer active:scale-[0.98] transition-transform select-none touch-none"
-                  onPointerDown={() => onTouchStart(row.original.id)}
+                  className="data-[state=selected]:bg-muted/50 cursor-pointer active:scale-[0.98] transition-transform select-none"
+                  onPointerDown={(e) => onTouchStart(e, row.original.id)}
+                  onPointerMove={onTouchMove}
                   onPointerUp={() => onTouchEnd(row.original)}
                   onPointerLeave={() => { if(timerRef.current) clearTimeout(timerRef.current); }}
                 >
@@ -212,10 +234,7 @@ export function OrdersClient<TData extends Order, TValue>({
           )}
         </div>
         <Dialog open={!!previewOrderId} onOpenChange={(open) => !open && setPreviewOrderId(null)}>
-            <DialogContent className="sm:max-w-2xl max-h-[90vh] p-0">
-                <DialogHeader className="p-6 pb-0">
-                    <DialogTitle>{language === 'ar' ? 'معاينة سريعة للطلب' : 'Order Quick Preview'}</DialogTitle>
-                </DialogHeader>
+            <DialogContent className="sm:max-w-4xl max-h-[95vh] p-0 overflow-hidden">
                 {previewOrderId && <OrderQuickView orderId={previewOrderId} onClose={() => setPreviewOrderId(null)} />}
             </DialogContent>
         </Dialog>
@@ -253,7 +272,8 @@ export function OrdersClient<TData extends Order, TValue>({
                   key={row.id}
                   data-state={row.getIsSelected() && "selected"}
                   className="cursor-pointer select-none active:bg-muted/80 transition-colors"
-                  onPointerDown={() => onTouchStart(row.original.id)}
+                  onPointerDown={(e) => onTouchStart(e, row.original.id)}
+                  onPointerMove={onTouchMove}
                   onPointerUp={() => onTouchEnd(row.original)}
                   onPointerLeave={() => { if(timerRef.current) clearTimeout(timerRef.current); }}
                 >
@@ -288,10 +308,7 @@ export function OrdersClient<TData extends Order, TValue>({
         </Table>
       </div>
       <Dialog open={!!previewOrderId} onOpenChange={(open) => !open && setPreviewOrderId(null)}>
-          <DialogContent className="sm:max-w-2xl max-h-[90vh] p-0">
-              <DialogHeader className="p-6 pb-0">
-                  <DialogTitle>{language === 'ar' ? 'معاينة سريعة للطلب' : 'Order Quick Preview'}</DialogTitle>
-              </DialogHeader>
+          <DialogContent className="sm:max-w-4xl max-h-[95vh] p-0 overflow-hidden">
               {previewOrderId && <OrderQuickView orderId={previewOrderId} onClose={() => setPreviewOrderId(null)} />}
           </DialogContent>
       </Dialog>
