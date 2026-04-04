@@ -8,33 +8,28 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { StatusBadge } from "@/components/status-badge";
-import { Printer, Search, Edit, History, Share2, Loader2, MessageSquare } from "lucide-react";
+import { Printer, Search, Edit, History, Share2, Loader2, MessageSquare, Phone, Facebook, MapPin } from "lucide-react";
 import { useLanguage } from "@/components/language-provider";
-import type { Order, OrderStatus, StatusHistoryItem, User, Commission, ReceiptSettings, OrderEditHistoryItem, OrderStatusConfig, OrderItem } from "@/lib/types";
+import type { Order, OrderStatus, StatusHistoryItem, User, ReceiptSettings, OrderStatusConfig, OrderItem } from "@/lib/types";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose, DialogDescription } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { format } from "date-fns";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { cn, formatCurrency } from "@/lib/utils";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { formatCurrency } from "@/lib/utils";
 import { useDatabase, useUser as useAuthUser } from "@/firebase";
-import { ref, update, runTransaction, get, push, child, set } from "firebase/database";
+import { ref, runTransaction, get, push, child } from "firebase/database";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useCachedDoc } from "@/hooks/use-cached-doc";
 import { useRealtimeCachedCollection } from "@/hooks/use-realtime-cached-collection";
-import { Logo } from "@/components/icons/logo";
-import { idbPut } from "@/lib/db";
-import { syncEvents } from "@/lib/sync-events";
-import { useIsMobile } from "@/hooks/use-mobile";
 import { OrderForm } from "../new/order-form";
 import { OrderEditHistory } from "../components/order-edit-history";
 import { PendingOrdersList } from "../components/pending-orders-list";
 import { ReceiptView } from "../components/receipt-view";
-
 
 function StatusHistoryTimeline({ history }: { history?: Record<string, StatusHistoryItem> }) {
     const { language } = useLanguage();
@@ -80,25 +75,6 @@ function StatusHistoryTimeline({ history }: { history?: Record<string, StatusHis
     )
 }
 
-function OrderDetailsSkeleton() {
-    return (
-        <div>
-            <PageHeader title="..." />
-            <div className="grid md:grid-cols-3 gap-8">
-                <div className="md:col-span-2 space-y-8">
-                    <Skeleton className="h-64" />
-                    <Skeleton className="h-48" />
-                </div>
-                <div className="space-y-8">
-                    <Skeleton className="h-32" />
-                    <Skeleton className="h-48" />
-                    <Skeleton className="h-32" />
-                </div>
-            </div>
-        </div>
-    )
-}
-
 export default function OrderDetailsPage() {
   const params = useParams();
   const router = useRouter();
@@ -107,166 +83,71 @@ export default function OrderDetailsPage() {
   const { toast } = useToast();
   const database = useDatabase();
   const { user: authUser } = useAuthUser();
-  const isMobile = useIsMobile();
   
   const { data: order, isLoading: isLoadingOrder, refetch } = useCachedDoc<Order>( 'orders', id );
-  const { data: users, isLoading: isLoadingUsers } = useRealtimeCachedCollection<User>('users');
-  const { data: receiptSettingsCollection, isLoading: isLoadingSettings } = useRealtimeCachedCollection<ReceiptSettings>('receipt-settings');
-  const { data: orderStatuses, isLoading: isLoadingStatuses } = useRealtimeCachedCollection<OrderStatusConfig>('order-statuses');
+  const { data: users } = useRealtimeCachedCollection<User>('users');
+  const { data: receiptSettingsCollection } = useRealtimeCachedCollection<ReceiptSettings>('receipt-settings');
+  const { data: orderStatuses } = useRealtimeCachedCollection<OrderStatusConfig>('order-statuses');
 
   const [isNoteModalOpen, setIsNoteModalOpen] = React.useState(false);
-  const [isCourierModalOpen, setIsCourierModalOpen] = React.useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = React.useState(false);
   const [isHistoryModalOpen, setIsHistoryModalOpen] = React.useState(false);
   const [isSharePreviewOpen, setIsSharePreviewOpen] = React.useState(false);
   const [note, setNote] = React.useState("");
   const [selectedStatus, setSelectedStatus] = React.useState<OrderStatus | null>(null);
-  const [courierSearch, setCourierSearch] = React.useState("");
-  const [selectedCourierId, setSelectedCourierId] = React.useState<string | null>(null);
   const [searchOrderId, setSearchOrderId] = React.useState("");
   const [isSharing, setIsSharing] = React.useState(false);
   const receiptRef = React.useRef<HTMLDivElement>(null);
 
-  const handleSearch = (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    if (searchOrderId.trim() && searchOrderId.trim() !== id) {
-        router.push(`/orders/${searchOrderId.trim()}`);
-    }
-  };
-
-  const couriers = React.useMemo(() => users?.filter(u => u.role === 'Courier') || [], [users]);
-  
-  const receiptSettings = React.useMemo(() => {
-    if (!receiptSettingsCollection || receiptSettingsCollection.length === 0) return null;
-    return receiptSettingsCollection[0];
-  }, [receiptSettingsCollection]);
-  
+  const receiptSettings = receiptSettingsCollection?.[0] || null;
   const canEditStatus = (authUser?.permissions?.orders?.editStatus) || authUser?.role === 'Admin';
   
-  const isLoading = isLoadingOrder || isLoadingUsers || isLoadingSettings || isLoadingStatuses;
-
   const availableStatuses = React.useMemo(() => {
     if (!order || !canEditStatus || !orderStatuses?.length) return [];
-
     const currentStatusConfig = orderStatuses.find(s => s.name === order.status);
     if (!currentStatusConfig) return [];
-    
     const available: Set<OrderStatus> = new Set();
     const nextLevel = currentStatusConfig.level + 1;
-    
     orderStatuses.forEach(s => {
-      if (s.level === nextLevel) {
-        available.add(s.name as OrderStatus);
-      }
+      if (s.level === nextLevel) available.add(s.name as OrderStatus);
       if (s.isGeneral) {
          if (s.name === 'ملغي') {
-             const isCompleted = order.status === 'مكتمل';
              const canCancelCompleted = authUser?.permissions?.orders?.cancelCompleted || authUser?.role === 'Admin';
-             const isAlreadyCancelled = order.status === 'ملغي';
-
-             if (!isAlreadyCancelled) {
-                 if (!isCompleted || canCancelCompleted) {
-                     available.add(s.name as OrderStatus);
-                 }
-             }
-         } else {
-             const canBeMoved = !['مكتمل', 'ملغي'].includes(order.status);
-             if (canBeMoved) {
-                 available.add(s.name as OrderStatus);
-             }
-         }
+             if (order.status !== 'ملغي' && (order.status !== 'مكتمل' || canCancelCompleted)) available.add(s.name as OrderStatus);
+         } else if (order.status !== 'مكتمل' && order.status !== 'ملغي') available.add(s.name as OrderStatus);
       }
     });
-
-    if (order.status === 'تم الشحن' || order.status === 'معلق') {
-        const onHold = orderStatuses.find(s => s.name === 'معلق');
-        const completed = orderStatuses.find(s => s.name === 'مكتمل');
-        const shipped = orderStatuses.find(s => s.name === 'تم الشحن');
-
-        if(order.status === 'تم الشحن' && onHold) available.add(onHold.name as OrderStatus);
-        if(order.status === 'معلق' && shipped) available.add(shipped.name as OrderStatus);
-        if (completed) available.add(completed.name as OrderStatus);
-    }
-    
-    const uniqueStatuses = Array.from(available);
-    uniqueStatuses.sort((a, b) => {
-        const levelA = orderStatuses.find(s => s.name === a)?.level || 99;
-        const levelB = orderStatuses.find(s => s.name === b)?.level || 99;
-        return levelA - levelB;
-    });
-
-    return uniqueStatuses;
+    return Array.from(available).sort((a,b) => (orderStatuses.find(s=>s.name===a)?.level||0) - (orderStatuses.find(s=>s.name===b)?.level||0));
   }, [order, canEditStatus, orderStatuses, authUser]);
   
-  const orderItems: OrderItem[] = order?.items ? (Array.isArray(order.items) ? order.items : Object.values(order.items)) : [];
-  const itemsSubtotal: number = orderItems.reduce((acc: number, item: OrderItem) => acc + (Number(item.price) * Number(item.quantity)), 0);
-  const totalItems: number = orderItems.reduce((acc: number, item: OrderItem) => acc + Number(item.quantity), 0);
-  const totalWeight: number = orderItems.reduce((acc: number, item: OrderItem) => acc + ((Number(item.weight) || 0) * Number(item.quantity)), 0);
-  const grandTotal = itemsSubtotal + Number(order?.shippingCost || 0);
-  const formatCurrencyLocal = (value: number) => formatCurrency(value, language);
+  if (isLoadingOrder || !order) return <div className="p-8"><Skeleton className="h-64 w-full" /></div>;
 
-  if (isLoading && !order) return <OrderDetailsSkeleton />;
-  if (!order && !isLoading) return <div className="p-8">Order Not Found</div>;
-  if (!order) return <OrderDetailsSkeleton />;
+  const orderItems: OrderItem[] = Array.isArray(order.items) ? order.items : Object.values(order.items || {});
+  const itemsSubtotal = orderItems.reduce((acc, item) => acc + (item.price * item.quantity), 0);
+  const canEditOrder = (order.status === 'تم التسجيل' || order.status === 'قيد التجهيز') && (authUser?.role === 'Admin' || authUser?.permissions?.orders?.edit);
 
-  const isEditable = (order.status === 'تم التسجيل' || order.status === 'قيد التجهيز');
-  const canEditOrder = isEditable && (authUser?.role === 'Admin' || authUser?.permissions?.orders?.edit);
-
-  const filteredCouriers = couriers.filter(c => 
-    c.name.toLowerCase().includes(courierSearch.toLowerCase()) || 
-    (c.phone1 && c.phone1.includes(courierSearch))
-  );
-
-  const handleStatusChangeRequest = (newStatus: OrderStatus) => {
-    if (order && newStatus !== order.status) {
-      setSelectedStatus(newStatus);
-      if (newStatus === "تم الشحن") {
-        setSelectedCourierId(order.courierId || null);
-        setIsCourierModalOpen(true);
-      } else {
-        setIsNoteModalOpen(true);
-      }
-    }
-  };
-
-  const handleStatusUpdate = async (newStatus: OrderStatus, noteText: string, courierId?: string | null) => {
+  const handleStatusUpdate = async (newStatus: OrderStatus, noteText: string) => {
     if (!order || !database || !authUser) return;
     const orderRef = ref(database, order.path || `orders/${order.id}`);
     try {
         const now = new Date().toISOString();
-        const currentUser = authUser.name || authUser.email || "System";
         const commissionRulesSnap = await get(ref(database, 'commission-rules'));
         const commissionAmount = commissionRulesSnap.val()?.[newStatus]?.amount || 0;
-
-        await runTransaction(orderRef, (currentOrder) => {
-            if (currentOrder) {
-                if (!currentOrder.statusHistory) currentOrder.statusHistory = {};
-                const newHistoryKey = push(child(orderRef, 'statusHistory')).key;
-                let finalNote = noteText;
-                if (newStatus === "تم الشحن" && courierId) {
-                    const selectedCourier = couriers.find(c => c.id === courierId);
-                    if (selectedCourier) {
-                        currentOrder.courierId = selectedCourier.id;
-                        currentOrder.courierName = selectedCourier.name;
-                        finalNote = noteText ? `${selectedCourier.name} - ${noteText}` : selectedCourier.name;
-                    }
-                }
-                if (newHistoryKey) {
-                    currentOrder.statusHistory[newHistoryKey] = { status: newStatus, notes: finalNote, createdAt: now, userName: currentUser, userId: authUser.id };
-                }
-                currentOrder.status = newStatus;
-                currentOrder.updatedAt = now;
-                if (commissionAmount !== 0) currentOrder.totalCommission = (currentOrder.totalCommission || 0) + commissionAmount;
+        await runTransaction(orderRef, (current) => {
+            if (current) {
+                if (!current.statusHistory) current.statusHistory = {};
+                const key = push(child(orderRef, 'statusHistory')).key;
+                if (key) current.statusHistory[key] = { status: newStatus, notes: noteText, createdAt: now, userName: authUser.name || authUser.email || "System", userId: authUser.id };
+                current.status = newStatus;
+                current.updatedAt = now;
+                if (commissionAmount !== 0) current.totalCommission = (current.totalCommission || 0) + commissionAmount;
             }
-            return currentOrder;
+            return current;
         });
         refetch();
         setIsNoteModalOpen(false);
-        setIsCourierModalOpen(false);
     } catch (e) { console.error(e); }
   }
-
-  const handlePrint = () => { typeof window !== 'undefined' && window.print(); };
 
   const executeSharing = async () => {
     if (!receiptRef.current || !order) return;
@@ -286,25 +167,84 @@ export default function OrderDetailsPage() {
 
   return (
     <>
-      <div className="print-hidden">
+      <div className="print-hidden space-y-8">
         <PageHeader title={`${language === 'ar' ? 'طلب' : 'Order'} ${order.id}`}>
-          <form onSubmit={handleSearch} className="hidden md:flex items-center gap-2">
-            <Input placeholder={language === 'ar' ? 'ابحث عن طلب آخر' : 'Find another order'} value={searchOrderId} onChange={(e) => setSearchOrderId(e.target.value)} className="h-9 w-48" />
-            <Button type="submit" variant="outline" size="icon" className="h-9 w-9"><Search className="h-4 w-4" /></Button>
-          </form>
-          <Separator orientation="vertical" className="h-6 mx-2 hidden md:block" />
-          <Button variant="outline" onClick={() => setIsHistoryModalOpen(true)} className="justify-start"><History className="me-2 h-4 w-4" />{language === 'ar' ? 'سجل التعديلات' : 'Edit History'}</Button>
-          {canEditOrder && (
-            <Button onClick={() => setIsEditModalOpen(true)}><Edit className="me-2 h-4 w-4" />{language === 'ar' ? 'تعديل' : 'Edit'}</Button>
-          )}
-          <Button variant="outline" onClick={() => setIsSharePreviewOpen(true)}><Share2 className="me-2 h-4 w-4" />{language === 'ar' ? 'مشاركة' : 'Share'}</Button>
-          <Button onClick={handlePrint}><Printer className="me-2 h-4 w-4" />{language === 'ar' ? 'طباعة' : 'Print'}</Button>
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={() => setIsHistoryModalOpen(true)}><History className="me-2 h-4 w-4" />{language === 'ar' ? 'سجل التعديلات' : 'History'}</Button>
+            {canEditOrder && <Button onClick={() => setIsEditModalOpen(true)}><Edit className="me-2 h-4 w-4" />{language === 'ar' ? 'تعديل' : 'Edit'}</Button>}
+            <Button variant="outline" onClick={() => setIsSharePreviewOpen(true)}><Share2 className="me-2 h-4 w-4" />{language === 'ar' ? 'مشاركة' : 'Share'}</Button>
+            <Button onClick={() => window.print()}><Printer className="me-2 h-4 w-4" />{language === 'ar' ? 'طباعة' : 'Print'}</Button>
+          </div>
         </PageHeader>
 
         <PendingOrdersList />
 
+        {/* Barized Notes Section */}
+        {order.notes && (
+            <Card className="border-yellow-400 bg-yellow-50 dark:bg-yellow-900/20 shadow-md">
+                <CardContent className="p-6">
+                    <div className="flex items-center gap-3 mb-3 text-yellow-800 dark:text-yellow-400">
+                        <MessageSquare className="h-6 w-6" />
+                        <h3 className="text-lg font-bold">{language === 'ar' ? 'ملاحظات الطلب الهامة' : 'Important Order Notes'}</h3>
+                    </div>
+                    <p className="text-base font-medium leading-relaxed">{order.notes}</p>
+                </CardContent>
+            </Card>
+        )}
+
         <div className="grid md:grid-cols-3 gap-8">
           <div className="md:col-span-2 space-y-8">
+             <Card>
+                <CardHeader><CardTitle>{language === 'ar' ? 'بيانات العميل بالكامل' : 'Full Customer Details'}</CardTitle></CardHeader>
+                <CardContent className="space-y-6">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                        <div className="space-y-1">
+                            <label className="text-xs text-muted-foreground uppercase">{language === 'ar' ? 'الاسم الكامل' : 'Full Name'}</label>
+                            <p className="text-xl font-bold">{order.customerName}</p>
+                        </div>
+                        {order.facebookName && (
+                            <div className="space-y-1">
+                                <label className="text-xs text-muted-foreground uppercase">{language === 'ar' ? 'رابط/اسم فيسبوك' : 'Facebook'}</label>
+                                <p className="flex items-center gap-2 font-medium text-blue-600">
+                                    <Facebook className="h-4 w-4" /> {order.facebookName}
+                                </p>
+                            </div>
+                        )}
+                        <div className="space-y-1">
+                            <label className="text-xs text-muted-foreground uppercase">{language === 'ar' ? 'رقم الهاتف 1' : 'Phone 1'}</label>
+                            <p className="flex items-center gap-2 text-lg font-bold">
+                                <Phone className="h-4 w-4 text-green-600" /> {order.customerPhone1}
+                            </p>
+                        </div>
+                        {order.customerPhone2 && (
+                            <div className="space-y-1">
+                                <label className="text-xs text-muted-foreground uppercase">{language === 'ar' ? 'رقم الهاتف 2' : 'Phone 2'}</label>
+                                <p className="flex items-center gap-2 text-lg font-bold">
+                                    <Phone className="h-4 w-4 text-green-600" /> {order.customerPhone2}
+                                </p>
+                            </div>
+                        )}
+                        <div className="sm:col-span-2 space-y-1">
+                            <label className="text-xs text-muted-foreground uppercase">{language === 'ar' ? 'العنوان بالتفصيل' : 'Address'}</label>
+                            <p className="flex items-start gap-2 text-base font-medium bg-muted/30 p-3 rounded-lg border">
+                                <MapPin className="h-5 w-5 mt-0.5 text-primary shrink-0" />
+                                {order.customerAddress}
+                            </p>
+                        </div>
+                        <div className="space-y-1">
+                            <label className="text-xs text-muted-foreground uppercase">{language === 'ar' ? 'المنطقة (Zoning)' : 'Zone'}</label>
+                            <p className="inline-block px-4 py-1.5 bg-primary text-primary-foreground rounded-full text-sm font-bold shadow-sm">
+                                {order.zoning}
+                            </p>
+                        </div>
+                        <div className="space-y-1">
+                            <label className="text-xs text-muted-foreground uppercase">{language === 'ar' ? 'طريقة الدفع' : 'Payment'}</label>
+                            <p className="text-base font-bold">{order.paymentMethod}</p>
+                        </div>
+                    </div>
+                </CardContent>
+            </Card>
+
              <Card>
                 <CardHeader><CardTitle>{language === 'ar' ? 'منتجات الطلب' : 'Order Items'}</CardTitle></CardHeader>
                 <CardContent>
@@ -322,16 +262,16 @@ export default function OrderDetailsPage() {
                                 <TableRow key={index}>
                                     <TableCell>{item.productName}</TableCell>
                                     <TableCell className="text-center">{item.quantity}</TableCell>
-                                    <TableCell className="text-end">{formatCurrencyLocal(item.price)}</TableCell>
-                                    <TableCell className="text-end">{formatCurrencyLocal(item.price * item.quantity)}</TableCell>
+                                    <TableCell className="text-end">{formatCurrency(item.price, language)}</TableCell>
+                                    <TableCell className="text-end">{formatCurrency(item.price * item.quantity, language)}</TableCell>
                                 </TableRow>
                             ))}
                         </TableBody>
                     </Table>
                     <div className="mt-4 space-y-2 border-t pt-4">
-                        <div className="flex justify-between"><span>Subtotal</span><span>{formatCurrencyLocal(itemsSubtotal)}</span></div>
-                        <div className="flex justify-between"><span>Shipping</span><span>{formatCurrencyLocal(order.shippingCost || 0)}</span></div>
-                        <div className="flex justify-between font-bold text-lg"><span>Total</span><span>{formatCurrencyLocal(grandTotal)}</span></div>
+                        <div className="flex justify-between"><span>{language === 'ar' ? 'مجموع المنتجات' : 'Subtotal'}</span><span>{formatCurrency(itemsSubtotal, language)}</span></div>
+                        <div className="flex justify-between"><span>{language === 'ar' ? 'تكلفة الشحن' : 'Shipping'}</span><span>{formatCurrency(order.shippingCost || 0, language)}</span></div>
+                        <div className="flex justify-between font-bold text-lg text-primary border-t pt-2"><span>{language === 'ar' ? 'الإجمالي الكلي' : 'Total'}</span><span>{formatCurrency(order.total, language)}</span></div>
                     </div>
                 </CardContent>
             </Card>
@@ -341,19 +281,26 @@ export default function OrderDetailsPage() {
               <Card>
                   <CardHeader><CardTitle>Status</CardTitle></CardHeader>
                   <CardContent className="space-y-4">
-                      <StatusBadge status={order.status} />
-                       <Select onValueChange={(val: OrderStatus) => handleStatusChangeRequest(val)} disabled={availableStatuses.length === 0}>
+                      <StatusBadge status={order.status} className="w-full text-center py-2" />
+                       <Select onValueChange={(val: OrderStatus) => { setSelectedStatus(val); setIsNoteModalOpen(true); }} disabled={availableStatuses.length === 0}>
                           <SelectTrigger><SelectValue placeholder="Change status" /></SelectTrigger>
                           <SelectContent>{availableStatuses.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent>
                       </Select>
                   </CardContent>
               </Card>
               <Card>
-                  <CardHeader><CardTitle>Customer</CardTitle></CardHeader>
-                  <CardContent className="text-sm space-y-1">
-                      <p className="font-bold">{order.customerName}</p>
-                      <p>{order.customerPhone1}</p>
-                      <p className="opacity-70">{order.customerAddress}</p>
+                  <CardHeader><CardTitle>{language === 'ar' ? 'المسؤولين' : 'Personnel'}</CardTitle></CardHeader>
+                  <CardContent className="space-y-4 text-sm">
+                      <div>
+                          <p className="text-muted-foreground mb-1">{language === 'ar' ? 'الوسيط (Moderator)' : 'Moderator'}</p>
+                          <p className="font-bold">{order.moderatorName}</p>
+                      </div>
+                      {order.courierName && (
+                          <div>
+                              <p className="text-muted-foreground mb-1">{language === 'ar' ? 'المندوب (Courier)' : 'Courier'}</p>
+                              <p className="font-bold">{order.courierName}</p>
+                          </div>
+                      )}
                   </CardContent>
               </Card>
           </div>
@@ -361,7 +308,7 @@ export default function OrderDetailsPage() {
         
         <Dialog open={isSharePreviewOpen} onOpenChange={setIsSharePreviewOpen}>
             <DialogContent className="sm:max-w-md max-h-[90vh] flex flex-col p-0 overflow-hidden">
-                <DialogHeader className="p-6 pb-2"><DialogTitle>Receipt Preview</DialogTitle><DialogDescription>Verify before sharing.</DialogDescription></DialogHeader>
+                <DialogHeader className="p-6 pb-2"><DialogTitle>Receipt Preview</DialogTitle></DialogHeader>
                 <ScrollArea className="flex-1 px-6 bg-muted/30">
                     <div className="py-6 flex justify-center"><div ref={receiptRef} className="inline-block shadow-lg border bg-white scale-95 origin-top"><ReceiptView order={order} language={language} settings={receiptSettings} /></div></div>
                 </ScrollArea>
@@ -372,7 +319,7 @@ export default function OrderDetailsPage() {
             </DialogContent>
         </Dialog>
 
-        <Dialog open={isNoteModalOpen} onOpenChange={setIsNoteModalOpen}><DialogContent><DialogHeader><DialogTitle>Add Note</DialogTitle><DialogDescription>Add context to status change.</DialogDescription></DialogHeader><Textarea value={note} onChange={e => setNote(e.target.value)} /><DialogFooter><Button onClick={() => handleStatusUpdate(selectedStatus!, note)}>Save</Button></DialogFooter></DialogContent></Dialog>
+        <Dialog open={isNoteModalOpen} onOpenChange={setIsNoteModalOpen}><DialogContent><DialogHeader><DialogTitle>Add Note</DialogTitle></DialogHeader><Textarea value={note} onChange={e => setNote(e.target.value)} /><DialogFooter><Button onClick={() => handleStatusUpdate(selectedStatus!, note)}>Save</Button></DialogFooter></DialogContent></Dialog>
         <Dialog open={isEditModalOpen} onOpenChange={setIsEditModalOpen}><DialogContent className="max-w-3xl"><DialogHeader><DialogTitle>Edit Order</DialogTitle></DialogHeader><OrderForm orderToEdit={order} onSuccess={() => {setIsEditModalOpen(false); refetch();}} /></DialogContent></Dialog>
         <Dialog open={isHistoryModalOpen} onOpenChange={setIsHistoryModalOpen}><DialogContent className="max-w-2xl"><DialogHeader><DialogTitle>Edit History</DialogTitle></DialogHeader><OrderEditHistory history={order.editHistory} /></DialogContent></Dialog>
       </div>

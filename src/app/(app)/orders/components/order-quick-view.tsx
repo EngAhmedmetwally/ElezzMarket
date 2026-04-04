@@ -3,29 +3,26 @@
 
 import * as React from "react";
 import { useLanguage } from "@/components/language-provider";
-import type { Order, OrderStatus, StatusHistoryItem, User, ReceiptSettings, OrderStatusConfig, OrderItem, OrderEditHistoryItem } from "@/lib/types";
+import type { Order, OrderStatus, StatusHistoryItem, User, ReceiptSettings, OrderStatusConfig, OrderItem } from "@/lib/types";
 import { useDatabase, useUser as useAuthUser } from "@/firebase";
-import { ref, update, runTransaction, get, push, child, set } from "firebase/database";
+import { ref, runTransaction, get, push, child } from "firebase/database";
 import { useCachedDoc } from "@/hooks/use-cached-doc";
 import { useRealtimeCachedCollection } from "@/hooks/use-realtime-cached-collection";
 import { StatusBadge } from "@/components/status-badge";
 import { format } from "date-fns";
-import { formatCurrency, cn } from "@/lib/utils";
+import { formatCurrency } from "@/lib/utils";
 import { Separator } from "@/components/ui/separator";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose, DialogDescription } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Search, Printer, Share2, Loader2, MessageSquare, History, Edit, Truck } from "lucide-react";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Printer, Share2, Loader2, MessageSquare, History, Edit, Truck, Phone, Facebook, MapPin } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
-import { idbPut } from "@/lib/db";
-import { syncEvents } from "@/lib/sync-events";
 import { OrderEditHistory } from "./order-edit-history";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Logo } from "@/components/icons/logo";
 import { ReceiptView } from "./receipt-view";
 import { OrderForm } from "../new/order-form";
 import { useToast } from "@/hooks/use-toast";
@@ -164,54 +161,20 @@ export function OrderQuickView({ orderId, onClose }: OrderQuickViewProps) {
     } catch (e) { console.error(e); }
   };
 
-  const handlePrint = () => {
-    window.print();
-  };
-
   const executeSharing = async () => {
     if (!receiptRef.current || !order) return;
-    
     setIsSharing(true);
     try {
       const html2canvas = (await import('html2canvas')).default;
-      const canvas = await html2canvas(receiptRef.current, {
-        backgroundColor: '#ffffff',
-        scale: 2,
-        logging: false,
-        useCORS: true,
-        allowTaint: true,
-      });
-      
+      const canvas = await html2canvas(receiptRef.current, { backgroundColor: '#ffffff', scale: 2 });
       const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/png'));
-      if (!blob) throw new Error("Canvas to Blob failed");
-
-      const file = new File([blob], `receipt-${order.id}.png`, { type: 'image/png' });
-
-      if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
-        await navigator.share({
-          files: [file],
-          title: language === 'ar' ? `إيصال طلب #${order.id}` : `Receipt for order #${order.id}`,
-          text: language === 'ar' ? `إيصال طلب رقم ${order.id} من العز ماركت` : `Receipt for order #${order.id} from ElEzz Market`,
-        });
-      } else {
-        const { saveAs } = await import('file-saver');
-        saveAs(blob, `receipt-${order.id}.png`);
-        toast({
-          title: language === 'ar' ? 'تم حفظ الصورة' : 'Image Saved',
-          description: language === 'ar' ? 'يمكنك الآن إرسالها يدوياً عبر واتساب.' : 'You can now send it manually via WhatsApp.',
-        });
+      if (blob) {
+        const file = new File([blob], `receipt-${order.id}.png`, { type: 'image/png' });
+        if (navigator.share) await navigator.share({ files: [file] });
+        else { const { saveAs } = await import('file-saver'); saveAs(blob, `receipt-${order.id}.png`); }
       }
       setIsSharePreviewOpen(false);
-    } catch (error) {
-      console.error('Error sharing receipt image:', error);
-      toast({
-        variant: 'destructive',
-        title: language === 'ar' ? 'خطأ في المشاركة' : 'Sharing Error',
-        description: language === 'ar' ? 'حدث خطأ أثناء إنشاء صورة الإيصال.' : 'An error occurred while generating the receipt image.',
-      });
-    } finally {
-      setIsSharing(false);
-    }
+    } catch (error) { console.error(error); } finally { setIsSharing(false); }
   }
 
   if (isLoadingOrder || !order) return <div className="p-8"><Skeleton className="h-64 w-full" /></div>;
@@ -235,15 +198,80 @@ export function OrderQuickView({ orderId, onClose }: OrderQuickViewProps) {
                 <Button variant="outline" size="icon" onClick={() => setIsEditOpen(true)} title={language === 'ar' ? 'تعديل' : 'Edit'}><Edit className="h-4 w-4" /></Button>
             )}
             <Button variant="outline" size="icon" onClick={() => setIsSharePreviewOpen(true)} title={language === 'ar' ? 'مشاركة' : 'Share'}><Share2 className="h-4 w-4" /></Button>
-            <Button variant="outline" size="icon" onClick={handlePrint} title={language === 'ar' ? 'طباعة' : 'Print'}><Printer className="h-4 w-4" /></Button>
+            <Button variant="outline" size="icon" onClick={() => window.print()} title={language === 'ar' ? 'طباعة' : 'Print'}><Printer className="h-4 w-4" /></Button>
             <Button variant="ghost" size="icon" onClick={onClose} className="h-8 w-8">✕</Button>
         </div>
       </div>
 
       <ScrollArea className="flex-1">
         <div className="p-6 space-y-6">
+          {/* Prominent Notes Section */}
+          {order.notes && (
+            <div className="p-4 bg-yellow-50 dark:bg-yellow-900/30 border-2 border-yellow-400 rounded-lg shadow-sm">
+                <div className="flex items-center gap-2 mb-2 text-yellow-800 dark:text-yellow-400">
+                    <MessageSquare className="h-5 w-5" />
+                    <span className="font-bold text-sm">{language === 'ar' ? 'ملاحظات الطلب الهامة:' : 'Important Order Notes:'}</span>
+                </div>
+                <p className="text-sm font-medium leading-relaxed">{order.notes}</p>
+            </div>
+          )}
+
           <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
             <div className="md:col-span-8 space-y-6">
+                <Card>
+                    <CardHeader className="p-4 border-b bg-muted/20"><CardTitle className="text-sm font-bold">{language === 'ar' ? 'بيانات العميل بالكامل' : 'Full Customer Details'}</CardTitle></CardHeader>
+                    <CardContent className="p-4 space-y-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-4">
+                            <div className="space-y-1">
+                                <p className="text-xs text-muted-foreground">{language === 'ar' ? 'اسم العميل' : 'Customer Name'}</p>
+                                <p className="font-bold text-lg">{order.customerName}</p>
+                            </div>
+                            {order.facebookName && (
+                                <div className="space-y-1">
+                                    <p className="text-xs text-muted-foreground">{language === 'ar' ? 'حساب فيسبوك' : 'Facebook Name'}</p>
+                                    <p className="flex items-center gap-2 font-medium text-blue-600 dark:text-blue-400">
+                                        <Facebook className="h-4 w-4" />
+                                        {order.facebookName}
+                                    </p>
+                                </div>
+                            )}
+                            <div className="space-y-1">
+                                <p className="text-xs text-muted-foreground">{language === 'ar' ? 'رقم الهاتف 1' : 'Phone 1'}</p>
+                                <p className="flex items-center gap-2 font-bold text-base">
+                                    <Phone className="h-4 w-4 text-green-600" />
+                                    {order.customerPhone1}
+                                </p>
+                            </div>
+                            {order.customerPhone2 && (
+                                <div className="space-y-1">
+                                    <p className="text-xs text-muted-foreground">{language === 'ar' ? 'رقم الهاتف 2' : 'Phone 2'}</p>
+                                    <p className="flex items-center gap-2 font-bold text-base">
+                                        <Phone className="h-4 w-4 text-green-600" />
+                                        {order.customerPhone2}
+                                    </p>
+                                </div>
+                            )}
+                            <div className="sm:col-span-2 space-y-1">
+                                <p className="text-xs text-muted-foreground">{language === 'ar' ? 'العنوان التفصيلي' : 'Full Address'}</p>
+                                <p className="flex items-start gap-2 font-medium bg-muted/50 p-2 rounded border">
+                                    <MapPin className="h-4 w-4 mt-1 text-primary shrink-0" />
+                                    {order.customerAddress}
+                                </p>
+                            </div>
+                            <div className="space-y-1">
+                                <p className="text-xs text-muted-foreground">{language === 'ar' ? 'المنطقة' : 'Zoning'}</p>
+                                <p className="inline-block px-3 py-1 bg-primary text-primary-foreground rounded-full text-xs font-bold">
+                                    {order.zoning}
+                                </p>
+                            </div>
+                            <div className="space-y-1">
+                                <p className="text-xs text-muted-foreground">{language === 'ar' ? 'طريقة الدفع' : 'Payment'}</p>
+                                <p className="font-bold">{order.paymentMethod}</p>
+                            </div>
+                        </div>
+                    </CardContent>
+                </Card>
+
                 <Card>
                     <CardHeader className="p-4 border-b bg-muted/20"><CardTitle className="text-sm font-bold">{language === 'ar' ? 'الأصناف' : 'Items'}</CardTitle></CardHeader>
                     <CardContent className="p-0">
@@ -278,38 +306,6 @@ export function OrderQuickView({ orderId, onClose }: OrderQuickViewProps) {
                         </div>
                     </CardContent>
                 </Card>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <Card>
-                        <CardHeader className="p-4 pb-2"><CardTitle className="text-xs font-bold uppercase tracking-wider text-muted-foreground">{language === 'ar' ? 'بيانات العميل' : 'Customer'}</CardTitle></CardHeader>
-                        <CardContent className="p-4 pt-0 space-y-1.5 text-sm">
-                            <p className="font-bold text-base">{order.customerName}</p>
-                            {order.facebookName && <p className="text-xs flex items-center gap-1"><span className="opacity-70">FB:</span> {order.facebookName}</p>}
-                            <p className="font-medium">{order.customerPhone1}</p>
-                            <p className="text-xs opacity-80">{order.customerAddress}</p>
-                            <p className="text-xs font-bold text-primary inline-block px-2 py-0.5 bg-primary/10 rounded mt-1">{order.zoning}</p>
-                        </CardContent>
-                    </Card>
-                    <Card>
-                        <CardHeader className="p-4 pb-2"><CardTitle className="text-xs font-bold uppercase tracking-wider text-muted-foreground">{language === 'ar' ? 'الموظفون' : 'Staff'}</CardTitle></CardHeader>
-                        <CardContent className="p-4 pt-0 space-y-2 text-sm">
-                            <div className="flex items-center gap-2">
-                                <Avatar className="h-6 w-6"><AvatarFallback>{order.moderatorName.charAt(0)}</AvatarFallback></Avatar>
-                                <span className="text-xs">Moderator: <span className="font-bold">{order.moderatorName}</span></span>
-                            </div>
-                            {order.courierName && (
-                                <div className="flex items-center gap-2">
-                                    <Truck className="h-4 w-4 text-primary" />
-                                    <span className="text-xs">Courier: <span className="font-bold">{order.courierName}</span></span>
-                                </div>
-                            )}
-                            <div className="text-xs pt-2">
-                                <p className="opacity-70">Payment Method:</p>
-                                <p className="font-medium">{order.paymentMethod}</p>
-                            </div>
-                        </CardContent>
-                    </Card>
-                </div>
             </div>
 
             <div className="md:col-span-4 space-y-6">
@@ -325,17 +321,23 @@ export function OrderQuickView({ orderId, onClose }: OrderQuickViewProps) {
                     </CardContent>
                 </Card>
 
-                <StatusHistoryTimeline history={order.statusHistory} />
-
-                {order.notes && (
-                    <div className="p-4 bg-yellow-50 dark:bg-yellow-950/20 border-l-4 border-yellow-400 rounded-r-lg">
-                        <div className="flex items-center gap-2 mb-1 text-yellow-700 dark:text-yellow-400">
-                            <MessageSquare className="h-4 w-4" />
-                            <span className="text-xs font-bold">{language === 'ar' ? 'ملاحظات' : 'Notes'}</span>
+                <Card>
+                    <CardHeader className="p-4 pb-2"><CardTitle className="text-xs font-bold uppercase tracking-wider text-muted-foreground">{language === 'ar' ? 'الموظفون' : 'Staff'}</CardTitle></CardHeader>
+                    <CardContent className="p-4 pt-0 space-y-3 text-sm">
+                        <div className="flex items-center gap-2">
+                            <Avatar className="h-6 w-6"><AvatarFallback>{order.moderatorName.charAt(0)}</AvatarFallback></Avatar>
+                            <span className="text-xs">Moderator: <span className="font-bold">{order.moderatorName}</span></span>
                         </div>
-                        <p className="text-xs italic">{order.notes}</p>
-                    </div>
-                )}
+                        {order.courierName && (
+                            <div className="flex items-center gap-2">
+                                <Truck className="h-4 w-4 text-primary" />
+                                <span className="text-xs">Courier: <span className="font-bold">{order.courierName}</span></span>
+                            </div>
+                        )}
+                    </CardContent>
+                </Card>
+
+                <StatusHistoryTimeline history={order.statusHistory} />
             </div>
           </div>
         </div>
@@ -346,7 +348,6 @@ export function OrderQuickView({ orderId, onClose }: OrderQuickViewProps) {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>{language === 'ar' ? 'إضافة ملاحظة' : 'Add Note'}</DialogTitle>
-            <DialogDescription>Add context to the status change.</DialogDescription>
           </DialogHeader>
           <div className="py-4"><Textarea value={note} onChange={(e) => setNote(e.target.value)} placeholder={language === 'ar' ? 'اكتب ملاحظتك هنا...' : 'Write note...'} /></div>
           <DialogFooter>
@@ -360,7 +361,6 @@ export function OrderQuickView({ orderId, onClose }: OrderQuickViewProps) {
         <DialogContent className="sm:max-w-2xl">
           <DialogHeader>
             <DialogTitle>{language === 'ar' ? 'سجل تعديلات الطلب' : 'Edit History'}</DialogTitle>
-            <DialogDescription>#{order.id}</DialogDescription>
           </DialogHeader>
           <div className="py-4">
             <OrderEditHistory history={order.editHistory} />
@@ -372,7 +372,6 @@ export function OrderQuickView({ orderId, onClose }: OrderQuickViewProps) {
         <DialogContent className="sm:max-w-3xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{language === 'ar' ? 'تعديل الطلب' : 'Edit Order'}</DialogTitle>
-            <DialogDescription>#{order.id}</DialogDescription>
           </DialogHeader>
           <div className="py-4">
             <OrderForm orderToEdit={order} onSuccess={() => { setIsEditOpen(false); refetch(); }} />
@@ -384,7 +383,6 @@ export function OrderQuickView({ orderId, onClose }: OrderQuickViewProps) {
             <DialogContent className="sm:max-w-md max-h-[90vh] flex flex-col p-0 overflow-hidden">
                 <DialogHeader className="p-6 pb-2">
                     <DialogTitle>{language === 'ar' ? 'معاينة الإيصال' : 'Receipt Preview'}</DialogTitle>
-                    <DialogDescription>Verify the data before sharing.</DialogDescription>
                 </DialogHeader>
                 <ScrollArea className="flex-1 px-6 bg-muted/30">
                     <div className="py-6 flex justify-center">
