@@ -35,6 +35,8 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { StatusBadge } from "@/components/status-badge";
 import { RowActions } from "./row-actions";
 import { formatCurrency } from "@/lib/utils";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { OrderQuickView } from "./order-quick-view";
 
 
 interface DataTableProps<TData extends Order, TValue> {
@@ -61,8 +63,32 @@ export function OrdersClient<TData extends Order, TValue>({
   const router = useRouter();
   const [sorting, setSorting] = React.useState<SortingState>([]);
   const [rowSelection, setRowSelection] = React.useState({});
+  const [previewOrderId, setPreviewOrderId] = React.useState<string | null>(null);
   const { language } = useLanguage();
   const isMobile = useIsMobile();
+
+  // Long Press Detection Logic
+  const timerRef = React.useRef<NodeJS.Timeout | null>(null);
+  const isLongPress = React.useRef(false);
+
+  const onTouchStart = (id: string) => {
+    isLongPress.current = false;
+    timerRef.current = setTimeout(() => {
+      isLongPress.current = true;
+      if (window.navigator.vibrate) window.navigator.vibrate(50);
+      setPreviewOrderId(id);
+    }, 500); // 500ms for long press
+  };
+
+  const onTouchEnd = (order: TData) => {
+    if (timerRef.current) {
+      clearTimeout(timerRef.current);
+      timerRef.current = null;
+    }
+    if (!isLongPress.current) {
+      handleRowClick(order);
+    }
+  };
 
   const table = useReactTable({
     data,
@@ -126,8 +152,10 @@ export function OrdersClient<TData extends Order, TValue>({
                 <Card 
                   key={row.id} 
                   data-state={row.getIsSelected() && "selected"} 
-                  className="data-[state=selected]:bg-muted/50 cursor-pointer"
-                  onClick={() => handleRowClick(row.original)}
+                  className="data-[state=selected]:bg-muted/50 cursor-pointer active:scale-[0.98] transition-transform select-none touch-none"
+                  onPointerDown={() => onTouchStart(row.original.id)}
+                  onPointerUp={() => onTouchEnd(row.original)}
+                  onPointerLeave={() => { if(timerRef.current) clearTimeout(timerRef.current); }}
                 >
                   <CardHeader className="p-4">
                     <div className="flex items-center gap-4">
@@ -183,6 +211,14 @@ export function OrdersClient<TData extends Order, TValue>({
             </div>
           )}
         </div>
+        <Dialog open={!!previewOrderId} onOpenChange={(open) => !open && setPreviewOrderId(null)}>
+            <DialogContent className="sm:max-w-2xl max-h-[90vh] p-0">
+                <DialogHeader className="p-6 pb-0">
+                    <DialogTitle>{language === 'ar' ? 'معاينة سريعة للطلب' : 'Order Quick Preview'}</DialogTitle>
+                </DialogHeader>
+                {previewOrderId && <OrderQuickView orderId={previewOrderId} onClose={() => setPreviewOrderId(null)} />}
+            </DialogContent>
+        </Dialog>
       </div>
     );
   }
@@ -216,8 +252,10 @@ export function OrdersClient<TData extends Order, TValue>({
                 <TableRow
                   key={row.id}
                   data-state={row.getIsSelected() && "selected"}
-                  className="cursor-pointer"
-                  onClick={() => handleRowClick(row.original)}
+                  className="cursor-pointer select-none active:bg-muted/80 transition-colors"
+                  onPointerDown={() => onTouchStart(row.original.id)}
+                  onPointerUp={() => onTouchEnd(row.original)}
+                  onPointerLeave={() => { if(timerRef.current) clearTimeout(timerRef.current); }}
                 >
                   {row.getVisibleCells().map((cell) => (
                     <TableCell 
@@ -249,6 +287,14 @@ export function OrdersClient<TData extends Order, TValue>({
           </TableBody>
         </Table>
       </div>
+      <Dialog open={!!previewOrderId} onOpenChange={(open) => !open && setPreviewOrderId(null)}>
+          <DialogContent className="sm:max-w-2xl max-h-[90vh] p-0">
+              <DialogHeader className="p-6 pb-0">
+                  <DialogTitle>{language === 'ar' ? 'معاينة سريعة للطلب' : 'Order Quick Preview'}</DialogTitle>
+              </DialogHeader>
+              {previewOrderId && <OrderQuickView orderId={previewOrderId} onClose={() => setPreviewOrderId(null)} />}
+          </DialogContent>
+      </Dialog>
     </div>
   );
 }
