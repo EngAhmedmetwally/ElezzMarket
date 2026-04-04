@@ -26,6 +26,9 @@ import { syncEvents } from "@/lib/sync-events";
 import { OrderEditHistory } from "./order-edit-history";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Logo } from "@/components/icons/logo";
+import { ReceiptView } from "./receipt-view";
+import { OrderForm } from "../new/order-form";
+import { useToast } from "@/hooks/use-toast";
 
 interface OrderQuickViewProps {
   orderId: string;
@@ -78,6 +81,7 @@ function StatusHistoryTimeline({ history }: { history?: Record<string, StatusHis
 
 export function OrderQuickView({ orderId, onClose }: OrderQuickViewProps) {
   const { language } = useLanguage();
+  const { toast } = useToast();
   const database = useDatabase();
   const { user: authUser } = useAuthUser();
   const { data: order, isLoading: isLoadingOrder, refetch } = useCachedDoc<Order>('orders', orderId);
@@ -90,6 +94,10 @@ export function OrderQuickView({ orderId, onClose }: OrderQuickViewProps) {
   const [note, setNote] = React.useState("");
   const [isSharing, setIsSharing] = React.useState(false);
   const [isHistoryOpen, setIsHistoryOpen] = React.useState(false);
+  const [isEditOpen, setIsEditOpen] = React.useState(false);
+  const [isSharePreviewOpen, setIsSharePreviewOpen] = React.useState(false);
+  
+  const receiptRef = React.useRef<HTMLDivElement>(null);
 
   const couriers = React.useMemo(() => users?.filter(u => u.role === 'Courier') || [], [users]);
   const canEditStatus = (authUser?.permissions?.orders?.editStatus) || authUser?.role === 'Admin';
@@ -157,16 +165,62 @@ export function OrderQuickView({ orderId, onClose }: OrderQuickViewProps) {
   };
 
   const handlePrint = () => {
-    // Hidden mechanism to trigger print from dialog
     window.print();
   };
+
+  const executeSharing = async () => {
+    if (!receiptRef.current || !order) return;
+    
+    setIsSharing(true);
+    try {
+      const html2canvas = (await import('html2canvas')).default;
+      const canvas = await html2canvas(receiptRef.current, {
+        backgroundColor: '#ffffff',
+        scale: 2,
+        logging: false,
+        useCORS: true,
+        allowTaint: true,
+      });
+      
+      const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/png'));
+      if (!blob) throw new Error("Canvas to Blob failed");
+
+      const file = new File([blob], `receipt-${order.id}.png`, { type: 'image/png' });
+
+      if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
+        await navigator.share({
+          files: [file],
+          title: language === 'ar' ? `إيصال طلب #${order.id}` : `Receipt for order #${order.id}`,
+          text: language === 'ar' ? `إيصال طلب رقم ${order.id} من العز ماركت` : `Receipt for order #${order.id} from ElEzz Market`,
+        });
+      } else {
+        const { saveAs } = await import('file-saver');
+        saveAs(blob, `receipt-${order.id}.png`);
+        toast({
+          title: language === 'ar' ? 'تم حفظ الصورة' : 'Image Saved',
+          description: language === 'ar' ? 'يمكنك الآن إرسالها يدوياً عبر واتساب.' : 'You can now send it manually via WhatsApp.',
+        });
+      }
+      setIsSharePreviewOpen(false);
+    } catch (error) {
+      console.error('Error sharing receipt image:', error);
+      toast({
+        variant: 'destructive',
+        title: language === 'ar' ? 'خطأ في المشاركة' : 'Sharing Error',
+        description: language === 'ar' ? 'حدث خطأ أثناء إنشاء صورة الإيصال.' : 'An error occurred while generating the receipt image.',
+      });
+    } finally {
+      setIsSharing(false);
+    }
+  }
 
   if (isLoadingOrder || !order) return <div className="p-8"><Skeleton className="h-64 w-full" /></div>;
 
   const orderItems: OrderItem[] = Array.isArray(order.items) ? order.items : Object.values(order.items || {});
+  const canEditOrder = (order.status === 'تم التسجيل' || order.status === 'قيد التجهيز') && (authUser?.role === 'Admin' || authUser?.permissions?.orders?.edit);
 
   return (
-    <div className="flex flex-col h-full bg-background">
+    <div className="flex flex-col h-full bg-background relative">
       <div className="p-6 pb-2 border-b flex justify-between items-center bg-muted/10">
         <div>
             <h2 className="text-2xl font-bold flex items-center gap-2">
@@ -177,7 +231,11 @@ export function OrderQuickView({ orderId, onClose }: OrderQuickViewProps) {
         </div>
         <div className="flex gap-2">
             <Button variant="outline" size="icon" onClick={() => setIsHistoryOpen(true)} title={language === 'ar' ? 'سجل التعديلات' : 'Edit History'}><History className="h-4 w-4" /></Button>
-            <Button variant="outline" size="icon" onClick={handlePrint}><Printer className="h-4 w-4" /></Button>
+            {canEditOrder && (
+                <Button variant="outline" size="icon" onClick={() => setIsEditOpen(true)} title={language === 'ar' ? 'تعديل' : 'Edit'}><Edit className="h-4 w-4" /></Button>
+            )}
+            <Button variant="outline" size="icon" onClick={() => setIsSharePreviewOpen(true)} title={language === 'ar' ? 'مشاركة' : 'Share'}><Share2 className="h-4 w-4" /></Button>
+            <Button variant="outline" size="icon" onClick={handlePrint} title={language === 'ar' ? 'طباعة' : 'Print'}><Printer className="h-4 w-4" /></Button>
             <Button variant="ghost" size="icon" onClick={onClose} className="h-8 w-8">✕</Button>
         </div>
       </div>
@@ -185,7 +243,6 @@ export function OrderQuickView({ orderId, onClose }: OrderQuickViewProps) {
       <ScrollArea className="flex-1">
         <div className="p-6 space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
-            {/* Left Column: Details */}
             <div className="md:col-span-8 space-y-6">
                 <Card>
                     <CardHeader className="p-4 border-b bg-muted/20"><CardTitle className="text-sm font-bold">{language === 'ar' ? 'الأصناف' : 'Items'}</CardTitle></CardHeader>
@@ -255,7 +312,6 @@ export function OrderQuickView({ orderId, onClose }: OrderQuickViewProps) {
                 </div>
             </div>
 
-            {/* Right Column: Actions & Timeline */}
             <div className="md:col-span-4 space-y-6">
                 <Card className="border-primary/20">
                     <CardHeader className="p-4 pb-2"><CardTitle className="text-sm font-bold">{language === 'ar' ? 'تغيير الحالة' : 'Change Status'}</CardTitle></CardHeader>
@@ -285,9 +341,13 @@ export function OrderQuickView({ orderId, onClose }: OrderQuickViewProps) {
         </div>
       </ScrollArea>
 
+      {/* Shared Modals */}
       <Dialog open={isNoteModalOpen} onOpenChange={setIsNoteModalOpen}>
         <DialogContent>
-          <DialogHeader><DialogTitle>{language === 'ar' ? 'إضافة ملاحظة' : 'Add Note'}</DialogTitle></DialogHeader>
+          <DialogHeader>
+            <DialogTitle>{language === 'ar' ? 'إضافة ملاحظة' : 'Add Note'}</DialogTitle>
+            <DialogDescription>Add context to the status change.</DialogDescription>
+          </DialogHeader>
           <div className="py-4"><Textarea value={note} onChange={(e) => setNote(e.target.value)} placeholder={language === 'ar' ? 'اكتب ملاحظتك هنا...' : 'Write note...'} /></div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsNoteModalOpen(false)}>{language === 'ar' ? 'إلغاء' : 'Cancel'}</Button>
@@ -307,6 +367,48 @@ export function OrderQuickView({ orderId, onClose }: OrderQuickViewProps) {
           </div>
         </DialogContent>
       </Dialog>
+
+      <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
+        <DialogContent className="sm:max-w-3xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>{language === 'ar' ? 'تعديل الطلب' : 'Edit Order'}</DialogTitle>
+            <DialogDescription>#{order.id}</DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            <OrderForm orderToEdit={order} onSuccess={() => { setIsEditOpen(false); refetch(); }} />
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={isSharePreviewOpen} onOpenChange={setIsSharePreviewOpen}>
+            <DialogContent className="sm:max-w-md max-h-[90vh] flex flex-col p-0 overflow-hidden">
+                <DialogHeader className="p-6 pb-2">
+                    <DialogTitle>{language === 'ar' ? 'معاينة الإيصال' : 'Receipt Preview'}</DialogTitle>
+                    <DialogDescription>Verify the data before sharing.</DialogDescription>
+                </DialogHeader>
+                <ScrollArea className="flex-1 px-6 bg-muted/30">
+                    <div className="py-6 flex justify-center">
+                        <div ref={receiptRef} className="inline-block shadow-lg border bg-white scale-95 origin-top">
+                            <ReceiptView order={order} language={language} settings={receiptSettings} />
+                        </div>
+                    </div>
+                </ScrollArea>
+                <DialogFooter className="p-6 border-t bg-background">
+                    <Button variant="outline" onClick={() => setIsSharePreviewOpen(false)}>{language === 'ar' ? 'إلغاء' : 'Cancel'}</Button>
+                    <Button onClick={executeSharing} disabled={isSharing}>
+                        {isSharing ? <Loader2 className="me-2 h-4 w-4 animate-spin" /> : <Share2 className="me-2 h-4 w-4" />}
+                        {language === 'ar' ? 'تأكيد وإرسال' : 'Confirm & Send'}
+                    </Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
+
+      {/* Hidden Receipt for Print */}
+      <div className="receipt-container" aria-hidden="true">
+        <div className="inline-block bg-white">
+            <ReceiptView order={order} language={language} settings={receiptSettings} />
+        </div>
+      </div>
     </div>
   );
 }

@@ -35,7 +35,7 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { StatusBadge } from "@/components/status-badge";
 import { RowActions } from "./row-actions";
 import { formatCurrency } from "@/lib/utils";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { OrderQuickView } from "./order-quick-view";
 
 
@@ -84,7 +84,7 @@ export function OrdersClient<TData extends Order, TValue>({
         if (window.navigator.vibrate) window.navigator.vibrate(50);
         setPreviewOrderId(id);
       }
-    }, 600); // Increased slightly for better scroll tolerance
+    }, 600);
   };
 
   const onTouchMove = (e: React.PointerEvent) => {
@@ -235,6 +235,10 @@ export function OrdersClient<TData extends Order, TValue>({
         </div>
         <Dialog open={!!previewOrderId} onOpenChange={(open) => !open && setPreviewOrderId(null)}>
             <DialogContent className="sm:max-w-4xl max-h-[95vh] p-0 overflow-hidden">
+                <DialogHeader className="sr-only">
+                    <DialogTitle>{language === 'ar' ? 'معاينة الطلب' : 'Order Preview'}</DialogTitle>
+                    <DialogDescription>Quick view of order details and actions.</DialogDescription>
+                </DialogHeader>
                 {previewOrderId && <OrderQuickView orderId={previewOrderId} onClose={() => setPreviewOrderId(null)} />}
             </DialogContent>
         </Dialog>
@@ -309,6 +313,10 @@ export function OrdersClient<TData extends Order, TValue>({
       </div>
       <Dialog open={!!previewOrderId} onOpenChange={(open) => !open && setPreviewOrderId(null)}>
           <DialogContent className="sm:max-w-4xl max-h-[95vh] p-0 overflow-hidden">
+              <DialogHeader className="sr-only">
+                  <DialogTitle>{language === 'ar' ? 'معاينة الطلب' : 'Order Preview'}</DialogTitle>
+                  <DialogDescription>Quick view of order details and actions.</DialogDescription>
+              </DialogHeader>
               {previewOrderId && <OrderQuickView orderId={previewOrderId} onClose={() => setPreviewOrderId(null)} />}
           </DialogContent>
       </Dialog>
