@@ -1,19 +1,15 @@
+
 "use client"
 
 import * as React from "react"
-import { format } from "date-fns"
 import { Calendar as CalendarIcon } from "lucide-react"
-
 import { cn } from "@/lib/utils"
-import { Button } from "@/components/ui/button"
-import { Calendar } from "@/components/ui/calendar"
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover"
-import { useLanguage } from "@/components/language-provider"
+import { Input } from "@/components/ui/input"
 
+/**
+ * DatePicker component updated to use the native browser/mobile date picker.
+ * This ensures the best UX on mobile devices and immediate closing after selection.
+ */
 export function DatePicker({
   date,
   onDateChange,
@@ -25,31 +21,48 @@ export function DatePicker({
   className?: string,
   placeholder?: string
 }) {
-  const { language } = useLanguage();
-  
+  // Convert Date object to YYYY-MM-DD string for native input value
+  // We use local date components to avoid timezone shifts during conversion
+  const dateValue = React.useMemo(() => {
+    if (!date) return "";
+    try {
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    } catch (e) {
+      return "";
+    }
+  }, [date]);
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    if (!value) {
+      onDateChange(undefined);
+      return;
+    }
+    
+    // Parse the YYYY-MM-DD string correctly as a local date to avoid timezone issues
+    const [year, month, day] = value.split('-').map(Number);
+    const localDate = new Date(year, month - 1, day);
+    onDateChange(localDate);
+  };
+
   return (
-    <Popover>
-      <PopoverTrigger asChild>
-        <Button
-          variant={"outline"}
-          className={cn(
-            "w-full justify-start text-left font-normal",
-            !date && "text-muted-foreground",
-            className
-          )}
-        >
-          <CalendarIcon className="me-2 h-4 w-4" />
-          {date ? format(date, "PPP") : <span>{placeholder || (language === 'ar' ? 'اختر تاريخ' : 'Pick a date')}</span>}
-        </Button>
-      </PopoverTrigger>
-      <PopoverContent className="w-auto p-0">
-        <Calendar
-          mode="single"
-          selected={date}
-          onSelect={onDateChange}
-          initialFocus
-        />
-      </PopoverContent>
-    </Popover>
+    <div className={cn("relative w-full", className)}>
+      <CalendarIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none z-10" />
+      <Input
+        type="date"
+        value={dateValue}
+        onChange={handleChange}
+        title={placeholder}
+        className={cn(
+          "pl-10 w-full bg-background cursor-pointer block h-10",
+          !date && "text-muted-foreground",
+          // Ensure the native picker trigger icon is also a pointer
+          "[&::-webkit-calendar-picker-indicator]:cursor-pointer"
+        )}
+      />
+    </div>
   )
 }
