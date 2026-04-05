@@ -47,7 +47,7 @@ export default function StaffReportPage() {
   const filteredOrders = React.useMemo(() => {
     if (!allOrders || !fromDate || !toDate) return [];
     const from = fromDate.getTime();
-    const to = toDate.getTime();
+    const to = new Date(toDate).setHours(23, 59, 59, 999);
     return allOrders.filter(order => {
         if (!order.createdAt) return false;
         const orderDate = new Date(order.createdAt).getTime();
@@ -73,7 +73,7 @@ export default function StaffReportPage() {
   const topEarners = React.useMemo(() => {
      if (!usersData || !fromDate || !toDate) return [];
      const from = fromDate.getTime();
-     const to = toDate.getTime();
+     const to = new Date(toDate).setHours(23, 59, 59, 999);
      
      const commissionSums = (commissionsData || []).filter(c => {
          if (!c.calculationDate) return false;
@@ -185,7 +185,7 @@ export default function StaffReportPage() {
                   <StaffPerformanceChart 
                       data={topModeratorsByOrders} 
                       barLabel={language === 'ar' ? 'طلبات' : 'Orders'}
-                      layout="horizontal"
+                      layout="vertical"
                   />
                   <div className="overflow-x-auto rounded-lg border">
                     <Table>
@@ -218,7 +218,7 @@ export default function StaffReportPage() {
                       data={topEarners} 
                       barLabel={language === 'ar' ? 'صافي الربح' : 'Net Profit'}
                       formatter={(val) => formatCurrency(val, language)}
-                      layout="horizontal"
+                      layout="vertical"
                   />
                   <div className="overflow-x-auto rounded-lg border">
                     <Table>
