@@ -187,7 +187,13 @@ export function OrderQuickView({ orderId, onClose }: { orderId: string; onClose:
       const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/png'));
       if (blob) {
         const file = new File([blob], `receipt-${order.id}.png`, { type: 'image/png' });
-        if (navigator.share) await navigator.share({ files: [file] });
+        if (navigator.share) {
+          await navigator.share({
+            title: `Order #${order.id} Receipt`,
+            text: `Receipt for order #${order.id} from ElEzz Market`,
+            files: [file]
+          });
+        }
         else { const { saveAs } = await import('file-saver'); saveAs(blob, `receipt-${order.id}.png`); }
       }
       setIsSharePreviewOpen(false);
