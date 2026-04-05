@@ -1,4 +1,3 @@
-
 "use client";
 
 import * as React from "react";
@@ -185,7 +184,7 @@ export default function StaffReportPage() {
                   <StaffPerformanceChart 
                       data={topModeratorsByOrders} 
                       barLabel={language === 'ar' ? 'طلبات' : 'Orders'}
-                      layout="vertical"
+                      layout="columns"
                   />
                   <div className="overflow-x-auto rounded-lg border">
                     <Table>
@@ -218,7 +217,7 @@ export default function StaffReportPage() {
                       data={topEarners} 
                       barLabel={language === 'ar' ? 'صافي الربح' : 'Net Profit'}
                       formatter={(val) => formatCurrency(val, language)}
-                      layout="vertical"
+                      layout="columns"
                   />
                   <div className="overflow-x-auto rounded-lg border">
                     <Table>

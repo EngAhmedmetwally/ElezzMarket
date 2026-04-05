@@ -1,4 +1,3 @@
-
 "use client";
 
 import * as React from "react";
@@ -137,10 +136,9 @@ export default function ShippingReportPage() {
           <CardContent>
             <StaffPerformanceChart 
                 data={topZonesByRevenueChartData} 
-                barDataKey="value"
                 barLabel={language === 'ar' ? 'الإيراد' : 'Revenue'}
                 formatter={(value) => formatCurrency(value, language)}
-                layout="vertical"
+                layout="columns"
             />
           </CardContent>
         </Card>
@@ -180,9 +178,8 @@ export default function ShippingReportPage() {
           <CardContent>
             <StaffPerformanceChart 
               data={topZonesChartData} 
-              barDataKey="value"
               barLabel={language === 'ar' ? 'الطلبات' : 'Orders'}
-              layout="vertical"
+              layout="columns"
             />
           </CardContent>
         </Card>

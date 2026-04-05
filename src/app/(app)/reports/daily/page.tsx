@@ -1,4 +1,3 @@
-
 "use client";
 
 import * as React from "react";
@@ -210,7 +209,7 @@ export default function DailyRevenueReportPage() {
                 data={chartData} 
                 barLabel={language === 'ar' ? 'الإيراد' : 'Revenue'}
                 formatter={(value) => formatCurrency(value, language)}
-                layout="vertical"
+                layout="columns"
             />
           </CardContent>
       </Card>

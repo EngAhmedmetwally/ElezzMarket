@@ -1,4 +1,3 @@
-
 "use client"
 
 import * as React from "react";
@@ -12,7 +11,7 @@ interface StaffPerformanceChartProps {
     barDataKey?: string;
     barLabel: string;
     formatter?: (value: number) => string;
-    layout?: 'vertical' | 'horizontal'; // 'vertical' for columns (dates), 'horizontal' for bars (names)
+    layout?: 'columns' | 'bars'; // 'columns' = Vertical Bars, 'bars' = Horizontal Bars
     className?: string;
 }
 
@@ -20,11 +19,11 @@ export function StaffPerformanceChart({
     data, 
     barLabel, 
     formatter, 
-    layout = 'horizontal', 
+    layout = 'columns', 
     className 
 }: StaffPerformanceChartProps) {
   const isMobile = useIsMobile();
-  const { language } = useLanguage();
+  const { language, isRTL } = useLanguage();
   const [mounted, setMounted] = React.useState(false);
 
   React.useEffect(() => {
@@ -39,8 +38,7 @@ export function StaffPerformanceChart({
     }).format(value);
   }
 
-  // Helper to truncate long product names in the chart axis
-  const truncateName = (name: string, limit: number = 25) => {
+  const truncateName = (name: string, limit: number = 15) => {
     if (!name) return "";
     return name.length > limit ? name.substring(0, limit) + "..." : name;
   };
@@ -57,31 +55,50 @@ export function StaffPerformanceChart({
       );
   }
 
-  // layout="horizontal" means bars go horizontal (Categories on Y axis)
-  // layout="vertical" means bars go vertical (Categories on X axis)
-  const isHorizontalBars = layout === 'horizontal';
+  const isColumns = layout === 'columns';
 
   return (
     <div className={cn("w-full bg-card rounded-xl border p-4 shadow-sm", isMobile ? "h-[350px]" : "h-[450px]", className)}>
         <ResponsiveContainer width="100%" height="100%">
             <BarChart 
                 data={data} 
-                layout={isHorizontalBars ? 'vertical' : 'horizontal'}
+                layout={isColumns ? 'horizontal' : 'vertical'}
                 margin={{ 
                     top: 20, 
-                    right: isHorizontalBars ? 40 : 20, 
-                    left: isHorizontalBars ? (isMobile ? 10 : 20) : 0, 
-                    bottom: isHorizontalBars ? 5 : 20 
+                    right: isColumns ? 20 : 40, 
+                    left: isColumns ? 0 : (isMobile ? 10 : 20), 
+                    bottom: isColumns ? 60 : 20 
                 }}
             >
                 <CartesianGrid 
-                    horizontal={!isHorizontalBars} 
-                    vertical={isHorizontalBars} 
                     strokeDasharray="3 3" 
+                    vertical={!isColumns} 
+                    horizontal={isColumns} 
                     opacity={0.2} 
                 />
                 
-                {isHorizontalBars ? (
+                {isColumns ? (
+                    <>
+                        <XAxis 
+                            dataKey="name" 
+                            interval={0}
+                            tick={{ fontSize: 10, fill: 'currentColor' }}
+                            tickLine={false}
+                            axisLine={false}
+                            angle={-45}
+                            textAnchor="end"
+                            height={80}
+                            tickFormatter={(val) => truncateName(val, isMobile ? 10 : 20)}
+                        />
+                        <YAxis 
+                            orientation={isRTL ? "right" : "left"}
+                            tick={{ fontSize: 10, fill: 'currentColor' }}
+                            tickLine={false}
+                            axisLine={false}
+                            tickFormatter={valueFormatter}
+                        />
+                    </>
+                ) : (
                     <>
                         <XAxis 
                             type="number" 
@@ -93,32 +110,13 @@ export function StaffPerformanceChart({
                         <YAxis 
                             dataKey="name" 
                             type="category" 
-                            tickLine={false} 
-                            axisLine={false} 
-                            width={isMobile ? 90 : 180} 
-                            tick={{ fontSize: 10, fill: 'currentColor' }} 
-                            interval={0}
-                            tickFormatter={(val) => truncateName(val, isMobile ? 15 : 30)}
-                        />
-                    </>
-                ) : (
-                    <>
-                        <XAxis
-                            dataKey="name"
-                            tickLine={false}
-                            axisLine={false}
-                            tick={{ fontSize: 10, fill: 'currentColor' }}
-                            interval={0}
-                            angle={isMobile ? -45 : 0}
-                            textAnchor={isMobile ? "end" : "middle"}
-                            height={isMobile ? 60 : 40}
-                            tickFormatter={(val) => truncateName(val, 15)}
-                        />
-                        <YAxis 
+                            orientation={isRTL ? "right" : "left"}
+                            width={isMobile ? 80 : 150}
                             tick={{ fontSize: 10, fill: 'currentColor' }}
                             tickLine={false}
                             axisLine={false}
-                            tickFormatter={valueFormatter}
+                            interval={0}
+                            tickFormatter={(val) => truncateName(val, isMobile ? 12 : 25)}
                         />
                     </>
                 )}
@@ -129,8 +127,8 @@ export function StaffPerformanceChart({
                         if (active && payload && payload.length) {
                             const item = payload[0].payload;
                             return (
-                                <div className="bg-card border rounded-lg p-3 shadow-xl text-xs min-w-[150px] max-w-[300px]">
-                                    <p className="font-bold text-primary mb-2 border-b pb-1 break-words">{item.name}</p>
+                                <div className="bg-card border rounded-lg p-3 shadow-xl text-xs min-w-[150px]">
+                                    <p className="font-bold text-primary mb-1 break-words">{item.name}</p>
                                     <p className="text-muted-foreground flex justify-between gap-4">
                                         <span>{barLabel}:</span>
                                         <span className="font-mono text-foreground font-bold">{valueFormatter(item.value)}</span>
@@ -143,12 +141,12 @@ export function StaffPerformanceChart({
                 />
                 <Bar 
                     dataKey="value" 
-                    name={barLabel} 
-                    radius={isHorizontalBars ? [0, 4, 4, 0] : [4, 4, 0, 0]} 
-                    fill="hsl(var(--chart-1))"
+                    fill="hsl(var(--primary))" 
+                    radius={isColumns ? [4, 4, 0, 0] : [0, 4, 4, 0]}
+                    barSize={isMobile ? 25 : 40}
                 >
                     {data.map((_, index) => (
-                        <Cell key={`cell-${index}`} fill="hsl(var(--chart-1))" />
+                        <Cell key={`cell-${index}`} fill={`hsl(var(--chart-${(index % 6) + 1}))`} />
                     ))}
                 </Bar>
             </BarChart>
