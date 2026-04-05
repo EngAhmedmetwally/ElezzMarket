@@ -19,11 +19,11 @@ import { Separator } from "@/components/ui/separator";
 import { PlusCircle, Trash2, ChevronDown } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useLanguage } from "@/components/language-provider";
-import type { Customer, Product, OrderItem, ShippingZone, AppSettings, Order } from "@/lib/types";
+import type { Customer, Product, OrderItem, ShippingZone, AppSettings, Order, OrderEditHistoryItem } from "@/lib/types";
 import { Card, CardContent } from "@/components/ui/card";
 import { cn, formatCurrency } from "@/lib/utils";
 import { useDatabase, useUser } from "@/firebase";
-import { ref, get, update, push, set, runTransaction } from "firebase/database";
+import { ref, get, update, push, set, runTransaction, child } from "firebase/database";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useRealtimeCachedCollection } from "@/hooks/use-realtime-cached-collection";
@@ -36,10 +36,8 @@ const orderFormSchema = z.object({
   id: z.string().optional(),
   customerName: z.string().min(1, "اسم العميل مطلوب"),
   facebookName: z.string().optional(),
-  customerPhone1: z.string().length(11, "رقم الموبايل الأول يجب أن يكون 11 رقمًا"),
-  customerPhone2: z.string().optional().refine((val) => !val || !val.startsWith("01") || val.length === 11, {
-    message: "رقم الموبايل الثاني يجب أن يكون 11 رقمًا إذا بدأ بـ 01",
-  }),
+  customerPhone1: z.string().min(10, "رقم الموبايل غير صالح"),
+  customerPhone2: z.string().optional(),
   customerAddress: z.string().min(1, "العنوان بالتفصيل مطلوب"),
   zoning: z.string().min(1, "المنطقة مطلوبة"),
   paymentMethod: z.enum(["نقدي عند الاستلام", "انستا باى", "فودافون كاش", "اورانج كاش"], {
@@ -50,7 +48,7 @@ const orderFormSchema = z.object({
   items: z
     .array(
       z.object({
-        productId: z.string().min(1, "المنتج المحدد ليس من قائمة الاصناف"),
+        productId: z.string().optional(),
         productName: z.string().min(1, "اسم المنتج مطلوب"),
         quantity: z.coerce.number().int().min(1, "الكمية يجب أن تكون 1 على الأقل"),
         price: z.coerce.number().min(0, "السعر يجب أن يكون رقمًا موجبًا"),
@@ -129,7 +127,7 @@ export function OrderForm({ onSuccess, orderToEdit }: OrderFormProps) {
             shippingCost: orderToEdit.shippingCost || 0,
             notes: orderToEdit.notes || "",
             items: orderToEdit.items.map(item => ({
-                productId: item.productId,
+                productId: item.productId || "",
                 productName: item.productName,
                 quantity: item.quantity,
                 price: item.price,
@@ -200,18 +198,42 @@ export function OrderForm({ onSuccess, orderToEdit }: OrderFormProps) {
                 orderPath = `orders/${d.getFullYear()}/${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')}/${orderToEdit.id}`;
             }
 
-            if (!orderPath) throw new Error("Order path missing");
+            if (!orderPath) {
+                // Last resort fallback
+                orderPath = `orders/${orderToEdit.id}`;
+            }
 
-            const updates: { [key: string]: any } = {};
+            const now = new Date().toISOString();
             const newTotal = data.items.reduce((acc, item) => acc + (item.quantity || 0) * (item.price || 0), 0) + (data.shippingCost || 0);
             
-            const updatedData = { ...data, total: newTotal, updatedAt: new Date().toISOString() };
-            Object.keys(updatedData).forEach(key => {
-                if (key !== 'id') updates[`${orderPath}/${key}`] = (updatedData as any)[key];
-            });
+            // Prepare clean update data (removing undefined values for Firebase)
+            const { id: _, ...formData } = data;
+            const updates: any = JSON.parse(JSON.stringify({
+                ...formData,
+                total: newTotal,
+                updatedAt: now
+            }));
 
-            await update(ref(database), updates);
-            const snapshot = await get(ref(database, orderPath));
+            const orderRef = ref(database, orderPath);
+            await update(orderRef, updates);
+
+            // Add to edit history
+            const editHistoryItem: OrderEditHistoryItem = {
+                userId: user.id,
+                userName: user.name || user.email || 'System',
+                createdAt: now,
+                description: language === 'ar' ? 'تعديل بيانات الطلب' : 'Order details updated'
+            };
+            const historyRef = child(orderRef, 'editHistory');
+            const historyKey = push(historyRef).key;
+            if (historyKey) {
+                const historyUpdate: any = {};
+                historyUpdate[`editHistory/${historyKey}`] = editHistoryItem;
+                await update(orderRef, historyUpdate);
+            }
+
+            // Sync cache
+            const snapshot = await get(orderRef);
             if (snapshot.exists()) {
                 await idbPut('orders', { ...snapshot.val(), id: orderToEdit.id, path: orderPath });
                 syncEvents.emit('synced', 'orders');
@@ -274,13 +296,13 @@ export function OrderForm({ onSuccess, orderToEdit }: OrderFormProps) {
             await idbPut('orders', { ...newOrder, path: orderPath });
             syncEvents.emit('synced', 'orders');
 
-            const updates: { [key: string]: any } = {};
-            updates[`order-lookup/${orderId}`] = true;
-            updates[`customer-orders/${data.customerPhone1}/${orderId}`] = true;
+            const dbUpdates: { [key: string]: any } = {};
+            dbUpdates[`order-lookup/${orderId}`] = true;
+            dbUpdates[`customer-orders/${data.customerPhone1}/${orderId}`] = true;
             
             const custSnap = await get(ref(database, `customers/${data.customerPhone1}`));
             if (!custSnap.exists()) {
-                updates[`customers/${data.customerPhone1}`] = { 
+                dbUpdates[`customers/${data.customerPhone1}`] = { 
                     customerName: data.customerName, 
                     facebookName: data.facebookName, 
                     customerPhone1: data.customerPhone1, 
@@ -292,7 +314,7 @@ export function OrderForm({ onSuccess, orderToEdit }: OrderFormProps) {
 
             if (commissionAmount !== 0) {
                 const commRef = push(ref(database, 'commissions'));
-                updates[`commissions/${commRef.key}`] = { 
+                dbUpdates[`commissions/${commRef.key}`] = { 
                     orderId, 
                     userId: user.id, 
                     orderStatus: "تم التسجيل", 
@@ -302,11 +324,12 @@ export function OrderForm({ onSuccess, orderToEdit }: OrderFormProps) {
                 };
             }
 
-            await update(ref(database), updates);
+            await update(ref(database), dbUpdates);
             setNewOrderId(orderId);
             setIsSuccessModalOpen(true);
         }
     } catch(e: any) {
+        console.error("Order submit error:", e);
         toast({ variant: "destructive", title: "Error", description: e.message });
     } finally {
         setIsSubmitting(false);
