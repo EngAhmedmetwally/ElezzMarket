@@ -54,7 +54,7 @@ export default function ProductsReportPage() {
     if (!allOrders || !fromDate || !toDate) return [];
     
     const from = fromDate.getTime();
-    const to = toDate.getTime();
+    const to = toDate.getTime() + (24 * 60 * 60 * 1000);
     
     const productMap = new Map<string, { name: string; count: number; totalWeight: number }>();
     
@@ -140,7 +140,7 @@ export default function ProductsReportPage() {
                 <StaffPerformanceChart 
                     data={topQtyChartData} 
                     barLabel={language === 'ar' ? 'الكمية' : 'Quantity'}
-                    layout="horizontal"
+                    layout="vertical"
                 />
             </CardContent>
         </Card>
@@ -153,7 +153,7 @@ export default function ProductsReportPage() {
                     data={topWeightChartData} 
                     barLabel={language === 'ar' ? 'الوزن (كجم)' : 'Weight (kg)'}
                     formatter={(val) => `${val} kg`}
-                    layout="horizontal"
+                    layout="vertical"
                 />
             </CardContent>
         </Card>

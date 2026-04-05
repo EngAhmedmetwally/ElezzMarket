@@ -12,7 +12,7 @@ interface StaffPerformanceChartProps {
     barDataKey?: string;
     barLabel: string;
     formatter?: (value: number) => string;
-    layout?: 'vertical' | 'horizontal';
+    layout?: 'vertical' | 'horizontal'; // 'vertical' means bars go UP (columns), 'horizontal' means bars go RIGHT
     className?: string;
 }
 
@@ -39,7 +39,8 @@ export function StaffPerformanceChart({
     }).format(value);
   }
 
-  const truncateName = (name: string, limit: number = 25) => {
+  // Helper to truncate long product names in the chart axis
+  const truncateName = (name: string, limit: number = 20) => {
     if (!name) return "";
     return name.length > limit ? name.substring(0, limit) + "..." : name;
   };
@@ -56,6 +57,8 @@ export function StaffPerformanceChart({
       );
   }
 
+  // layout="vertical" -> Bars go vertical (Categories on X, Numbers on Y) = Columns
+  // layout="horizontal" -> Bars go horizontal (Categories on Y, Numbers on X) = Bars
   const isVerticalBars = layout === 'vertical';
 
   return (
@@ -66,9 +69,9 @@ export function StaffPerformanceChart({
                 layout={isVerticalBars ? 'horizontal' : 'vertical'}
                 margin={{ 
                     top: 20, 
-                    right: isVerticalBars ? 30 : 40, 
+                    right: isVerticalBars ? 20 : 40, 
                     left: !isVerticalBars ? (isMobile ? 10 : 20) : 0, 
-                    bottom: isVerticalBars ? 20 : 5 
+                    bottom: isVerticalBars ? (isMobile ? 60 : 40) : 5 
                 }}
             >
                 <CartesianGrid 
@@ -86,10 +89,10 @@ export function StaffPerformanceChart({
                             axisLine={false}
                             tick={{ fontSize: 10, fill: 'currentColor' }}
                             interval={0}
-                            angle={isMobile ? -45 : 0}
-                            textAnchor={isMobile ? "end" : "middle"}
-                            height={isMobile ? 60 : 40}
-                            tickFormatter={(val) => truncateName(val, 15)}
+                            angle={-45}
+                            textAnchor="end"
+                            height={isMobile ? 80 : 60}
+                            tickFormatter={(val) => truncateName(val, isMobile ? 12 : 20)}
                         />
                         <YAxis 
                             tick={{ fontSize: 10, fill: 'currentColor' }}
