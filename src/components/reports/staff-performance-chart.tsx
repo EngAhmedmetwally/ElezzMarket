@@ -39,6 +39,11 @@ export function StaffPerformanceChart({
     }).format(value);
   }
 
+  const truncateName = (name: string, limit: number = 25) => {
+    if (!name) return "";
+    return name.length > limit ? name.substring(0, limit) + "..." : name;
+  };
+
   if (!mounted) {
       return <div className="h-[350px] w-full bg-muted/10 animate-pulse rounded-lg" />;
   }
@@ -61,7 +66,7 @@ export function StaffPerformanceChart({
                 layout={isVerticalBars ? 'horizontal' : 'vertical'}
                 margin={{ 
                     top: 20, 
-                    right: 30, 
+                    right: isVerticalBars ? 30 : 40, 
                     left: !isVerticalBars ? (isMobile ? 10 : 20) : 0, 
                     bottom: isVerticalBars ? 20 : 5 
                 }}
@@ -84,6 +89,7 @@ export function StaffPerformanceChart({
                             angle={isMobile ? -45 : 0}
                             textAnchor={isMobile ? "end" : "middle"}
                             height={isMobile ? 60 : 40}
+                            tickFormatter={(val) => truncateName(val, 15)}
                         />
                         <YAxis 
                             tick={{ fontSize: 10, fill: 'currentColor' }}
@@ -106,9 +112,10 @@ export function StaffPerformanceChart({
                             type="category" 
                             tickLine={false} 
                             axisLine={false} 
-                            width={isMobile ? 80 : 120} 
+                            width={isMobile ? 90 : 180} 
                             tick={{ fontSize: 10, fill: 'currentColor' }} 
                             interval={0}
+                            tickFormatter={(val) => truncateName(val, isMobile ? 15 : 30)}
                         />
                     </>
                 )}
@@ -119,8 +126,8 @@ export function StaffPerformanceChart({
                         if (active && payload && payload.length) {
                             const item = payload[0].payload;
                             return (
-                                <div className="bg-card border rounded-lg p-3 shadow-xl text-xs min-w-[120px]">
-                                    <p className="font-bold text-primary mb-2 border-b pb-1">{item.name}</p>
+                                <div className="bg-card border rounded-lg p-3 shadow-xl text-xs min-w-[150px] max-w-[300px]">
+                                    <p className="font-bold text-primary mb-2 border-b pb-1 break-words">{item.name}</p>
                                     <p className="text-muted-foreground flex justify-between gap-4">
                                         <span>{barLabel}:</span>
                                         <span className="font-mono text-foreground font-bold">{valueFormatter(item.value)}</span>
@@ -135,7 +142,6 @@ export function StaffPerformanceChart({
                     dataKey="value" 
                     name={barLabel} 
                     radius={isVerticalBars ? [4, 4, 0, 0] : [0, 4, 4, 0]} 
-                    barSize={isMobile ? 15 : 25}
                     fill="hsl(var(--chart-1))"
                 >
                     {data.map((_, index) => (
