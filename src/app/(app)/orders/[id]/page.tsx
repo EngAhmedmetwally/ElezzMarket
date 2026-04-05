@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { StatusBadge } from "@/components/status-badge";
-import { Printer, Search, Edit, History, Share2, Loader2, MessageSquare, Phone, Facebook, MapPin } from "lucide-react";
+import { Printer, Search, Edit, History, Share2, Loader2, MessageSquare, Phone, Facebook, MapPin, Truck } from "lucide-react";
 import { useLanguage } from "@/components/language-provider";
 import type { Order, OrderStatus, StatusHistoryItem, User, ReceiptSettings, OrderStatusConfig, OrderItem } from "@/lib/types";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -30,6 +30,7 @@ import { OrderForm } from "../new/order-form";
 import { OrderEditHistory } from "../components/order-edit-history";
 import { PendingOrdersList } from "../components/pending-orders-list";
 import { ReceiptView } from "../components/receipt-view";
+import { Label } from "@/components/ui/label";
 
 function StatusHistoryTimeline({ history }: { history?: Record<string, StatusHistoryItem> }) {
     const { language } = useLanguage();
@@ -95,10 +96,12 @@ export default function OrderDetailsPage() {
   const [isSharePreviewOpen, setIsSharePreviewOpen] = React.useState(false);
   const [note, setNote] = React.useState("");
   const [selectedStatus, setSelectedStatus] = React.useState<OrderStatus | null>(null);
+  const [selectedCourierId, setSelectedCourierId] = React.useState<string>("");
   const [isSharing, setIsSharing] = React.useState(false);
   const receiptRef = React.useRef<HTMLDivElement>(null);
 
   const receiptSettings = receiptSettingsCollection?.[0] || null;
+  const couriers = React.useMemo(() => users?.filter(u => u.role === 'Courier' && u.status === 'نشط') || [], [users]);
   const canEditStatus = (authUser?.permissions?.orders?.editStatus) || authUser?.role === 'Admin';
   
   const availableStatuses = React.useMemo(() => {
@@ -125,27 +128,53 @@ export default function OrderDetailsPage() {
   const itemsSubtotal = orderItems.reduce((acc, item) => acc + (item.price * item.quantity), 0);
   const canEditOrder = (order.status === 'تم التسجيل' || order.status === 'قيد التجهيز') && (authUser?.role === 'Admin' || authUser?.permissions?.orders?.edit);
 
-  const handleStatusUpdate = async (newStatus: OrderStatus, noteText: string) => {
+  const handleStatusUpdate = async (newStatus: OrderStatus, noteText: string, courierId?: string) => {
     if (!order || !database || !authUser) return;
+    
+    if (newStatus === 'تم الشحن' && !courierId) {
+        toast({ variant: 'destructive', title: language === 'ar' ? 'خطأ' : 'Error', description: language === 'ar' ? 'يجب اختيار المندوب أولاً' : 'Courier must be selected' });
+        return;
+    }
+
     const orderRef = ref(database, order.path || `orders/${order.id}`);
+    const selectedCourier = courierId ? couriers.find(c => c.id === courierId) : null;
+
     try {
         const now = new Date().toISOString();
         const commissionRulesSnap = await get(ref(database, 'commission-rules'));
         const commissionAmount = commissionRulesSnap.val()?.[newStatus]?.amount || 0;
+        
         await runTransaction(orderRef, (current) => {
             if (current) {
                 if (!current.statusHistory) current.statusHistory = {};
                 const key = push(child(orderRef, 'statusHistory')).key;
-                if (key) current.statusHistory[key] = { status: newStatus, notes: noteText, createdAt: now, userName: authUser.name || authUser.email || "System", userId: authUser.id };
+                if (key) current.statusHistory[key] = { 
+                    status: newStatus, 
+                    notes: noteText, 
+                    createdAt: now, 
+                    userName: authUser.name || authUser.email || "System", 
+                    userId: authUser.id 
+                };
                 current.status = newStatus;
                 current.updatedAt = now;
                 if (commissionAmount !== 0) current.totalCommission = (current.totalCommission || 0) + commissionAmount;
+                
+                if (newStatus === 'تم الشحن' && selectedCourier) {
+                    current.courierId = selectedCourier.id;
+                    current.courierName = selectedCourier.name;
+                }
             }
             return current;
         });
+        
+        toast({ title: language === 'ar' ? 'تم التحديث' : 'Status Updated' });
         refetch();
         setIsNoteModalOpen(false);
-    } catch (e) { console.error(e); }
+        setNote("");
+        setSelectedCourierId("");
+    } catch (e: any) { 
+        toast({ variant: 'destructive', title: 'Error', description: e.message });
+    }
   }
 
   const executeSharing = async () => {
@@ -336,7 +365,49 @@ export default function OrderDetailsPage() {
             </DialogContent>
         </Dialog>
 
-        <Dialog open={isNoteModalOpen} onOpenChange={setIsNoteModalOpen}><DialogContent><DialogHeader><DialogTitle>Add Note</DialogTitle></DialogHeader><Textarea value={note} onChange={e => setNote(e.target.value)} /><DialogFooter><Button onClick={() => handleStatusUpdate(selectedStatus!, note)}>Save</Button></DialogFooter></DialogContent></Dialog>
+        <Dialog open={isNoteModalOpen} onOpenChange={setIsNoteModalOpen}>
+            <DialogContent>
+                <DialogHeader>
+                    <DialogTitle>{language === 'ar' ? 'تحديث حالة الطلب' : 'Update Status'}</DialogTitle>
+                    <DialogDescription>
+                        {language === 'ar' ? `تغيير الحالة إلى: ${selectedStatus}` : `Changing status to: ${selectedStatus}`}
+                    </DialogDescription>
+                </DialogHeader>
+                <div className="space-y-4 py-4">
+                    {selectedStatus === 'تم الشحن' && (
+                        <div className="space-y-2">
+                            <Label>{language === 'ar' ? 'اختر المندوب' : 'Select Courier'}</Label>
+                            <Select onValueChange={setSelectedCourierId} value={selectedCourierId}>
+                                <SelectTrigger>
+                                    <SelectValue placeholder={language === 'ar' ? 'اختر المندوب المسؤول' : 'Choose a courier'} />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {couriers.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+                                </SelectContent>
+                            </Select>
+                        </div>
+                    )}
+                    <div className="space-y-2">
+                        <Label>{language === 'ar' ? 'ملاحظات التغيير' : 'Notes'}</Label>
+                        <Textarea 
+                            value={note} 
+                            onChange={e => setNote(e.target.value)} 
+                            placeholder={language === 'ar' ? 'اكتب ملاحظتك هنا (اختياري)...' : 'Write a note (optional)...'}
+                        />
+                    </div>
+                </div>
+                <DialogFooter>
+                    <Button variant="outline" onClick={() => { setIsNoteModalOpen(false); setNote(""); setSelectedCourierId(""); }}>{language === 'ar' ? 'إلغاء' : 'Cancel'}</Button>
+                    <Button 
+                        disabled={selectedStatus === 'تم الشحن' && !selectedCourierId} 
+                        onClick={() => handleStatusUpdate(selectedStatus!, note, selectedCourierId)}
+                    >
+                        {language === 'ar' ? 'تأكيد وحفظ' : 'Confirm & Save'}
+                    </Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
+
         <Dialog open={isEditModalOpen} onOpenChange={setIsEditModalOpen}><DialogContent className="max-w-3xl"><DialogHeader><DialogTitle>Edit Order</DialogTitle></DialogHeader><OrderForm orderToEdit={order} onSuccess={() => {setIsEditModalOpen(false); refetch();}} /></DialogContent></Dialog>
         <Dialog open={isHistoryModalOpen} onOpenChange={setIsHistoryModalOpen}><DialogContent className="max-w-2xl"><DialogHeader><DialogTitle>Edit History</DialogTitle></DialogHeader><OrderEditHistory history={order.editHistory} /></DialogContent></Dialog>
       </div>

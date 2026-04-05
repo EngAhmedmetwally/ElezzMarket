@@ -16,7 +16,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Printer, Share2, Loader2, MessageSquare, History, Edit, Truck, Phone, Facebook, MapPin } from "lucide-react";
@@ -26,6 +26,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { ReceiptView } from "./receipt-view";
 import { OrderForm } from "../new/order-form";
 import { useToast } from "@/hooks/use-toast";
+import { Label } from "@/components/ui/label";
 
 interface OrderQuickViewProps {
   orderId: string;
@@ -88,6 +89,7 @@ export function OrderQuickView({ orderId, onClose }: OrderQuickViewProps) {
 
   const [isNoteModalOpen, setIsNoteModalOpen] = React.useState(false);
   const [selectedStatus, setSelectedStatus] = React.useState<OrderStatus | null>(null);
+  const [selectedCourierId, setSelectedCourierId] = React.useState<string>("");
   const [note, setNote] = React.useState("");
   const [isSharing, setIsSharing] = React.useState(false);
   const [isHistoryOpen, setIsHistoryOpen] = React.useState(false);
@@ -96,7 +98,7 @@ export function OrderQuickView({ orderId, onClose }: OrderQuickViewProps) {
   
   const receiptRef = React.useRef<HTMLDivElement>(null);
 
-  const couriers = React.useMemo(() => users?.filter(u => u.role === 'Courier') || [], [users]);
+  const couriers = React.useMemo(() => users?.filter(u => u.role === 'Courier' && u.status === 'نشط') || [], [users]);
   const canEditStatus = (authUser?.permissions?.orders?.editStatus) || authUser?.role === 'Admin';
   const receiptSettings = receiptSettingsCollection?.[0] || null;
 
@@ -127,9 +129,17 @@ export function OrderQuickView({ orderId, onClose }: OrderQuickViewProps) {
     });
   }, [order, canEditStatus, orderStatuses, authUser]);
 
-  const handleStatusUpdate = async (newStatus: OrderStatus, noteText: string) => {
+  const handleStatusUpdate = async (newStatus: OrderStatus, noteText: string, courierId?: string) => {
     if (!order || !database || !authUser) return;
+
+    if (newStatus === 'تم الشحن' && !courierId) {
+        toast({ variant: 'destructive', title: language === 'ar' ? 'خطأ' : 'Error', description: language === 'ar' ? 'يجب اختيار المندوب' : 'Courier required' });
+        return;
+    }
+
     const orderRef = ref(database, order.path || `orders/${order.id}`);
+    const selectedCourier = courierId ? couriers.find(c => c.id === courierId) : null;
+
     try {
         const now = new Date().toISOString();
         const currentUser = authUser.name || authUser.email || "System";
@@ -152,13 +162,23 @@ export function OrderQuickView({ orderId, onClose }: OrderQuickViewProps) {
                 currentOrder.status = newStatus;
                 currentOrder.updatedAt = now;
                 if (commissionAmount !== 0) currentOrder.totalCommission = (currentOrder.totalCommission || 0) + commissionAmount;
+                
+                if (newStatus === 'تم الشحن' && selectedCourier) {
+                    currentOrder.courierId = selectedCourier.id;
+                    currentOrder.courierName = selectedCourier.name;
+                }
             }
             return currentOrder;
         });
+        
+        toast({ title: language === 'ar' ? 'تم تحديث الحالة' : 'Status Updated' });
         refetch();
         setIsNoteModalOpen(false);
         setNote("");
-    } catch (e) { console.error(e); }
+        setSelectedCourierId("");
+    } catch (e: any) { 
+        toast({ variant: 'destructive', title: 'Error', description: e.message });
+    }
   };
 
   const executeSharing = async () => {
@@ -364,12 +384,42 @@ export function OrderQuickView({ orderId, onClose }: OrderQuickViewProps) {
       <Dialog open={isNoteModalOpen} onOpenChange={setIsNoteModalOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{language === 'ar' ? 'إضافة ملاحظة' : 'Add Note'}</DialogTitle>
+            <DialogTitle>{language === 'ar' ? 'تحديث حالة الطلب' : 'Update Status'}</DialogTitle>
+            <DialogDescription>
+                {language === 'ar' ? `تغيير الحالة إلى: ${selectedStatus}` : `Changing status to: ${selectedStatus}`}
+            </DialogDescription>
           </DialogHeader>
-          <div className="py-4"><Textarea value={note} onChange={(e) => setNote(e.target.value)} placeholder={language === 'ar' ? 'اكتب ملاحظتك هنا...' : 'Write note...'} /></div>
+          <div className="space-y-4 py-4">
+            {selectedStatus === 'تم الشحن' && (
+                <div className="space-y-2">
+                    <Label>{language === 'ar' ? 'اختر المندوب' : 'Select Courier'}</Label>
+                    <Select onValueChange={setSelectedCourierId} value={selectedCourierId}>
+                        <SelectTrigger>
+                            <SelectValue placeholder={language === 'ar' ? 'اختر المندوب المسؤول' : 'Choose a courier'} />
+                        </SelectTrigger>
+                        <SelectContent>
+                            {couriers.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+                        </SelectContent>
+                    </Select>
+                </div>
+            )}
+            <div className="space-y-2">
+                <Label>{language === 'ar' ? 'ملاحظة (اختياري)' : 'Note (Optional)'}</Label>
+                <Textarea 
+                    value={note} 
+                    onChange={(e) => setNote(e.target.value)} 
+                    placeholder={language === 'ar' ? 'اكتب ملاحظتك هنا...' : 'Write note...'} 
+                />
+            </div>
+          </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setIsNoteModalOpen(false)}>{language === 'ar' ? 'إلغاء' : 'Cancel'}</Button>
-            <Button onClick={() => selectedStatus && handleStatusUpdate(selectedStatus, note)}>{language === 'ar' ? 'تأكيد' : 'Confirm'}</Button>
+            <Button variant="outline" onClick={() => { setIsNoteModalOpen(false); setNote(""); setSelectedCourierId(""); }}>{language === 'ar' ? 'إلغاء' : 'Cancel'}</Button>
+            <Button 
+                disabled={selectedStatus === 'تم الشحن' && !selectedCourierId} 
+                onClick={() => selectedStatus && handleStatusUpdate(selectedStatus, note, selectedCourierId)}
+            >
+                {language === 'ar' ? 'تأكيد وحفظ' : 'Confirm & Save'}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
