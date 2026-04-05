@@ -185,6 +185,7 @@ export type ReceiptSettings = {
   showCustomerName?: boolean;
   showFacebookName?: boolean;
   showCustomerPhone?: boolean;
+  showCustomerPhone2?: boolean;
   showCustomerAddress?: boolean;
   showPaymentMethod?: boolean;
   showOrderNotes?: boolean;

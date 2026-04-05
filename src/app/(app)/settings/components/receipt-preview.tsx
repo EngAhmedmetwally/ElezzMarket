@@ -17,6 +17,7 @@ const mockOrder = {
   customerName: "محمد علي",
   facebookName: "Mohamed Ali Profile",
   customerPhone1: "01234567890",
+  customerPhone2: "01555555555",
   customerAddress: "123 شارع المثال، القاهرة",
   paymentMethod: "نقدي عند الاستلام",
   courierName: "عمر إبراهيم",
@@ -61,12 +62,13 @@ export function ReceiptPreview({ settings }: ReceiptPreviewProps) {
             {settings.showDate && <p className="text-xs break-words">{language === 'ar' ? 'التاريخ:' : 'Date:'} {format(new Date(mockOrder.createdAt), "dd/MM/yyyy HH:mm")}</p>}
         </div>
         
-        {(settings.showOrderId || settings.showDate) && (settings.showCustomerName || settings.showFacebookName || settings.showCustomerPhone || settings.showCustomerAddress || settings.showPaymentMethod || settings.showCourierName || settings.showModeratorName || settings.showModeratorUsername) && <Hr />}
+        {(settings.showOrderId || settings.showDate) && (settings.showCustomerName || settings.showFacebookName || settings.showCustomerPhone || settings.showCustomerPhone2 || settings.showCustomerAddress || settings.showPaymentMethod || settings.showCourierName || settings.showModeratorName || settings.showModeratorUsername) && <Hr />}
         
         <div className="space-y-0.5">
             {settings.showCustomerName && <p className="text-xs font-semibold break-words">{language === 'ar' ? 'العميل:' : 'Customer:'} {mockOrder.customerName}</p>}
             {settings.showFacebookName && <p className="text-xs break-words">{language === 'ar' ? 'فيسبوك:' : 'Facebook:'} {mockOrder.facebookName}</p>}
-            {settings.showCustomerPhone && <p className="text-xs break-words">{language === 'ar' ? 'الهاتف:' : 'Phone:'} {mockOrder.customerPhone1}</p>}
+            {settings.showCustomerPhone && <p className="text-xs break-words">{language === 'ar' ? 'الهاتف 1:' : 'Phone 1:'} {mockOrder.customerPhone1}</p>}
+            {settings.showCustomerPhone2 && mockOrder.customerPhone2 && <p className="text-xs break-words">{language === 'ar' ? 'الهاتف 2:' : 'Phone 2:'} {mockOrder.customerPhone2}</p>}
             {settings.showPaymentMethod && <p className="text-xs break-words">{language === 'ar' ? 'الدفع:' : 'Payment:'} {mockOrder.paymentMethod}</p>}
             {settings.showCustomerAddress && mockOrder.customerAddress && <p className="text-xs break-words text-start">{language === 'ar' ? 'العنوان:' : 'Address:'} {mockOrder.customerAddress}</p>}
         </div>
@@ -92,7 +94,7 @@ export function ReceiptPreview({ settings }: ReceiptPreviewProps) {
             </>
         )}
         
-        {(settings.showCustomerName || settings.showFacebookName || settings.showCustomerPhone || settings.showCustomerAddress || settings.showPaymentMethod || settings.showCourierName || settings.showModeratorName || settings.showModeratorUsername || settings.showOrderNotes) && <Hr />}
+        {(settings.showCustomerName || settings.showFacebookName || settings.showCustomerPhone || settings.showCustomerPhone2 || settings.showCustomerAddress || settings.showPaymentMethod || settings.showCourierName || settings.showModeratorName || settings.showModeratorUsername || settings.showOrderNotes) && <Hr />}
         
         <table className="w-full text-xs border-collapse">
             <thead>
@@ -126,7 +128,7 @@ export function ReceiptPreview({ settings }: ReceiptPreviewProps) {
             {settings.showTotalItems && <div className="flex justify-between font-bold"><span>{language === 'ar' ? 'إجمالي القطع' : 'Total Items'}</span> <span>{totalItems}</span></div>}
             {settings.showTotalWeight && <div className="flex justify-between font-bold"><span>{language === 'ar' ? 'إجمالي الوزن' : 'Total Weight'}</span> <span>{totalWeight.toFixed(2)} kg</span></div>}
             
-            {settings.showGrandTotal && <div className="flex justify-between font-bold text-sm pt-1"><span>{language === 'ar' ? 'الإجمالي الكلي' : 'Total'}</span> <span>{total.toFixed(0)}</span></div>}
+            {settings.showGrandTotal && <div className="flex justify-between font-bold text-sm pt-1"><span>{language === 'ar' ? 'إجمالي الكلي' : 'Total'}</span> <span>{total.toFixed(0)}</span></div>}
         </div>
         {(settings.showItemsSubtotal || settings.showShippingCost || settings.showGrandTotal) && <Hr />}
         {settings.footerText && <p className="text-center text-xs break-words">{settings.footerText}</p>}

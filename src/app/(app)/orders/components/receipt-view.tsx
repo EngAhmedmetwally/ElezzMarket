@@ -26,7 +26,7 @@ export function ReceiptView({ order, language, settings }: ReceiptViewProps) {
 
   const s = settings || {
       showLogo: true, headerText: language === 'ar' ? 'سوق العز' : 'ElEzz Market',
-      showOrderId: true, showDate: true, showCustomerName: true, showFacebookName: true, showCustomerPhone: true, showCustomerAddress: true, showPaymentMethod: true,
+      showOrderId: true, showDate: true, showCustomerName: true, showFacebookName: true, showCustomerPhone: true, showCustomerPhone2: true, showCustomerAddress: true, showPaymentMethod: true,
       showItemWeight: false, showItemPrice: true, showItemSubtotal: true,
       showItemsSubtotal: true, showShippingCost: true, showGrandTotal: true,
       showOrderNotes: true,
@@ -64,7 +64,8 @@ export function ReceiptView({ order, language, settings }: ReceiptViewProps) {
         <div className="receipt-thermal-info">
              {s.showCustomerName && <div className="info-item"><span>{language === 'ar' ? 'العميل' : 'Cust'}:</span><span>{order.customerName}</span></div>}
              {s.showFacebookName && order.facebookName && <div className="info-item"><span>{language === 'ar' ? 'فيسبوك' : 'FB'}:</span><span>{order.facebookName}</span></div>}
-             {s.showCustomerPhone && <div className="info-item"><span>{language === 'ar' ? 'الهاتف' : 'Phone'}:</span><span>{order.customerPhone1}</span></div>}
+             {s.showCustomerPhone && <div className="info-item"><span>{language === 'ar' ? 'الهاتف 1' : 'Phone 1'}:</span><span>{order.customerPhone1}</span></div>}
+             {s.showCustomerPhone2 && order.customerPhone2 && <div className="info-item"><span>{language === 'ar' ? 'الهاتف 2' : 'Phone 2'}:</span><span>{order.customerPhone2}</span></div>}
              {s.showPaymentMethod && order.paymentMethod && <div className="info-item"><span>{language === 'ar' ? 'الدفع' : 'Payment'}:</span><span>{order.paymentMethod}</span></div>}
              {s.showCustomerAddress && order.customerAddress && <p className="text-xs break-words pt-1 text-start">{order.customerAddress}</p>}
         </div>
@@ -124,7 +125,7 @@ export function ReceiptView({ order, language, settings }: ReceiptViewProps) {
 
             {s.showGrandTotal && (s.showTotalItems || s.showTotalWeight) && <Hr />}
             
-            {s.showGrandTotal && <div className="summary-item total"><span>{language === 'ar' ? 'الإجمالي الكلي' : 'Total'}</span> <span>{formatCurrencyLocal(grandTotal)}</span></div>}
+            {s.showGrandTotal && <div className="summary-item total"><span>{language === 'ar' ? 'إجمالي الكلي' : 'Total'}</span> <span>{formatCurrencyLocal(grandTotal)}</span></div>}
         </div>
         
         {s.footerText && (
