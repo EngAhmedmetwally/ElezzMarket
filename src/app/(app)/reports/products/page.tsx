@@ -60,6 +60,7 @@ export default function ProductsReportPage() {
 
   const { data: allOrders, isLoading } = useRealtimeCachedCollection<Order>('orders');
 
+  // 1. Get raw summary from orders filtered by DATE
   const productsSummary = React.useMemo(() => {
     if (!allOrders || !fromDate || !toDate) return [];
     
@@ -68,13 +69,13 @@ export default function ProductsReportPage() {
     
     const productMap = new Map<string, { name: string; count: number; totalWeight: number; totalAmount: number }>();
     
-    const filtered = allOrders.filter(order => {
+    const filteredByDate = allOrders.filter(order => {
         if (!order.createdAt || order.status === 'ملغي') return false;
         const orderDate = new Date(order.createdAt).getTime();
         return orderDate >= from && orderDate <= to;
     });
 
-    filtered.forEach(order => {
+    filteredByDate.forEach(order => {
         const items: OrderItem[] = order.items ? (Array.isArray(order.items) ? order.items : Object.values(order.items)) : [];
         if (items.length === 0) return;
 
@@ -95,26 +96,35 @@ export default function ProductsReportPage() {
     return Array.from(productMap.values());
   }, [allOrders, fromDate, toDate]);
 
-  const totals = React.useMemo(() => {
-    return productsSummary.reduce((acc, curr) => ({
-        qty: acc.qty + curr.count,
-        weight: acc.weight + curr.totalWeight,
-        amount: acc.amount + curr.totalAmount
-    }), { qty: 0, weight: 0, amount: 0 });
-  }, [productsSummary]);
-
-  const filteredProducts = React.useMemo(() => {
+  // 2. Apply SEARCH filter to the summary
+  const searchFilteredData = React.useMemo(() => {
     let result = [...productsSummary];
     if (searchTerm) {
         const lowerSearch = searchTerm.toLowerCase();
         result = result.filter(p => p.name.toLowerCase().includes(lowerSearch));
     }
-    const totalSoldCount = result.reduce((acc, item) => acc + item.count, 0);
-    return result.sort((a, b) => b.count - a.count).map(item => ({
-        ...item, 
-        percentage: totalSoldCount > 0 ? (item.count / totalSoldCount) * 100 : 0 
-    }));
+    return result;
   }, [productsSummary, searchTerm]);
+
+  // 3. Calculate TOTALS based on searchFilteredData (Dynamic Totals)
+  const totals = React.useMemo(() => {
+    return searchFilteredData.reduce((acc, curr) => ({
+        qty: acc.qty + curr.count,
+        weight: acc.weight + curr.totalWeight,
+        amount: acc.amount + curr.totalAmount
+    }), { qty: 0, weight: 0, amount: 0 });
+  }, [searchFilteredData]);
+
+  // 4. Final display data with percentages based on current filter
+  const filteredProducts = React.useMemo(() => {
+    const totalSoldCount = searchFilteredData.reduce((acc, item) => acc + item.count, 0);
+    return [...searchFilteredData]
+        .sort((a, b) => b.count - a.count)
+        .map(item => ({
+            ...item, 
+            percentage: totalSoldCount > 0 ? (item.count / totalSoldCount) * 100 : 0 
+        }));
+  }, [searchFilteredData]);
 
   const topQtyChartData = React.useMemo(() => {
       return filteredProducts.slice(0, 10).map(p => ({ 
@@ -160,17 +170,17 @@ export default function ProductsReportPage() {
 
       <div className="grid gap-4 md:grid-cols-3">
         <KpiCard
-          title={language === 'ar' ? 'إجمالي المبيعات (مبلغ)' : 'Total Sales Amount'}
+          title={language === 'ar' ? 'إجمالي المبيعات للمصفي' : 'Total Filtered Sales'}
           value={formatCurrency(totals.amount, language)}
           icon={<DollarSign className="h-4 w-4" />}
         />
         <KpiCard
-          title={language === 'ar' ? 'إجمالي الكميات' : 'Total Quantity'}
+          title={language === 'ar' ? 'إجمالي الكميات للمصفي' : 'Total Filtered Quantity'}
           value={totals.qty.toLocaleString()}
           icon={<Package className="h-4 w-4" />}
         />
         <KpiCard
-          title={language === 'ar' ? 'إجمالي الأوزان' : 'Total Weight'}
+          title={language === 'ar' ? 'إجمالي الأوزان للمصفي' : 'Total Filtered Weight'}
           value={`${totals.weight.toFixed(2)} kg`}
           icon={<Weight className="h-4 w-4" />}
         />
@@ -185,7 +195,7 @@ export default function ProductsReportPage() {
                 <StaffPerformanceChart 
                     data={topQtyChartData} 
                     barLabel={language === 'ar' ? 'الكمية' : 'Quantity'}
-                    layout="vertical"
+                    layout="columns"
                 />
             </CardContent>
         </Card>
@@ -198,7 +208,7 @@ export default function ProductsReportPage() {
                     data={topWeightChartData} 
                     barLabel={language === 'ar' ? 'الوزن (كجم)' : 'Weight (kg)'}
                     formatter={(val) => `${val} kg`}
-                    layout="vertical"
+                    layout="columns"
                 />
             </CardContent>
         </Card>
@@ -208,8 +218,8 @@ export default function ProductsReportPage() {
           <CardHeader>
               <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
-                    <CardTitle>{language === 'ar' ? 'تقرير مبيعات جميع المنتجات' : 'All Products Sales'}</CardTitle>
-                    <CardDescription>{language === 'ar' ? 'انقر على اسم المنتج لعرض التفاصيل.' : 'Click on product name for details.'}</CardDescription>
+                    <CardTitle>{language === 'ar' ? 'تقرير مبيعات المنتجات' : 'Products Sales Report'}</CardTitle>
+                    <CardDescription>{language === 'ar' ? 'البحث في الأصناف سيقوم بتحديث الإحصائيات في الأعلى تلقائياً.' : 'Searching items will automatically update the totals above.'}</CardDescription>
                 </div>
                 <div className="relative w-full md:w-72">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -285,7 +295,7 @@ export default function ProductsReportPage() {
           )}
           {filteredProducts.length === 0 && !isLoading && (
               <div className="py-20 text-center text-muted-foreground">
-                  {language === 'ar' ? 'لا توجد بيانات مبيعات في الفترة المختارة.' : 'No sales data for the selected range.'}
+                  {language === 'ar' ? 'لا توجد بيانات مبيعات مطابقة لبحثك.' : 'No sales data matching your search.'}
               </div>
           )}
           </CardContent>
