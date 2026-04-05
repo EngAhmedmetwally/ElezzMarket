@@ -11,9 +11,13 @@ import { useRealtimeCachedCollection } from "@/hooks/use-realtime-cached-collect
 import type { Order, OrderItem } from "@/lib/types";
 import { Skeleton } from "@/components/ui/skeleton";
 import { DatePicker } from "@/components/ui/datepicker";
+import { Input } from "@/components/ui/input";
 import Link from "next/link";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { subDays } from "date-fns";
+import { formatCurrency } from "@/lib/utils";
+import { KpiCard } from "@/components/dashboard/kpi-card";
+import { Package, Weight, DollarSign, Search } from "lucide-react";
 
 function ProductsReportSkeleton() {
   return (
@@ -21,6 +25,11 @@ function ProductsReportSkeleton() {
       <div className="flex items-center gap-4">
         <Skeleton className="h-10 w-40" />
         <Skeleton className="h-10 w-40" />
+      </div>
+      <div className="grid gap-4 md:grid-cols-3 mb-8">
+         <Skeleton className="h-28 w-full" />
+         <Skeleton className="h-28 w-full" />
+         <Skeleton className="h-28 w-full" />
       </div>
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         <Skeleton className="h-[400px] w-full" />
@@ -47,6 +56,7 @@ export default function ProductsReportPage() {
   const [toDate, setToDate] = React.useState<Date | undefined>(
     new Date()
   );
+  const [searchTerm, setSearchTerm] = React.useState("");
 
   const { data: allOrders, isLoading } = useRealtimeCachedCollection<Order>('orders');
 
@@ -56,7 +66,7 @@ export default function ProductsReportPage() {
     const from = fromDate.getTime();
     const to = toDate.getTime() + (24 * 60 * 60 * 1000);
     
-    const productMap = new Map<string, { name: string; count: number; totalWeight: number }>();
+    const productMap = new Map<string, { name: string; count: number; totalWeight: number; totalAmount: number }>();
     
     const filtered = allOrders.filter(order => {
         if (!order.createdAt || order.status === 'ملغي') return false;
@@ -70,9 +80,14 @@ export default function ProductsReportPage() {
 
         items.forEach((item) => {
             if (!item.productName) return;
-            const existing = productMap.get(item.productName) || { name: item.productName, count: 0, totalWeight: 0 };
-            existing.count += (Number(item.quantity) || 0);
-            existing.totalWeight += (Number(item.weight) || 0) * (Number(item.quantity) || 0);
+            const existing = productMap.get(item.productName) || { name: item.productName, count: 0, totalWeight: 0, totalAmount: 0 };
+            const qty = (Number(item.quantity) || 0);
+            const price = (Number(item.price) || 0);
+            const weight = (Number(item.weight) || 0);
+
+            existing.count += qty;
+            existing.totalWeight += weight * qty;
+            existing.totalAmount += price * qty;
             productMap.set(item.productName, existing);
         });
     });
@@ -80,31 +95,43 @@ export default function ProductsReportPage() {
     return Array.from(productMap.values());
   }, [allOrders, fromDate, toDate]);
 
-  const productsSortedByQty = React.useMemo(() => {
-    const sales = [...productsSummary].sort((a, b) => b.count - a.count);
-    const totalSoldCount = sales.reduce((acc, item) => acc + item.count, 0);
-    return sales.map(item => ({
+  const totals = React.useMemo(() => {
+    return productsSummary.reduce((acc, curr) => ({
+        qty: acc.qty + curr.count,
+        weight: acc.weight + curr.totalWeight,
+        amount: acc.amount + curr.totalAmount
+    }), { qty: 0, weight: 0, amount: 0 });
+  }, [productsSummary]);
+
+  const filteredProducts = React.useMemo(() => {
+    let result = [...productsSummary];
+    if (searchTerm) {
+        const lowerSearch = searchTerm.toLowerCase();
+        result = result.filter(p => p.name.toLowerCase().includes(lowerSearch));
+    }
+    const totalSoldCount = result.reduce((acc, item) => acc + item.count, 0);
+    return result.sort((a, b) => b.count - a.count).map(item => ({
         ...item, 
         percentage: totalSoldCount > 0 ? (item.count / totalSoldCount) * 100 : 0 
     }));
-  }, [productsSummary]);
+  }, [productsSummary, searchTerm]);
 
   const topQtyChartData = React.useMemo(() => {
-      return productsSortedByQty.slice(0, 10).map(p => ({ 
+      return filteredProducts.slice(0, 10).map(p => ({ 
           name: p.name, 
           value: p.count 
       }));
-  }, [productsSortedByQty]);
+  }, [filteredProducts]);
   
   const topWeightChartData = React.useMemo(() => {
-    return [...productsSummary]
+    return [...filteredProducts]
         .sort((a, b) => b.totalWeight - a.totalWeight)
         .slice(0, 10)
         .map(p => ({ 
             name: p.name, 
             value: Number(p.totalWeight.toFixed(2)) 
         }));
-  }, [productsSummary]);
+  }, [filteredProducts]);
 
   if (isLoading) {
     return (
@@ -129,6 +156,24 @@ export default function ProductsReportPage() {
         <div className="flex-1 w-full">
           <DatePicker date={toDate} onDateChange={setToDate} placeholder={language === 'ar' ? 'إلى تاريخ' : 'To date'} />
         </div>
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-3">
+        <KpiCard
+          title={language === 'ar' ? 'إجمالي المبيعات (مبلغ)' : 'Total Sales Amount'}
+          value={formatCurrency(totals.amount, language)}
+          icon={<DollarSign className="h-4 w-4" />}
+        />
+        <KpiCard
+          title={language === 'ar' ? 'إجمالي الكميات' : 'Total Quantity'}
+          value={totals.qty.toLocaleString()}
+          icon={<Package className="h-4 w-4" />}
+        />
+        <KpiCard
+          title={language === 'ar' ? 'إجمالي الأوزان' : 'Total Weight'}
+          value={`${totals.weight.toFixed(2)} kg`}
+          icon={<Weight className="h-4 w-4" />}
+        />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
@@ -161,13 +206,26 @@ export default function ProductsReportPage() {
       
       <Card>
           <CardHeader>
-              <CardTitle>{language === 'ar' ? 'تقرير مبيعات جميع المنتجات' : 'All Products Sales'}</CardTitle>
-              <CardDescription>{language === 'ar' ? 'انقر على اسم المنتج لعرض التفاصيل.' : 'Click on product name for details.'}</CardDescription>
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div>
+                    <CardTitle>{language === 'ar' ? 'تقرير مبيعات جميع المنتجات' : 'All Products Sales'}</CardTitle>
+                    <CardDescription>{language === 'ar' ? 'انقر على اسم المنتج لعرض التفاصيل.' : 'Click on product name for details.'}</CardDescription>
+                </div>
+                <div className="relative w-full md:w-72">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input 
+                        placeholder={language === 'ar' ? 'بحث عن منتج...' : 'Search for a product...'}
+                        className="pl-10"
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                    />
+                </div>
+              </div>
           </CardHeader>
           <CardContent>
           {isMobile ? (
               <div className="space-y-4">
-                {productsSortedByQty.map((product) => {
+                {filteredProducts.map((product) => {
                   const href = `/reports/products/${encodeURIComponent(product.name)}?from=${fromDateString}&to=${toDateString}`;
                   return (
                       <Link href={href} key={product.name} className="block p-4 border rounded-lg hover:bg-muted/50 transition-colors">
@@ -176,6 +234,7 @@ export default function ProductsReportPage() {
                               <div className="text-end shrink-0 ms-4">
                                   <p className="font-bold">{product.count}</p>
                                   <p className="text-xs text-muted-foreground">{product.totalWeight.toFixed(2)} kg</p>
+                                  <p className="text-sm font-semibold text-green-600 mt-1">{formatCurrency(product.totalAmount, language)}</p>
                               </div>
                           </div>
                           <div className="flex items-center gap-2">
@@ -194,11 +253,12 @@ export default function ProductsReportPage() {
                         <TableHead className="text-start">{language === 'ar' ? 'المنتج' : 'Product'}</TableHead>
                         <TableHead className="text-end">{language === 'ar' ? 'الكمية' : 'Qty'}</TableHead>
                         <TableHead className="text-end">{language === 'ar' ? 'الوزن الإجمالي' : 'Total Weight'}</TableHead>
+                        <TableHead className="text-end">{language === 'ar' ? 'إجمالي المبلغ' : 'Total Amount'}</TableHead>
                         <TableHead className="text-end">{language === 'ar' ? 'النسبة' : '%'}</TableHead>
                     </TableRow>
                     </TableHeader>
                     <TableBody>
-                    {productsSortedByQty.map((product) => {
+                    {filteredProducts.map((product) => {
                         const href = `/reports/products/${encodeURIComponent(product.name)}?from=${fromDateString}&to=${toDateString}`;
                         return (
                             <TableRow key={product.name}>
@@ -209,6 +269,7 @@ export default function ProductsReportPage() {
                                 </TableCell>
                                 <TableCell className="text-end font-bold">{product.count}</TableCell>
                                 <TableCell className="text-end">{product.totalWeight.toFixed(2)} kg</TableCell>
+                                <TableCell className="text-end font-bold text-green-600">{formatCurrency(product.totalAmount, language)}</TableCell>
                                 <TableCell className="text-end">
                                     <div className="flex items-center justify-end gap-2">
                                         <span className="text-[10px] text-muted-foreground w-10">{product.percentage.toFixed(1)}%</span>
@@ -222,7 +283,7 @@ export default function ProductsReportPage() {
                 </Table>
               </div>
           )}
-          {productsSortedByQty.length === 0 && !isLoading && (
+          {filteredProducts.length === 0 && !isLoading && (
               <div className="py-20 text-center text-muted-foreground">
                   {language === 'ar' ? 'لا توجد بيانات مبيعات في الفترة المختارة.' : 'No sales data for the selected range.'}
               </div>
