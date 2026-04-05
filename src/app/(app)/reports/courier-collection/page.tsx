@@ -41,13 +41,8 @@ function CourierCollectionSkeleton() {
 
 export default function CourierCollectionReportPage() {
   const { language } = useLanguage();
-  // Default to last 7 days
-  const [fromDate, setFromDate] = React.useState<Date | undefined>(
-    subDays(new Date(), 7)
-  );
-  const [toDate, setToDate] = React.useState<Date | undefined>(
-    new Date()
-  );
+  const [fromDate, setFromDate] = React.useState<Date | undefined>(subDays(new Date(), 7));
+  const [toDate, setToDate] = React.useState<Date | undefined>(new Date());
   
   const { data: allOrders, isLoading: isLoadingOrders } = useRealtimeCachedCollection<Order>('orders');
   const { data: users, isLoading: isLoadingUsers } = useRealtimeCachedCollection<User>('users');
@@ -76,7 +71,6 @@ export default function CourierCollectionReportPage() {
         orderCount: number;
     }>();
 
-    // Initialize map with all Couriers from users list
     const couriersList = users?.filter(u => u.role === 'Courier') || [];
     couriersList.forEach(courier => {
         courierMap.set(courier.id, {
@@ -93,7 +87,6 @@ export default function CourierCollectionReportPage() {
         });
     });
 
-    // Process orders and attribute to couriers
     filteredOrders.forEach(order => {
         if (order.courierId && courierMap.has(order.courierId)) {
             const data = courierMap.get(order.courierId)!;
@@ -174,7 +167,7 @@ export default function CourierCollectionReportPage() {
                 data={chartData} 
                 barLabel={language === 'ar' ? 'المبلغ' : 'Amount'}
                 formatter={(value) => formatCurrency(value, language)}
-                layout="horizontal"
+                layout="columns"
             />
           </CardContent>
       </Card>

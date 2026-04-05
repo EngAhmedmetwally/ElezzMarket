@@ -1,7 +1,7 @@
 
 "use client"
 
-import { Bar, BarChart, XAxis, YAxis, CartesianGrid, Tooltip, Legend, LabelList } from "recharts";
+import { Bar, BarChart, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Cell } from "recharts";
 import {
   ChartContainer,
   ChartTooltip,
@@ -37,8 +37,8 @@ interface StaffActivityChartProps {
 
 export function StaffActivityChart({ data }: StaffActivityChartProps) {
   const isMobile = useIsMobile();
-  const { language } = useLanguage();
-  const chartTitle = language === 'ar' ? 'نشاط الموظفين حسب الإجراء' : 'Staff Activity by Action';
+  const { language, isRTL } = useLanguage();
+  const chartTitle = language === 'ar' ? 'نشاط الموظفين (أعمدة)' : 'Staff Activity Columns';
 
   const chartData = data.map(item => {
       const newItem: {name: string, [key: string]: number | string} = { name: item.name };
@@ -48,8 +48,7 @@ export function StaffActivityChart({ data }: StaffActivityChartProps) {
       return newItem;
   });
 
-
-  const yAxisFormatter = (value: number) => {
+  const axisFormatter = (value: number) => {
     return new Intl.NumberFormat(language === 'ar' ? 'ar-EG' : 'en-US', { notation: 'compact', compactDisplay: 'short' }).format(value);
   }
 
@@ -63,35 +62,38 @@ export function StaffActivityChart({ data }: StaffActivityChartProps) {
           <BarChart 
             accessibilityLayer 
             data={chartData} 
-            layout="vertical"
-            margin={{ top: 20, right: 30, left: isMobile ? 10 : 20, bottom: 0 }}
+            layout="horizontal"
+            margin={{ top: 20, right: 30, left: 0, bottom: 60 }}
           >
-            <CartesianGrid horizontal={false} />
-            <YAxis
+            <CartesianGrid vertical={false} strokeDasharray="3 3" opacity={0.2} />
+            <XAxis
               dataKey="name"
               type="category"
               tickLine={false}
               tickMargin={10}
               axisLine={false}
-              width={isMobile ? 60 : 80}
-              tick={{ fontSize: isMobile ? 10 : 12 }}
+              angle={-45}
+              textAnchor="end"
+              height={80}
+              tick={{ fontSize: 10, fill: 'currentColor' }}
             />
-            <XAxis 
+            <YAxis 
                 type="number"
                 tickLine={false}
                 axisLine={false}
                 tickMargin={10}
-                tickFormatter={yAxisFormatter}
-                tick={{ fontSize: isMobile ? 10 : 12 }}
+                tickFormatter={axisFormatter}
+                orientation={isRTL ? "right" : "left"}
+                tick={{ fontSize: 10, fill: 'currentColor' }}
             />
             <Tooltip
-              cursor={{ fill: 'hsl(var(--muted))' }}
+              cursor={{ fill: 'hsl(var(--muted))', opacity: 0.1 }}
               content={<ChartTooltipContent 
                 indicator="dot" 
                 labelFormatter={(label) => label}
               />}
             />
-            <Legend wrapperStyle={{ fontSize: '12px' }} />
+            <Legend verticalAlign="top" wrapperStyle={{ paddingBottom: '20px', fontSize: '12px' }} />
             {statusOrder.map((status) => (
                  <Bar 
                     key={status} 
@@ -99,7 +101,8 @@ export function StaffActivityChart({ data }: StaffActivityChartProps) {
                     name={status}
                     stackId="a" 
                     fill={`var(--color-${statusKeyMap[status]})`} 
-                    radius={[0, 4, 4, 0]}
+                    radius={[0, 0, 0, 0]}
+                    barSize={isMobile ? 30 : 50}
                 />
             ))}
           </BarChart>

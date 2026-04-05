@@ -11,19 +11,19 @@ interface StaffPerformanceChartProps {
     data: { name: string; value: number }[];
     barLabel: string;
     formatter?: (value: number) => string;
-    layout?: 'vertical' | 'horizontal'; // 'vertical' = Columns (Default), 'horizontal' = Bars
+    layout?: 'columns' | 'bars'; // 'columns' = Vertical Bars (Default), 'bars' = Horizontal Bars
     className?: string;
 }
 
 /**
  * مكون الرسم البياني الموحد للتقارير.
- * يدعم نظام الأعمدة (Vertical) ونظام الأشرطة (Horizontal).
+ * تم إصلاحه ليعرض أعمدة ملونة منفصلة لكل صنف/موظف.
  */
 export function StaffPerformanceChart({ 
     data, 
     barLabel, 
     formatter, 
-    layout = 'vertical', 
+    layout = 'columns', 
     className 
 }: StaffPerformanceChartProps) {
   const isMobile = useIsMobile();
@@ -59,8 +59,9 @@ export function StaffPerformanceChart({
     return name.length > limit ? name.substring(0, limit) + "..." : name;
   };
 
-  // Default is 'vertical' which means Columns (Vertical bars)
-  const isColumns = layout === 'vertical';
+  // 'columns' means Vertical bars (Recharts horizontal layout)
+  // 'bars' means Horizontal bars (Recharts vertical layout)
+  const isColumns = layout === 'columns';
 
   return (
     <div className={cn("w-full h-[400px]", className)}>
@@ -132,8 +133,8 @@ export function StaffPerformanceChart({
                         if (active && payload && payload.length) {
                             const item = payload[0].payload;
                             return (
-                                <div className="bg-card border rounded-lg p-3 shadow-xl text-xs">
-                                    <p className="font-bold text-primary mb-1">{item.name}</p>
+                                <div className="bg-card border rounded-lg p-3 shadow-xl text-xs min-w-[150px]">
+                                    <p className="font-bold text-primary mb-1 break-words">{item.name}</p>
                                     <p className="text-muted-foreground flex justify-between gap-4">
                                         <span>{barLabel}:</span>
                                         <span className="font-mono text-foreground font-bold">{valueFormatter(item.value)}</span>
@@ -146,12 +147,12 @@ export function StaffPerformanceChart({
                 />
                 <Bar 
                     dataKey="value" 
-                    fill="hsl(var(--chart-1))" 
+                    fill="hsl(var(--primary))" 
                     radius={isColumns ? [4, 4, 0, 0] : [0, 4, 4, 0]}
                     barSize={isMobile ? 25 : 40}
                 >
                     {data.map((_, index) => (
-                        <Cell key={`cell-${index}`} fill={`hsl(var(--chart-${(index % 5) + 1}))`} />
+                        <Cell key={`cell-${index}`} fill={`hsl(var(--chart-${(index % 6) + 1}))`} />
                     ))}
                 </Bar>
             </BarChart>
