@@ -32,7 +32,6 @@ function StatusHistoryTimeline({ history }: { history?: Record<string, StatusHis
     const { language } = useLanguage();
     const sortedHistory = React.useMemo(() => {
         if (!history) return [];
-        // Chronological sort (Oldest at top, Newest at bottom)
         return Object.entries(history)
             .map(([id, item]) => ({ ...item, id }))
             .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
@@ -57,7 +56,7 @@ function StatusHistoryTimeline({ history }: { history?: Record<string, StatusHis
                                             {format(new Date(item.createdAt), "dd/MM HH:mm")}
                                         </span>
                                     </div>
-                                    {item.notes && <p className="text-[11px] text-muted-foreground mt-1 italic bg-white/50 p-1.5 rounded border border-dashed">{item.notes}</p>}
+                                    {item.notes && <p className="text-[11px] text-muted-foreground mt-1 italic bg-white/50 p-1.5 rounded border border-dashed text-start">{item.notes}</p>}
                                 </div>
                             </div>
                         ))}
@@ -101,20 +100,26 @@ export function OrderQuickView({ orderId, onClose }: OrderQuickViewProps) {
     if (!currentStatusConfig) return [];
     
     const available: Set<OrderStatus> = new Set();
-    const nextLevel = currentStatusConfig.level + 1;
+    const currentLevel = currentStatusConfig.level;
     
     orderStatuses.forEach(s => {
-      if (s.level === nextLevel) available.add(s.name as OrderStatus);
-      if (s.isGeneral) {
+      // Logic: Show all statuses with level > current level OR all general statuses
+      if (s.level > currentLevel) {
+          available.add(s.name as OrderStatus);
+      }
+      
+      if (s.isGeneral && s.name !== order.status) {
          if (s.name === 'ملغي') {
-             const isCompleted = order.status === 'مكتمل';
              const canCancelCompleted = authUser?.permissions?.orders?.cancelCompleted || authUser?.role === 'Admin';
-             if (order.status !== 'ملغي' && (!isCompleted || canCancelCompleted)) available.add(s.name as OrderStatus);
-         } else if (!['مكتمل', 'ملغي'].includes(order.status)) {
+             if (order.status !== 'مكتمل' || canCancelCompleted) {
+                 available.add(s.name as OrderStatus);
+             }
+         } else {
              available.add(s.name as OrderStatus);
          }
       }
     });
+    
     return Array.from(available).sort((a, b) => {
         const levelA = orderStatuses.find(s => s.name === a)?.level || 99;
         const levelB = orderStatuses.find(s => s.name === b)?.level || 99;
@@ -193,12 +198,14 @@ export function OrderQuickView({ orderId, onClose }: OrderQuickViewProps) {
   if (isLoadingOrder || !order) return <div className="p-8"><Skeleton className="h-64 w-full" /></div>;
 
   const orderItems: OrderItem[] = Array.isArray(order.items) ? order.items : Object.values(order.items || {});
-  const canEditOrder = (order.status === 'تم التسجيل' || order.status === 'قيد التجهيز') && (authUser?.role === 'Admin' || authUser?.permissions?.orders?.edit);
+  
+  // Enabling edit button for non-final statuses
+  const canEditOrder = (order.status !== 'مكتمل' && order.status !== 'ملغي') && (authUser?.role === 'Admin' || authUser?.permissions?.orders?.edit);
 
   return (
     <div className="flex flex-col h-[90vh] bg-background relative overflow-hidden">
       <div className="p-6 pb-4 border-b flex justify-between items-center bg-muted/10 shrink-0">
-        <div>
+        <div className="text-start">
             <h2 className="text-2xl font-bold flex items-center gap-2">
                 #{order.id}
                 <StatusBadge status={order.status} className="ms-2" />
@@ -210,9 +217,8 @@ export function OrderQuickView({ orderId, onClose }: OrderQuickViewProps) {
 
       <ScrollArea className="flex-1">
         <div className="p-6 space-y-6">
-          {/* Prominent Notes Section */}
           {order.notes && (
-            <div className="p-4 bg-yellow-50 dark:bg-yellow-900/30 border-2 border-yellow-400 rounded-lg shadow-sm">
+            <div className="p-4 bg-yellow-50 dark:bg-yellow-900/30 border-2 border-yellow-400 rounded-lg shadow-sm text-start">
                 <div className="flex items-center gap-2 mb-2 text-yellow-800 dark:text-yellow-400">
                     <MessageSquare className="h-5 w-5" />
                     <span className="font-bold text-sm">{language === 'ar' ? 'ملاحظات الطلب الهامة:' : 'Important Order Notes:'}</span>
@@ -224,15 +230,15 @@ export function OrderQuickView({ orderId, onClose }: OrderQuickViewProps) {
           <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
             <div className="md:col-span-8 space-y-6">
                 <Card>
-                    <CardHeader className="p-4 border-b bg-muted/20"><CardTitle className="text-sm font-bold">{language === 'ar' ? 'بيانات العميل بالكامل' : 'Full Customer Details'}</CardTitle></CardHeader>
+                    <CardHeader className="p-4 border-b bg-muted/20"><CardTitle className="text-sm font-bold text-start">{language === 'ar' ? 'بيانات العميل بالكامل' : 'Full Customer Details'}</CardTitle></CardHeader>
                     <CardContent className="p-4 space-y-4">
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-4">
-                            <div className="space-y-1">
+                            <div className="space-y-1 text-start">
                                 <p className="text-xs text-muted-foreground">{language === 'ar' ? 'اسم العميل' : 'Customer Name'}</p>
                                 <p className="font-bold text-lg">{order.customerName}</p>
                             </div>
                             {order.facebookName && (
-                                <div className="space-y-1">
+                                <div className="space-y-1 text-start">
                                     <p className="text-xs text-muted-foreground">{language === 'ar' ? 'حساب فيسبوك' : 'Facebook Name'}</p>
                                     <p className="flex items-center gap-2 font-medium text-blue-600 dark:text-blue-400">
                                         <Facebook className="h-4 w-4" />
@@ -240,7 +246,7 @@ export function OrderQuickView({ orderId, onClose }: OrderQuickViewProps) {
                                     </p>
                                 </div>
                             )}
-                            <div className="space-y-1">
+                            <div className="space-y-1 text-start">
                                 <p className="text-xs text-muted-foreground">{language === 'ar' ? 'رقم الهاتف 1' : 'Phone 1'}</p>
                                 <p className="flex items-center gap-2 font-bold text-base">
                                     <Phone className="h-4 w-4 text-green-600" />
@@ -248,7 +254,7 @@ export function OrderQuickView({ orderId, onClose }: OrderQuickViewProps) {
                                 </p>
                             </div>
                             {order.customerPhone2 && (
-                                <div className="space-y-1">
+                                <div className="space-y-1 text-start">
                                     <p className="text-xs text-muted-foreground">{language === 'ar' ? 'رقم الهاتف 2' : 'Phone 2'}</p>
                                     <p className="flex items-center gap-2 font-bold text-base">
                                         <Phone className="h-4 w-4 text-green-600" />
@@ -256,20 +262,20 @@ export function OrderQuickView({ orderId, onClose }: OrderQuickViewProps) {
                                     </p>
                                 </div>
                             )}
-                            <div className="sm:col-span-2 space-y-1">
+                            <div className="sm:col-span-2 space-y-1 text-start">
                                 <p className="text-xs text-muted-foreground">{language === 'ar' ? 'العنوان التفصيلي' : 'Full Address'}</p>
-                                <p className="flex items-start gap-2 font-medium bg-muted/50 p-2 rounded border text-start">
+                                <p className="flex items-start gap-2 font-medium bg-muted/50 p-2 rounded border">
                                     <MapPin className="h-4 w-4 mt-1 text-primary shrink-0" />
                                     {order.customerAddress}
                                 </p>
                             </div>
-                            <div className="space-y-1">
+                            <div className="space-y-1 text-start">
                                 <p className="text-xs text-muted-foreground">{language === 'ar' ? 'المنطقة' : 'Zoning'}</p>
                                 <p className="inline-block px-3 py-1 bg-primary text-primary-foreground rounded-full text-xs font-bold">
                                     {order.zoning}
                                 </p>
                             </div>
-                            <div className="space-y-1">
+                            <div className="space-y-1 text-start">
                                 <p className="text-xs text-muted-foreground">{language === 'ar' ? 'طريقة الدفع' : 'Payment'}</p>
                                 <p className="font-bold">{order.paymentMethod}</p>
                             </div>
@@ -278,12 +284,12 @@ export function OrderQuickView({ orderId, onClose }: OrderQuickViewProps) {
                 </Card>
 
                 <Card>
-                    <CardHeader className="p-4 border-b bg-muted/20"><CardTitle className="text-sm font-bold">{language === 'ar' ? 'الأصناف' : 'Items'}</CardTitle></CardHeader>
+                    <CardHeader className="p-4 border-b bg-muted/20"><CardTitle className="text-sm font-bold text-start">{language === 'ar' ? 'الأصناف' : 'Items'}</CardTitle></CardHeader>
                     <CardContent className="p-0">
                         <Table>
                             <TableHeader>
                                 <TableRow>
-                                    <TableHead className="px-4 h-9 text-xs">{language === 'ar' ? 'المنتج' : 'Product'}</TableHead>
+                                    <TableHead className="px-4 h-9 text-xs text-start">{language === 'ar' ? 'المنتج' : 'Product'}</TableHead>
                                     <TableHead className="px-4 h-9 text-xs text-center">{language === 'ar' ? 'الكمية' : 'Qty'}</TableHead>
                                     <TableHead className="px-4 h-9 text-xs text-end">{language === 'ar' ? 'السعر' : 'Price'}</TableHead>
                                     <TableHead className="px-4 h-9 text-xs text-end">{language === 'ar' ? 'الإجمالي' : 'Total'}</TableHead>
@@ -292,7 +298,7 @@ export function OrderQuickView({ orderId, onClose }: OrderQuickViewProps) {
                             <TableBody>
                                 {orderItems.map((item, i) => (
                                     <TableRow key={i}>
-                                        <TableCell className="px-4 py-2 text-sm">{item.productName}</TableCell>
+                                        <TableCell className="px-4 py-2 text-sm text-start">{item.productName}</TableCell>
                                         <TableCell className="px-4 py-2 text-sm text-center">{item.quantity}</TableCell>
                                         <TableCell className="px-4 py-2 text-sm text-end">{formatCurrency(item.price, language)}</TableCell>
                                         <TableCell className="px-4 py-2 text-sm text-end font-medium">{formatCurrency(item.price * item.quantity, language)}</TableCell>
@@ -314,9 +320,8 @@ export function OrderQuickView({ orderId, onClose }: OrderQuickViewProps) {
             </div>
 
             <div className="md:col-span-4 space-y-6">
-                {/* Actions Stacked Vertically */}
                 <Card className="border-primary/20 bg-primary/5">
-                    <CardHeader className="p-4 pb-2"><CardTitle className="text-sm font-bold">{language === 'ar' ? 'الإجراءات' : 'Actions'}</CardTitle></CardHeader>
+                    <CardHeader className="p-4 pb-2"><CardTitle className="text-sm font-bold text-start">{language === 'ar' ? 'الإجراءات' : 'Actions'}</CardTitle></CardHeader>
                     <CardContent className="p-4 pt-2 flex flex-col gap-3">
                         <Button variant="outline" className="w-full justify-start h-11" onClick={() => setIsHistoryOpen(true)}>
                             <History className="me-2 h-4 w-4" />
@@ -340,7 +345,7 @@ export function OrderQuickView({ orderId, onClose }: OrderQuickViewProps) {
                 </Card>
 
                 <Card className="border-orange-500/20">
-                    <CardHeader className="p-4 pb-2"><CardTitle className="text-sm font-bold">{language === 'ar' ? 'تغيير الحالة' : 'Change Status'}</CardTitle></CardHeader>
+                    <CardHeader className="p-4 pb-2"><CardTitle className="text-sm font-bold text-start">{language === 'ar' ? 'تغيير الحالة' : 'Change Status'}</CardTitle></CardHeader>
                     <CardContent className="p-4 pt-0">
                         <Select onValueChange={(val: OrderStatus) => { setSelectedStatus(val); setIsNoteModalOpen(true); }} disabled={availableStatuses.length === 0}>
                             <SelectTrigger className="w-full h-11"><SelectValue placeholder={language === 'ar' ? "اختر حالة جديدة" : "Update status"} /></SelectTrigger>
@@ -352,8 +357,8 @@ export function OrderQuickView({ orderId, onClose }: OrderQuickViewProps) {
                 </Card>
 
                 <Card>
-                    <CardHeader className="p-4 pb-2"><CardTitle className="text-xs font-bold uppercase tracking-wider text-muted-foreground">{language === 'ar' ? 'الموظفون' : 'Staff'}</CardTitle></CardHeader>
-                    <CardContent className="p-4 pt-0 space-y-3 text-sm">
+                    <CardHeader className="p-4 pb-2"><CardTitle className="text-xs font-bold uppercase tracking-wider text-muted-foreground text-start">{language === 'ar' ? 'الموظفون' : 'Staff'}</CardTitle></CardHeader>
+                    <CardContent className="p-4 pt-0 space-y-3 text-sm text-start">
                         <div className="flex items-center gap-2">
                             <Avatar className="h-6 w-6"><AvatarFallback>{order.moderatorName.charAt(0)}</AvatarFallback></Avatar>
                             <span className="text-xs">Moderator: <span className="font-bold">{order.moderatorName}</span></span>
@@ -373,7 +378,6 @@ export function OrderQuickView({ orderId, onClose }: OrderQuickViewProps) {
         </div>
       </ScrollArea>
 
-      {/* Shared Modals */}
       <Dialog open={isNoteModalOpen} onOpenChange={setIsNoteModalOpen}>
         <DialogContent>
           <DialogHeader>
@@ -384,7 +388,7 @@ export function OrderQuickView({ orderId, onClose }: OrderQuickViewProps) {
           </DialogHeader>
           <div className="space-y-4 py-4">
             {selectedStatus === 'تم الشحن' && (
-                <div className="space-y-2">
+                <div className="space-y-2 text-start">
                     <Label>{language === 'ar' ? 'اختر المندوب' : 'Select Courier'}</Label>
                     <Select onValueChange={setSelectedCourierId} value={selectedCourierId}>
                         <SelectTrigger>
@@ -396,7 +400,7 @@ export function OrderQuickView({ orderId, onClose }: OrderQuickViewProps) {
                     </Select>
                 </div>
             )}
-            <div className="space-y-2">
+            <div className="space-y-2 text-start">
                 <Label>{language === 'ar' ? 'ملاحظة (اختياري)' : 'Note (Optional)'}</Label>
                 <Textarea 
                     value={note} 
@@ -461,7 +465,6 @@ export function OrderQuickView({ orderId, onClose }: OrderQuickViewProps) {
             </DialogContent>
         </Dialog>
 
-      {/* Hidden Receipt for Print */}
       <div className="receipt-container" aria-hidden="true">
         <div className="inline-block bg-white">
             <ReceiptView order={order} language={language} settings={receiptSettings} />

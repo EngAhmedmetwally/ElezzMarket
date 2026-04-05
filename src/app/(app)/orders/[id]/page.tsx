@@ -36,7 +36,6 @@ function StatusHistoryTimeline({ history }: { history?: Record<string, StatusHis
     const { language } = useLanguage();
     const sortedHistory = React.useMemo(() => {
         if (!history) return [];
-        // Sort chronologically (Oldest to Newest) for a logical timeline flow
         return Object.entries(history)
             .map(([id, item]) => ({ ...item, id }))
             .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
@@ -61,7 +60,7 @@ function StatusHistoryTimeline({ history }: { history?: Record<string, StatusHis
                                             {item.createdAt ? format(new Date(item.createdAt), "PPP p") : ''}
                                         </span>
                                     </div>
-                                    {item.notes && <p className="text-sm text-muted-foreground mt-1 bg-muted/30 p-2 rounded border border-dashed">{item.notes}</p>}
+                                    {item.notes && <p className="text-sm text-muted-foreground mt-1 bg-muted/30 p-2 rounded border border-dashed text-start">{item.notes}</p>}
                                 </div>
                             </div>
                         ))}
@@ -106,17 +105,29 @@ export default function OrderDetailsPage() {
     if (!order || !canEditStatus || !orderStatuses?.length) return [];
     const currentStatusConfig = orderStatuses.find(s => s.name === order.status);
     if (!currentStatusConfig) return [];
+    
     const available: Set<OrderStatus> = new Set();
-    const nextLevel = currentStatusConfig.level + 1;
+    const currentLevel = currentStatusConfig.level;
+    
     orderStatuses.forEach(s => {
-      if (s.level === nextLevel) available.add(s.name as OrderStatus);
-      if (s.isGeneral) {
+      // 1. Show all statuses with level > current level (The logical flow)
+      if (s.level > currentLevel) {
+          available.add(s.name as OrderStatus);
+      }
+      
+      // 2. Handle General statuses (can be jumped to from anywhere)
+      if (s.isGeneral && s.name !== order.status) {
          if (s.name === 'ملغي') {
              const canCancelCompleted = authUser?.permissions?.orders?.cancelCompleted || authUser?.role === 'Admin';
-             if (order.status !== 'ملغي' && (order.status !== 'مكتمل' || canCancelCompleted)) available.add(s.name as OrderStatus);
-         } else if (order.status !== 'مكتمل' && order.status !== 'ملغي') available.add(s.name as OrderStatus);
+             if (order.status !== 'مكتمل' || canCancelCompleted) {
+                 available.add(s.name as OrderStatus);
+             }
+         } else {
+             available.add(s.name as OrderStatus);
+         }
       }
     });
+    
     return Array.from(available).sort((a,b) => (orderStatuses.find(s=>s.name===a)?.level||0) - (orderStatuses.find(s=>s.name===b)?.level||0));
   }, [order, canEditStatus, orderStatuses, authUser]);
   
@@ -124,7 +135,9 @@ export default function OrderDetailsPage() {
 
   const orderItems: OrderItem[] = Array.isArray(order.items) ? order.items : Object.values(order.items || {});
   const itemsSubtotal = orderItems.reduce((acc, item) => acc + (item.price * item.quantity), 0);
-  const canEditOrder = (order.status === 'تم التسجيل' || order.status === 'قيد التجهيز') && (authUser?.role === 'Admin' || authUser?.permissions?.orders?.edit);
+  
+  // Allowing edit for all statuses except final ones (Completed/Cancelled), or if Admin
+  const canEditOrder = (order.status !== 'مكتمل' && order.status !== 'ملغي') && (authUser?.role === 'Admin' || authUser?.permissions?.orders?.edit);
 
   const handleStatusUpdate = async (newStatus: OrderStatus, noteText: string, courierId?: string) => {
     if (!order || !database || !authUser) return;
@@ -198,13 +211,12 @@ export default function OrderDetailsPage() {
 
         <PendingOrdersList />
 
-        {/* Notes Section - Prominent */}
         {order.notes && (
             <Card className="border-yellow-400 bg-yellow-50 dark:bg-yellow-900/20 shadow-md">
                 <CardContent className="p-6">
                     <div className="flex items-center gap-3 mb-3 text-yellow-800 dark:text-yellow-400">
                         <MessageSquare className="h-6 w-6" />
-                        <h3 className="text-lg font-bold">{language === 'ar' ? 'ملاحظات الطلب الهامة' : 'Important Order Notes'}</h3>
+                        <h3 className="text-lg font-bold text-start">{language === 'ar' ? 'ملاحظات الطلب الهامة' : 'Important Order Notes'}</h3>
                     </div>
                     <p className="text-base font-medium leading-relaxed text-start">{order.notes}</p>
                 </CardContent>
@@ -217,46 +229,46 @@ export default function OrderDetailsPage() {
                 <CardHeader><CardTitle>{language === 'ar' ? 'بيانات العميل بالكامل' : 'Full Customer Details'}</CardTitle></CardHeader>
                 <CardContent className="space-y-6">
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                        <div className="space-y-1">
+                        <div className="space-y-1 text-start">
                             <label className="text-xs text-muted-foreground uppercase">{language === 'ar' ? 'الاسم الكامل' : 'Full Name'}</label>
                             <p className="text-xl font-bold">{order.customerName}</p>
                         </div>
                         {order.facebookName && (
-                            <div className="space-y-1">
+                            <div className="space-y-1 text-start">
                                 <label className="text-xs text-muted-foreground uppercase">{language === 'ar' ? 'رابط/اسم فيسبوك' : 'Facebook'}</label>
                                 <p className="flex items-center gap-2 font-medium text-blue-600">
                                     <Facebook className="h-4 w-4" /> {order.facebookName}
                                 </p>
                             </div>
                         )}
-                        <div className="space-y-1">
+                        <div className="space-y-1 text-start">
                             <label className="text-xs text-muted-foreground uppercase">{language === 'ar' ? 'رقم الهاتف 1' : 'Phone 1'}</label>
                             <p className="flex items-center gap-2 text-lg font-bold">
                                 <Phone className="h-4 w-4 text-green-600" /> {order.customerPhone1}
                             </p>
                         </div>
                         {order.customerPhone2 && (
-                            <div className="space-y-1">
+                            <div className="space-y-1 text-start">
                                 <label className="text-xs text-muted-foreground uppercase">{language === 'ar' ? 'رقم الهاتف 2' : 'Phone 2'}</label>
                                 <p className="flex items-center gap-2 text-lg font-bold">
                                     <Phone className="h-4 w-4 text-green-600" /> {order.customerPhone2}
                                 </p>
                             </div>
                         )}
-                        <div className="sm:col-span-2 space-y-1">
+                        <div className="sm:col-span-2 space-y-1 text-start">
                             <label className="text-xs text-muted-foreground uppercase">{language === 'ar' ? 'العنوان بالتفصيل' : 'Address'}</label>
-                            <p className="flex items-start gap-2 text-base font-medium bg-muted/30 p-3 rounded-lg border text-start">
+                            <p className="flex items-start gap-2 text-base font-medium bg-muted/30 p-3 rounded-lg border">
                                 <MapPin className="h-5 w-5 mt-0.5 text-primary shrink-0" />
                                 {order.customerAddress}
                             </p>
                         </div>
-                        <div className="space-y-1">
+                        <div className="space-y-1 text-start">
                             <label className="text-xs text-muted-foreground uppercase">{language === 'ar' ? 'المنطقة (Zoning)' : 'Zone'}</label>
                             <p className="inline-block px-4 py-1.5 bg-primary text-primary-foreground rounded-full text-sm font-bold shadow-sm">
                                 {order.zoning}
                             </p>
                         </div>
-                        <div className="space-y-1">
+                        <div className="space-y-1 text-start">
                             <label className="text-xs text-muted-foreground uppercase">{language === 'ar' ? 'طريقة الدفع' : 'Payment'}</label>
                             <p className="text-base font-bold">{order.paymentMethod}</p>
                         </div>
@@ -279,7 +291,7 @@ export default function OrderDetailsPage() {
                         <TableBody>
                             {orderItems.map((item, index) => (
                                 <TableRow key={index}>
-                                    <TableCell>{item.productName}</TableCell>
+                                    <TableCell className="text-start">{item.productName}</TableCell>
                                     <TableCell className="text-center">{item.quantity}</TableCell>
                                     <TableCell className="text-end">{formatCurrency(item.price, language)}</TableCell>
                                     <TableCell className="text-end">{formatCurrency(item.price * item.quantity, language)}</TableCell>
@@ -297,7 +309,6 @@ export default function OrderDetailsPage() {
              <StatusHistoryTimeline history={order.statusHistory} />
           </div>
           <div className="space-y-8">
-              {/* Vertical Action Buttons */}
               <Card className="border-primary/20 bg-primary/5">
                   <CardHeader><CardTitle>{language === 'ar' ? 'الإجراءات' : 'Actions'}</CardTitle></CardHeader>
                   <CardContent className="flex flex-col gap-3">
@@ -334,7 +345,7 @@ export default function OrderDetailsPage() {
               </Card>
               <Card>
                   <CardHeader><CardTitle>{language === 'ar' ? 'المسؤولين' : 'Personnel'}</CardTitle></CardHeader>
-                  <CardContent className="space-y-4 text-sm">
+                  <CardContent className="space-y-4 text-sm text-start">
                       <div>
                           <p className="text-muted-foreground mb-1">{language === 'ar' ? 'الوسيط (Moderator)' : 'Moderator'}</p>
                           <p className="font-bold">{order.moderatorName}</p>
@@ -373,7 +384,7 @@ export default function OrderDetailsPage() {
                 </DialogHeader>
                 <div className="space-y-4 py-4">
                     {selectedStatus === 'تم الشحن' && (
-                        <div className="space-y-2">
+                        <div className="space-y-2 text-start">
                             <Label>{language === 'ar' ? 'اختر المندوب' : 'Select Courier'}</Label>
                             <Select onValueChange={setSelectedCourierId} value={selectedCourierId}>
                                 <SelectTrigger>
@@ -385,7 +396,7 @@ export default function OrderDetailsPage() {
                             </Select>
                         </div>
                     )}
-                    <div className="space-y-2">
+                    <div className="space-y-2 text-start">
                         <Label>{language === 'ar' ? 'ملاحظات التغيير' : 'Notes'}</Label>
                         <Textarea 
                             value={note} 
@@ -406,8 +417,8 @@ export default function OrderDetailsPage() {
             </DialogContent>
         </Dialog>
 
-        <Dialog open={isEditModalOpen} onOpenChange={setIsEditModalOpen}><DialogContent className="max-w-3xl"><DialogHeader><DialogTitle>Edit Order</DialogTitle></DialogHeader><OrderForm orderToEdit={order} onSuccess={() => {setIsEditModalOpen(false); refetch();}} /></DialogContent></Dialog>
-        <Dialog open={isHistoryModalOpen} onOpenChange={setIsHistoryModalOpen}><DialogContent className="max-w-2xl"><DialogHeader><DialogTitle>Edit History</DialogTitle></DialogHeader><OrderEditHistory history={order.editHistory} /></DialogContent></Dialog>
+        <Dialog open={isEditModalOpen} onOpenChange={setIsEditModalOpen}><DialogContent className="max-w-3xl"><DialogHeader><DialogTitle>{language === 'ar' ? 'تعديل الطلب' : 'Edit Order'}</DialogTitle></DialogHeader><OrderForm orderToEdit={order} onSuccess={() => {setIsEditModalOpen(false); refetch();}} /></DialogContent></Dialog>
+        <Dialog open={isHistoryModalOpen} onOpenChange={setIsHistoryModalOpen}><DialogContent className="max-w-2xl"><DialogHeader><DialogTitle>{language === 'ar' ? 'سجل التعديلات' : 'Edit History'}</DialogTitle></DialogHeader><OrderEditHistory history={order.editHistory} /></DialogContent></Dialog>
       </div>
       <div className="receipt-container" aria-hidden="true"><div className="inline-block bg-white"><ReceiptView order={order} language={language} settings={receiptSettings} /></div></div>
     </>
