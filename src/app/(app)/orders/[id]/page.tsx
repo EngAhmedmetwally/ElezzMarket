@@ -110,12 +110,10 @@ export default function OrderDetailsPage() {
     const currentLevel = currentStatusConfig.level;
     
     orderStatuses.forEach(s => {
-      // 1. Show all statuses with level > current level (The logical flow)
       if (s.level > currentLevel) {
           available.add(s.name as OrderStatus);
       }
       
-      // 2. Handle General statuses (can be jumped to from anywhere)
       if (s.isGeneral && s.name !== order.status) {
          if (s.name === 'ملغي') {
              const canCancelCompleted = authUser?.permissions?.orders?.cancelCompleted || authUser?.role === 'Admin';
@@ -136,7 +134,6 @@ export default function OrderDetailsPage() {
   const orderItems: OrderItem[] = Array.isArray(order.items) ? order.items : Object.values(order.items || {});
   const itemsSubtotal = orderItems.reduce((acc, item) => acc + (item.price * item.quantity), 0);
   
-  // Allowing edit for all statuses except final ones (Completed/Cancelled), or if Admin
   const canEditOrder = (order.status !== 'مكتمل' && order.status !== 'ملغي') && (authUser?.role === 'Admin' || authUser?.permissions?.orders?.edit);
 
   const handleStatusUpdate = async (newStatus: OrderStatus, noteText: string, courierId?: string) => {
@@ -417,7 +414,16 @@ export default function OrderDetailsPage() {
             </DialogContent>
         </Dialog>
 
-        <Dialog open={isEditModalOpen} onOpenChange={setIsEditModalOpen}><DialogContent className="max-w-3xl"><DialogHeader><DialogTitle>{language === 'ar' ? 'تعديل الطلب' : 'Edit Order'}</DialogTitle></DialogHeader><OrderForm orderToEdit={order} onSuccess={() => {setIsEditModalOpen(false); refetch();}} /></DialogContent></Dialog>
+        <Dialog open={isEditModalOpen} onOpenChange={setIsEditModalOpen}>
+          <DialogContent className="sm:max-w-3xl max-h-[95vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>{language === 'ar' ? 'تعديل الطلب' : 'Edit Order'}</DialogTitle>
+            </DialogHeader>
+            <div className="py-4">
+              <OrderForm orderToEdit={order} onSuccess={() => {setIsEditModalOpen(false); refetch();}} />
+            </div>
+          </DialogContent>
+        </Dialog>
         <Dialog open={isHistoryModalOpen} onOpenChange={setIsHistoryModalOpen}><DialogContent className="max-w-2xl"><DialogHeader><DialogTitle>{language === 'ar' ? 'سجل التعديلات' : 'Edit History'}</DialogTitle></DialogHeader><OrderEditHistory history={order.editHistory} /></DialogContent></Dialog>
       </div>
       <div className="receipt-container" aria-hidden="true"><div className="inline-block bg-white"><ReceiptView order={order} language={language} settings={receiptSettings} /></div></div>

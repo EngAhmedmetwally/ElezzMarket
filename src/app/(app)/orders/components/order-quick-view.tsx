@@ -69,7 +69,7 @@ function StatusHistoryTimeline({ history }: { history?: Record<string, StatusHis
     )
 }
 
-export function OrderQuickView({ orderId, onClose }: OrderQuickViewProps) {
+export function OrderQuickView({ orderId, onClose }: { orderId: string; onClose: () => void }) {
   const { language } = useLanguage();
   const { toast } = useToast();
   const database = useDatabase();
@@ -103,7 +103,6 @@ export function OrderQuickView({ orderId, onClose }: OrderQuickViewProps) {
     const currentLevel = currentStatusConfig.level;
     
     orderStatuses.forEach(s => {
-      // Logic: Show all statuses with level > current level OR all general statuses
       if (s.level > currentLevel) {
           available.add(s.name as OrderStatus);
       }
@@ -199,7 +198,6 @@ export function OrderQuickView({ orderId, onClose }: OrderQuickViewProps) {
 
   const orderItems: OrderItem[] = Array.isArray(order.items) ? order.items : Object.values(order.items || {});
   
-  // Enabling edit button for non-final statuses
   const canEditOrder = (order.status !== 'مكتمل' && order.status !== 'ملغي') && (authUser?.role === 'Admin' || authUser?.permissions?.orders?.edit);
 
   return (
@@ -433,7 +431,7 @@ export function OrderQuickView({ orderId, onClose }: OrderQuickViewProps) {
       </Dialog>
 
       <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
-        <DialogContent className="sm:max-w-3xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="sm:max-w-3xl max-h-[95vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{language === 'ar' ? 'تعديل الطلب' : 'Edit Order'}</DialogTitle>
           </DialogHeader>
