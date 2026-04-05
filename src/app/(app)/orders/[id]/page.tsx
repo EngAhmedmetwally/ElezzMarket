@@ -36,9 +36,10 @@ function StatusHistoryTimeline({ history }: { history?: Record<string, StatusHis
     const { language } = useLanguage();
     const sortedHistory = React.useMemo(() => {
         if (!history) return [];
+        // Sort chronologically (Oldest to Newest) for a logical timeline flow
         return Object.entries(history)
             .map(([id, item]) => ({ ...item, id }))
-            .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+            .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
     }, [history]);
     
     return (
@@ -48,13 +49,10 @@ function StatusHistoryTimeline({ history }: { history?: Record<string, StatusHis
             </CardHeader>
             <CardContent>
                  {sortedHistory.length > 0 ? (
-                    <div className="space-y-4">
+                    <div className="relative space-y-4 before:absolute before:inset-y-0 before:left-2 before:w-0.5 before:bg-border rtl:before:left-auto rtl:before:right-2">
                         {sortedHistory.map((item, index) => (
-                            <div key={item.id} className="flex gap-4">
-                                <div className="flex flex-col items-center">
-                                    <div className="w-4 h-4 rounded-full bg-primary mt-1"></div>
-                                    {index < sortedHistory.length - 1 && <div className="flex-1 w-0.5 bg-border"></div>}
-                                </div>
+                            <div key={item.id} className="relative ps-8 rtl:ps-0 rtl:pe-8">
+                                <div className="absolute left-0 top-1.5 w-4 h-4 rounded-full border-2 border-background bg-primary z-10 rtl:left-auto rtl:right-0"></div>
                                 <div>
                                     <div className="flex items-center gap-2 flex-wrap">
                                         <StatusBadge status={item.status} />
@@ -63,7 +61,7 @@ function StatusHistoryTimeline({ history }: { history?: Record<string, StatusHis
                                             {item.createdAt ? format(new Date(item.createdAt), "PPP p") : ''}
                                         </span>
                                     </div>
-                                    {item.notes && <p className="text-sm text-muted-foreground mt-1">{item.notes}</p>}
+                                    {item.notes && <p className="text-sm text-muted-foreground mt-1 bg-muted/30 p-2 rounded border border-dashed">{item.notes}</p>}
                                 </div>
                             </div>
                         ))}

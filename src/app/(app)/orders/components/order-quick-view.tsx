@@ -28,18 +28,14 @@ import { OrderForm } from "../new/order-form";
 import { useToast } from "@/hooks/use-toast";
 import { Label } from "@/components/ui/label";
 
-interface OrderQuickViewProps {
-  orderId: string;
-  onClose: () => void;
-}
-
 function StatusHistoryTimeline({ history }: { history?: Record<string, StatusHistoryItem> }) {
     const { language } = useLanguage();
     const sortedHistory = React.useMemo(() => {
         if (!history) return [];
+        // Chronological sort (Oldest at top, Newest at bottom)
         return Object.entries(history)
             .map(([id, item]) => ({ ...item, id }))
-            .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+            .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
     }, [history]);
     
     return (
@@ -47,13 +43,10 @@ function StatusHistoryTimeline({ history }: { history?: Record<string, StatusHis
             <CardHeader className="p-4"><CardTitle className="text-sm font-bold">{language === 'ar' ? 'سجل الحالات' : 'Status History'}</CardTitle></CardHeader>
             <CardContent className="p-4 pt-0">
                  {sortedHistory.length > 0 ? (
-                    <div className="space-y-4">
+                    <div className="relative space-y-4 before:absolute before:inset-y-0 before:left-1 before:w-0.5 before:bg-border rtl:before:left-auto rtl:before:right-1">
                         {sortedHistory.map((item, index) => (
-                            <div key={item.id} className="flex gap-3">
-                                <div className="flex flex-col items-center">
-                                    <div className="w-3 h-3 rounded-full bg-primary mt-1"></div>
-                                    {index < sortedHistory.length - 1 && <div className="flex-1 w-px bg-border"></div>}
-                                </div>
+                            <div key={item.id} className="relative ps-6 rtl:ps-0 rtl:pe-6">
+                                <div className="absolute left-0 top-1.5 w-2.5 h-2.5 rounded-full border-2 border-background bg-primary z-10 rtl:left-auto rtl:right-0"></div>
                                 <div className="flex-1 min-w-0">
                                     <div className="flex items-center justify-between gap-2">
                                         <div className="flex items-center gap-2">
@@ -64,7 +57,7 @@ function StatusHistoryTimeline({ history }: { history?: Record<string, StatusHis
                                             {format(new Date(item.createdAt), "dd/MM HH:mm")}
                                         </span>
                                     </div>
-                                    {item.notes && <p className="text-[11px] text-muted-foreground mt-0.5 italic">{item.notes}</p>}
+                                    {item.notes && <p className="text-[11px] text-muted-foreground mt-1 italic bg-white/50 p-1.5 rounded border border-dashed">{item.notes}</p>}
                                 </div>
                             </div>
                         ))}
