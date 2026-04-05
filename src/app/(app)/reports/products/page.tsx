@@ -17,7 +17,9 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { subDays } from "date-fns";
 import { formatCurrency } from "@/lib/utils";
 import { KpiCard } from "@/components/dashboard/kpi-card";
-import { Package, Weight, DollarSign, Search } from "lucide-react";
+import { Package, Weight, DollarSign, Search, CheckSquare, Square } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Button } from "@/components/ui/button";
 
 function ProductsReportSkeleton() {
   return (
@@ -57,6 +59,7 @@ export default function ProductsReportPage() {
     new Date()
   );
   const [searchTerm, setSearchTerm] = React.useState("");
+  const [selectedProductNames, setSelectedProductNames] = React.useState<Set<string>>(new Set());
 
   const { data: allOrders, isLoading } = useRealtimeCachedCollection<Order>('orders');
 
@@ -106,17 +109,49 @@ export default function ProductsReportPage() {
     return result;
   }, [productsSummary, searchTerm]);
 
-  // 3. Calculate TOTALS based on searchFilteredData (Dynamic Totals)
+  // Initial selection: Select all items on first load or when productsSummary changes
+  React.useEffect(() => {
+    if (productsSummary.length > 0 && selectedProductNames.size === 0 && !searchTerm) {
+        setSelectedProductNames(new Set(productsSummary.map(p => p.name)));
+    }
+  }, [productsSummary, searchTerm]);
+
+  // Handle Select All (filtered only)
+  const handleSelectAll = () => {
+    const newSelection = new Set(selectedProductNames);
+    searchFilteredData.forEach(p => newSelection.add(p.name));
+    setSelectedProductNames(newSelection);
+  };
+
+  // Handle Deselect All (filtered only)
+  const handleDeselectAll = () => {
+    const newSelection = new Set(selectedProductNames);
+    searchFilteredData.forEach(p => newSelection.delete(p.name));
+    setSelectedProductNames(newSelection);
+  };
+
+  const toggleProductSelection = (name: string) => {
+    const newSelection = new Set(selectedProductNames);
+    if (newSelection.has(name)) {
+        newSelection.delete(name);
+    } else {
+        newSelection.add(name);
+    }
+    setSelectedProductNames(newSelection);
+  };
+
+  // 3. Calculate TOTALS based on SELECTED products (Dynamic Totals)
   const totals = React.useMemo(() => {
-    return searchFilteredData.reduce((acc, curr) => ({
+    const selectedData = searchFilteredData.filter(p => selectedProductNames.has(p.name));
+    return selectedData.reduce((acc, curr) => ({
         qty: acc.qty + curr.count,
         weight: acc.weight + curr.totalWeight,
         amount: acc.amount + curr.totalAmount
     }), { qty: 0, weight: 0, amount: 0 });
-  }, [searchFilteredData]);
+  }, [searchFilteredData, selectedProductNames]);
 
   // 4. Final display data with percentages based on current filter
-  const filteredProducts = React.useMemo(() => {
+  const displayProducts = React.useMemo(() => {
     const totalSoldCount = searchFilteredData.reduce((acc, item) => acc + item.count, 0);
     return [...searchFilteredData]
         .sort((a, b) => b.count - a.count)
@@ -126,22 +161,27 @@ export default function ProductsReportPage() {
         }));
   }, [searchFilteredData]);
 
+  // Charts use only SELECTED data
   const topQtyChartData = React.useMemo(() => {
-      return filteredProducts.slice(0, 10).map(p => ({ 
-          name: p.name, 
-          value: p.count 
-      }));
-  }, [filteredProducts]);
+      return displayProducts
+        .filter(p => selectedProductNames.has(p.name))
+        .slice(0, 10)
+        .map(p => ({ 
+            name: p.name, 
+            value: p.count 
+        }));
+  }, [displayProducts, selectedProductNames]);
   
   const topWeightChartData = React.useMemo(() => {
-    return [...filteredProducts]
+    return [...displayProducts]
+        .filter(p => selectedProductNames.has(p.name))
         .sort((a, b) => b.totalWeight - a.totalWeight)
         .slice(0, 10)
         .map(p => ({ 
             name: p.name, 
             value: Number(p.totalWeight.toFixed(2)) 
         }));
-  }, [filteredProducts]);
+  }, [displayProducts, selectedProductNames]);
 
   if (isLoading) {
     return (
@@ -170,17 +210,17 @@ export default function ProductsReportPage() {
 
       <div className="grid gap-4 md:grid-cols-3">
         <KpiCard
-          title={language === 'ar' ? 'إجمالي المبيعات للمصفي' : 'Total Filtered Sales'}
+          title={language === 'ar' ? 'إجمالي المبيعات (للمختار)' : 'Selected Total Sales'}
           value={formatCurrency(totals.amount, language)}
           icon={<DollarSign className="h-4 w-4" />}
         />
         <KpiCard
-          title={language === 'ar' ? 'إجمالي الكميات للمصفي' : 'Total Filtered Quantity'}
+          title={language === 'ar' ? 'إجمالي الكميات (للمختار)' : 'Selected Total Qty'}
           value={totals.qty.toLocaleString()}
           icon={<Package className="h-4 w-4" />}
         />
         <KpiCard
-          title={language === 'ar' ? 'إجمالي الأوزان للمصفي' : 'Total Filtered Weight'}
+          title={language === 'ar' ? 'إجمالي الأوزان (للمختار)' : 'Selected Total Weight'}
           value={`${totals.weight.toFixed(2)} kg`}
           icon={<Weight className="h-4 w-4" />}
         />
@@ -189,7 +229,7 @@ export default function ProductsReportPage() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         <Card className="min-w-0">
             <CardHeader>
-                <CardTitle>{language === 'ar' ? 'المنتجات الأكثر مبيعاً (حسب الكمية)' : 'Top Products (by Qty)'}</CardTitle>
+                <CardTitle>{language === 'ar' ? 'أفضل المنتجات المختارة (كمية)' : 'Top Selected Products (Qty)'}</CardTitle>
             </CardHeader>
             <CardContent>
                 <StaffPerformanceChart 
@@ -201,7 +241,7 @@ export default function ProductsReportPage() {
         </Card>
         <Card className="min-w-0">
             <CardHeader>
-                <CardTitle>{language === 'ar' ? 'المنتجات الأكثر مبيعاً (حسب الوزن)' : 'Top Products (by Weight)'}</CardTitle>
+                <CardTitle>{language === 'ar' ? 'أفضل المنتجات المختارة (وزن)' : 'Top Selected Products (Weight)'}</CardTitle>
             </CardHeader>
             <CardContent>
                 <StaffPerformanceChart 
@@ -217,41 +257,67 @@ export default function ProductsReportPage() {
       <Card>
           <CardHeader>
               <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <div>
-                    <CardTitle>{language === 'ar' ? 'تقرير مبيعات المنتجات' : 'Products Sales Report'}</CardTitle>
-                    <CardDescription>{language === 'ar' ? 'البحث في الأصناف سيقوم بتحديث الإحصائيات في الأعلى تلقائياً.' : 'Searching items will automatically update the totals above.'}</CardDescription>
+                <div className="flex-1">
+                    <CardTitle>{language === 'ar' ? 'مبيعات المنتجات' : 'Products Sales'}</CardTitle>
+                    <CardDescription>
+                        {language === 'ar' 
+                            ? `تم اختيار ${selectedProductNames.size} منتج من أصل ${productsSummary.length}` 
+                            : `Selected ${selectedProductNames.size} of ${productsSummary.length} products`}
+                    </CardDescription>
                 </div>
-                <div className="relative w-full md:w-72">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input 
-                        placeholder={language === 'ar' ? 'بحث عن منتج...' : 'Search for a product...'}
-                        className="pl-10"
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                    />
+                <div className="flex flex-col sm:flex-row gap-2">
+                    <div className="flex gap-2">
+                        <Button variant="outline" size="sm" onClick={handleSelectAll} className="flex-1 sm:flex-none">
+                            <CheckSquare className="me-2 h-4 w-4" />
+                            {language === 'ar' ? 'تحديد الكل' : 'Select All'}
+                        </Button>
+                        <Button variant="outline" size="sm" onClick={handleDeselectAll} className="flex-1 sm:flex-none">
+                            <Square className="me-2 h-4 w-4" />
+                            {language === 'ar' ? 'إلغاء التحديد' : 'Deselect'}
+                        </Button>
+                    </div>
+                    <div className="relative w-full sm:w-64">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                        <Input 
+                            placeholder={language === 'ar' ? 'بحث...' : 'Search...'}
+                            className="pl-10"
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                        />
+                    </div>
                 </div>
               </div>
           </CardHeader>
           <CardContent>
           {isMobile ? (
               <div className="space-y-4">
-                {filteredProducts.map((product) => {
+                {displayProducts.map((product) => {
+                  const isSelected = selectedProductNames.has(product.name);
                   const href = `/reports/products/${encodeURIComponent(product.name)}?from=${fromDateString}&to=${toDateString}`;
                   return (
-                      <Link href={href} key={product.name} className="block p-4 border rounded-lg hover:bg-muted/50 transition-colors">
-                          <div className="flex justify-between items-start mb-2">
-                              <p className="font-bold text-primary break-words flex-1 text-start">{product.name}</p>
-                              <div className="text-end shrink-0 ms-4">
-                                  <p className="font-bold">{product.count}</p>
-                                  <p className="text-xs text-muted-foreground">{product.totalWeight.toFixed(2)} kg</p>
-                                  <p className="text-sm font-semibold text-green-600 mt-1">{formatCurrency(product.totalAmount, language)}</p>
-                              </div>
+                      <div key={product.name} className={`flex gap-3 p-4 border rounded-lg transition-colors ${isSelected ? 'bg-primary/5 border-primary/20' : 'bg-background'}`}>
+                          <Checkbox 
+                            checked={isSelected} 
+                            onCheckedChange={() => toggleProductSelection(product.name)}
+                            className="mt-1"
+                          />
+                          <div className="flex-1 min-w-0">
+                            <Link href={href} className="block mb-2">
+                                <div className="flex justify-between items-start">
+                                    <p className="font-bold text-primary break-words flex-1 text-start">{product.name}</p>
+                                    <div className="text-end shrink-0 ms-4">
+                                        <p className="font-bold">{product.count}</p>
+                                        <p className="text-xs text-muted-foreground">{product.totalWeight.toFixed(2)} kg</p>
+                                        <p className="text-sm font-semibold text-green-600 mt-1">{formatCurrency(product.totalAmount, language)}</p>
+                                    </div>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    <Progress value={product.percentage} className="h-1.5" />
+                                    <span className="text-[10px] text-muted-foreground">{product.percentage.toFixed(1)}%</span>
+                                </div>
+                            </Link>
                           </div>
-                          <div className="flex items-center gap-2">
-                              <Progress value={product.percentage} className="h-1.5" />
-                              <span className="text-[10px] text-muted-foreground">{product.percentage.toFixed(1)}%</span>
-                          </div>
-                      </Link>
+                      </div>
                   )
                 })}
               </div>
@@ -260,6 +326,12 @@ export default function ProductsReportPage() {
                 <Table>
                     <TableHeader>
                     <TableRow>
+                        <TableHead className="w-12 text-center">
+                            <Checkbox 
+                                checked={searchFilteredData.length > 0 && searchFilteredData.every(p => selectedProductNames.has(p.name))}
+                                onCheckedChange={(checked) => checked ? handleSelectAll() : handleDeselectAll()}
+                            />
+                        </TableHead>
                         <TableHead className="text-start">{language === 'ar' ? 'المنتج' : 'Product'}</TableHead>
                         <TableHead className="text-end">{language === 'ar' ? 'الكمية' : 'Qty'}</TableHead>
                         <TableHead className="text-end">{language === 'ar' ? 'الوزن الإجمالي' : 'Total Weight'}</TableHead>
@@ -268,10 +340,17 @@ export default function ProductsReportPage() {
                     </TableRow>
                     </TableHeader>
                     <TableBody>
-                    {filteredProducts.map((product) => {
+                    {displayProducts.map((product) => {
+                        const isSelected = selectedProductNames.has(product.name);
                         const href = `/reports/products/${encodeURIComponent(product.name)}?from=${fromDateString}&to=${toDateString}`;
                         return (
-                            <TableRow key={product.name}>
+                            <TableRow key={product.name} className={isSelected ? 'bg-primary/5' : ''}>
+                                <TableCell className="text-center">
+                                    <Checkbox 
+                                        checked={isSelected} 
+                                        onCheckedChange={() => toggleProductSelection(product.name)}
+                                    />
+                                </TableCell>
                                 <TableCell className="font-medium max-w-[300px] text-start">
                                     <Link href={href} className="hover:underline text-primary break-words">
                                         {product.name}
@@ -293,7 +372,7 @@ export default function ProductsReportPage() {
                 </Table>
               </div>
           )}
-          {filteredProducts.length === 0 && !isLoading && (
+          {displayProducts.length === 0 && !isLoading && (
               <div className="py-20 text-center text-muted-foreground">
                   {language === 'ar' ? 'لا توجد بيانات مبيعات مطابقة لبحثك.' : 'No sales data matching your search.'}
               </div>
