@@ -1,4 +1,4 @@
-2026-03-06 12:33:40.362 [info] [main] Log level: Info
+.2026-03-06 12:33:40.362 [info] [main] Log level: Info
 2026-03-06 12:33:40.362 [info] [main] Validating found git in: "git"
 2026-03-06 12:33:40.362 [info] [main] Using git "2.47.2" from "git"
 2026-03-06 12:33:40.362 [info] [Model][doInitialScan] Initial repository scan started
