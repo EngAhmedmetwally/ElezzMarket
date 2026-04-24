@@ -2,7 +2,7 @@
 "use client";
 
 import * as React from "react";
-import { DollarSign, Package, Users, BarChart } from "lucide-react";
+import { DollarSign, Package, Users, BarChart, Filter, Check } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
 import { KpiCard } from "@/components/dashboard/kpi-card";
 import { SalesChart } from "@/components/dashboard/sales-chart";
@@ -17,12 +17,18 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useLanguage } from "@/components/language-provider";
 import { DatePicker } from "@/components/ui/datepicker";
-import type { Order, User, OrderItem } from "@/lib/types";
+import type { Order, User, OrderItem, OrderStatus } from "@/lib/types";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useRealtimeCachedCollection } from "@/hooks/use-realtime-cached-collection";
 import { PeakTimeChart } from "./peak-time-chart";
 import { TopProductsCard } from "./top-products-card";
 import { formatCurrency } from "@/lib/utils";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
+
+const allPossibleStatuses: OrderStatus[] = ["تم التسجيل", "قيد التجهيز", "تم الشحن", "مكتمل", "ملغي", "معلق"];
 
 function DashboardSkeleton() {
   const { language } = useLanguage();
@@ -56,9 +62,24 @@ export default function DashboardPage() {
   const { language } = useLanguage();
   const [fromDate, setFromDate] = React.useState<Date | undefined>(new Date(new Date().getFullYear(), new Date().getMonth(), 1));
   const [toDate, setToDate] = React.useState<Date | undefined>(new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0));
+  
+  // New Status Filter State
+  const [selectedStatuses, setSelectedStatuses] = React.useState<Set<OrderStatus>>(
+      new Set(allPossibleStatuses.filter(s => s !== 'ملغي')) // Exclude cancelled by default
+  );
 
   const { data: allOrders, isLoading: isLoadingOrders } = useRealtimeCachedCollection<Order>('orders');
   const { data: users, isLoading: isLoadingUsers } = useRealtimeCachedCollection<User>('users');
+
+  const toggleStatus = (status: OrderStatus) => {
+    const newSet = new Set(selectedStatuses);
+    if (newSet.has(status)) {
+        newSet.delete(status);
+    } else {
+        newSet.add(status);
+    }
+    setSelectedStatuses(newSet);
+  };
 
   const filteredOrders = React.useMemo(() => {
     if (!allOrders || !fromDate || !toDate) return [];
@@ -71,14 +92,15 @@ export default function DashboardPage() {
     });
   }, [allOrders, fromDate, toDate]);
 
+  // Apply Status Filter for Revenue KPIs
   const revenueOrders = React.useMemo(() => {
     if (!filteredOrders) return [];
-    return filteredOrders.filter(order => order.status !== 'ملغي');
-  }, [filteredOrders]);
+    return filteredOrders.filter(order => selectedStatuses.has(order.status));
+  }, [filteredOrders, selectedStatuses]);
 
   const totalSales = revenueOrders.reduce((acc, order) => acc + (order.total || 0), 0);
-  const totalOrders = filteredOrders.length;
-  const avgOrderValue = revenueOrders.length > 0 ? totalSales / revenueOrders.length : 0;
+  const totalOrders = revenueOrders.length;
+  const avgOrderValue = totalOrders > 0 ? totalSales / totalOrders : 0;
   const activeUsersCount = users ? users.filter(u => u.status === 'نشط').length : 0;
 
   const ordersByStatus = React.useMemo(() => {
@@ -171,9 +193,48 @@ export default function DashboardPage() {
     <div>
       <PageHeader title={language === 'ar' ? 'متابعه الاعمال' : 'Business Overview'} showBackButton={false} />
 
-      <div className="flex items-center gap-4 mb-8">
+      <div className="flex flex-wrap items-center gap-4 mb-8">
         <DatePicker date={fromDate} onDateChange={setFromDate} placeholder={language === 'ar' ? 'من تاريخ' : 'From date'} />
         <DatePicker date={toDate} onDateChange={setToDate} placeholder={language === 'ar' ? 'إلى تاريخ' : 'To date'} />
+        
+        <Popover>
+            <PopoverTrigger asChild>
+                <Button variant="outline" className="h-10 border-dashed">
+                    <Filter className="me-2 h-4 w-4" />
+                    {language === 'ar' ? 'فلتر الحالات' : 'Status Filter'}
+                    {selectedStatuses.size < allPossibleStatuses.length && (
+                        <span className="ms-2 rounded-full bg-primary text-primary-foreground px-2 py-0.5 text-xs">
+                            {selectedStatuses.size}
+                        </span>
+                    )}
+                </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-56 p-4" align="start">
+                <div className="space-y-4">
+                    <h4 className="font-medium text-sm text-start">{language === 'ar' ? 'اختر الحالات للمتابعة' : 'Select statuses to monitor'}</h4>
+                    <div className="space-y-2">
+                        {allPossibleStatuses.map((status) => (
+                            <div key={status} className="flex items-center space-x-2 rtl:space-x-reverse">
+                                <Checkbox 
+                                    id={`status-${status}`} 
+                                    checked={selectedStatuses.has(status)}
+                                    onCheckedChange={() => toggleStatus(status)}
+                                />
+                                <Label htmlFor={`status-${status}`} className="text-sm cursor-pointer">{status}</Label>
+                            </div>
+                        ))}
+                    </div>
+                    <div className="flex gap-2 pt-2">
+                        <Button variant="ghost" size="sm" className="h-7 text-xs flex-1" onClick={() => setSelectedStatuses(new Set(allPossibleStatuses))}>
+                            {language === 'ar' ? 'الكل' : 'All'}
+                        </Button>
+                        <Button variant="ghost" size="sm" className="h-7 text-xs flex-1" onClick={() => setSelectedStatuses(new Set())}>
+                            {language === 'ar' ? 'لا شيء' : 'None'}
+                        </Button>
+                    </div>
+                </div>
+            </PopoverContent>
+        </Popover>
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 mb-8">
@@ -181,11 +242,13 @@ export default function DashboardPage() {
           title={language === 'ar' ? 'إجمالي الإيرادات' : 'Total Revenue'}
           value={formatCurrency(totalSales, language)}
           icon={<DollarSign className="h-4 w-4" />}
+          description={language === 'ar' ? `لعدد ${selectedStatuses.size} حالة مختارة` : `For ${selectedStatuses.size} selected statuses`}
         />
         <KpiCard
           title={language === 'ar' ? 'الطلبات' : 'Orders'}
-          value={`+${totalOrders}`}
+          value={`${totalOrders}`}
           icon={<Package className="h-4 w-4" />}
+          description={language === 'ar' ? 'بناءً على الفلتر الحالي' : 'Based on current filter'}
         />
         <KpiCard
           title={language === 'ar' ? 'متوسط قيمة الطلب' : 'Avg. Order Value'}
@@ -217,7 +280,7 @@ export default function DashboardPage() {
                         {user.name.charAt(0)}
                       </AvatarFallback>
                     </Avatar>
-                    <div className="ms-4 space-y-1">
+                    <div className="ms-4 space-y-1 text-start">
                       <p className="text-sm font-medium leading-none">
                         {user.name}
                       </p>

@@ -1,3 +1,4 @@
+
 "use client";
 
 import * as React from "react";
@@ -12,6 +13,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { StaffPerformanceChart } from "../components/staff-performance-chart";
 import { format, subDays } from "date-fns";
 import { formatCurrency } from "@/lib/utils";
+import { KpiCard } from "@/components/dashboard/kpi-card";
+import { DollarSign, Package, Clock, Wallet } from "lucide-react";
 
 const paymentMethods: PaymentMethod[] = ["نقدي عند الاستلام", "انستا باى", "فودافون كاش", "اورانج كاش"];
 
@@ -21,6 +24,12 @@ function DailyReportSkeleton() {
       <div className="flex flex-col sm:flex-row items-center gap-4">
         <Skeleton className="h-10 w-full sm:w-48" />
         <Skeleton className="h-10 w-full sm:w-48" />
+      </div>
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <Skeleton className="h-28 w-full" />
+        <Skeleton className="h-28 w-full" />
+        <Skeleton className="h-28 w-full" />
+        <Skeleton className="h-28 w-full" />
       </div>
       <Skeleton className="h-[350px] w-full" />
       <Card>
@@ -76,6 +85,12 @@ export default function DailyRevenueReportPage() {
     return { revenueOrders: revenue, onHoldOrdersInRange: onHold };
   }, [allOrders, fromDate, toDate]);
 
+  // KPIs
+  const totalRevenue = revenueOrders.reduce((acc, order) => acc + (order.total || 0), 0);
+  const totalOrdersCount = revenueOrders.length;
+  const totalRevenueWithoutShipping = revenueOrders.reduce((acc, order) => acc + ((order.total || 0) - (order.shippingCost || 0)), 0);
+  const totalOnHoldValue = onHoldOrdersInRange.reduce((acc, order) => acc + (order.total || 0), 0);
+
   const dailyData = React.useMemo(() => {
     const dailyMap = new Map<string, { totalRevenue: number; totalOrders: number; totalRevenueWithoutShipping: number; totalOnHoldValue: number; onHoldOrdersCount: number }>();
 
@@ -105,31 +120,6 @@ export default function DailyRevenueReportPage() {
       .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 
   }, [revenueOrders, onHoldOrdersInRange]);
-  
-  const dailyDataByPayment = React.useMemo(() => {
-    const dailyMap = new Map<string, { [key in PaymentMethod]?: number } & { totalRevenue: number }>();
-    
-    revenueOrders.forEach(order => {
-        if (!order.createdAt || !order.paymentMethod) return;
-        const dateStr = format(new Date(order.createdAt), "yyyy-MM-dd");
-        
-        const dayData = dailyMap.get(dateStr) || { totalRevenue: 0 };
-        
-        const amount = Number(order.total) || 0;
-        dayData.totalRevenue += amount;
-        
-        const method = order.paymentMethod as PaymentMethod;
-        const currentPaymentTotal = dayData[method] || 0;
-        dayData[method] = currentPaymentTotal + amount;
-        
-        dailyMap.set(dateStr, dayData);
-    });
-
-    return Array.from(dailyMap.entries())
-      .map(([date, data]) => ({ date, ...data }))
-      .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-  }, [revenueOrders]);
-
 
   const moderatorRevenue = React.useMemo(() => {
      if (!usersData) return [];
@@ -197,6 +187,29 @@ export default function DailyRevenueReportPage() {
         <div className="flex-1 w-full">
           <DatePicker date={toDate} onDateChange={setToDate} placeholder={language === 'ar' ? 'إلى تاريخ' : 'To date'} />
         </div>
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <KpiCard
+          title={language === 'ar' ? 'إجمالي الإيرادات' : 'Total Revenue'}
+          value={formatCurrency(totalRevenue, language)}
+          icon={<DollarSign className="h-4 w-4" />}
+        />
+        <KpiCard
+          title={language === 'ar' ? 'إجمالي الطلبات' : 'Total Orders'}
+          value={totalOrdersCount.toLocaleString()}
+          icon={<Package className="h-4 w-4" />}
+        />
+        <KpiCard
+          title={language === 'ar' ? 'الإيراد (بدون شحن)' : 'Revenue (w/o Ship.)'}
+          value={formatCurrency(totalRevenueWithoutShipping, language)}
+          icon={<Wallet className="h-4 w-4" />}
+        />
+        <KpiCard
+          title={language === 'ar' ? 'قيمة المعلق' : 'On-Hold Value'}
+          value={formatCurrency(totalOnHoldValue, language)}
+          icon={<Clock className="h-4 w-4" />}
+        />
       </div>
       
       <Card className="min-w-0">
