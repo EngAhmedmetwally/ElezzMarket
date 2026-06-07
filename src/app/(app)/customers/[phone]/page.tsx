@@ -19,7 +19,13 @@ import { formatCurrency } from "@/lib/utils";
 export default function CustomerDetailsPage() {
   const params = useParams();
   const router = useRouter();
-  const phone = typeof params.phone === 'string' ? params.phone : '';
+  
+  // Sanitize the phone number: URL decode then remove any non-digit characters (like hidden Bidi marks)
+  const phone = React.useMemo(() => {
+    const raw = typeof params.phone === 'string' ? decodeURIComponent(params.phone) : '';
+    return raw.replace(/\D/g, '');
+  }, [params.phone]);
+
   const { language } = useLanguage();
 
   const { data: allOrders, isLoading } = useRealtimeCachedCollection<Order>('orders');
@@ -30,7 +36,12 @@ export default function CustomerDetailsPage() {
     }
     
     const ordersForCustomer = allOrders
-      .filter(order => order.customerPhone1 === phone)
+      .filter(order => {
+          // Compare using sanitized phone numbers on both sides for maximum reliability
+          const cleanOrderPhone1 = (order.customerPhone1 || '').replace(/\D/g, '');
+          const cleanOrderPhone2 = (order.customerPhone2 || '').replace(/\D/g, '');
+          return cleanOrderPhone1 === phone || cleanPhone2 === phone;
+      })
       .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
       
     if (ordersForCustomer.length === 0) {
@@ -99,9 +110,17 @@ export default function CustomerDetailsPage() {
 
   if (!customerDetails) {
     return (
-      <div>
+      <div className="p-8 text-center space-y-4">
         <PageHeader title={language === 'ar' ? 'العميل غير موجود' : 'Customer Not Found'} />
-        <p>{language === 'ar' ? 'لم نتمكن من العثور على العميل المطلوب أو ليس لديه طلبات.' : 'The requested customer could not be found or has no orders.'}</p>
+        <div className="bg-destructive/10 text-destructive p-6 rounded-lg border border-destructive/20 inline-block max-w-2xl mx-auto">
+            <p className="text-lg font-bold mb-2">
+                {language === 'ar' ? 'لم نتمكن من العثور على العميل المطلوب أو ليس لديه طلبات.' : 'The requested customer could not be found or has no orders.'}
+            </p>
+            <p className="text-sm opacity-80">
+                {language === 'ar' ? 'الرقم المطلوب: ' : 'Requested number: '}
+                <span className="font-mono bg-background px-2 py-1 rounded">{phone}</span>
+            </p>
+        </div>
       </div>
     );
   }
