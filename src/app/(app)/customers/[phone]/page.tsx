@@ -40,7 +40,7 @@ export default function CustomerDetailsPage() {
           // Compare using sanitized phone numbers on both sides for maximum reliability
           const cleanOrderPhone1 = (order.customerPhone1 || '').replace(/\D/g, '');
           const cleanOrderPhone2 = (order.customerPhone2 || '').replace(/\D/g, '');
-          return cleanOrderPhone1 === phone || cleanPhone2 === phone;
+          return cleanOrderPhone1 === phone || cleanOrderPhone2 === phone;
       })
       .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
       
