@@ -68,6 +68,11 @@ export function CustomersClient<TData extends CustomerWithOrderCount, TValue>({
     onGlobalFilterChange: setGlobalFilter,
     getFilteredRowModel: getFilteredRowModel(),
     onRowSelectionChange: setRowSelection,
+    initialState: {
+      pagination: {
+        pageSize: 100,
+      },
+    },
     state: {
       sorting,
       columnFilters,
