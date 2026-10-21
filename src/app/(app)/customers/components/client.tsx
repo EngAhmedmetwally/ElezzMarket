@@ -36,6 +36,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { WhatsappIcon } from "@/components/icons/whatsapp-icon";
 import { formatPhoneNumberForWhatsApp } from "@/lib/utils";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { subDays, isAfter, isBefore } from "date-fns";
 
 interface DataTableProps<TData extends CustomerWithOrderCount, TValue> {
   columns: ColumnDef<TData, TValue>[];
@@ -53,12 +55,40 @@ export function CustomersClient<TData extends CustomerWithOrderCount, TValue>({
   const [rowSelection, setRowSelection] = React.useState({});
   const [isBroadcastOpen, setIsBroadcastOpen] = React.useState(false);
   const [broadcastMessage, setBroadcastMessage] = React.useState("");
+  const [recencyFilter, setRecencyFilter] = React.useState("all");
 
   const { language } = useLanguage();
   const isMobile = useIsMobile();
 
+  const filteredByRecency = React.useMemo(() => {
+    const now = new Date();
+    const oneWeekAgo = subDays(now, 7);
+    const oneMonthAgo = subDays(now, 30);
+
+    return data.filter(customer => {
+      if (recencyFilter === "all") return true;
+      
+      const lastDateStr = customer.lastOrderDate;
+      const lastDate = lastDateStr ? new Date(lastDateStr) : null;
+
+      if (recencyFilter === "week") {
+        return lastDate && isAfter(lastDate, oneWeekAgo);
+      }
+      if (recencyFilter === "month") {
+        return lastDate && isAfter(lastDate, oneMonthAgo);
+      }
+      if (recencyFilter === "inactive") {
+        return lastDate && isBefore(lastDate, oneMonthAgo);
+      }
+      if (recencyFilter === "never") {
+        return !lastDate;
+      }
+      return true;
+    });
+  }, [data, recencyFilter]);
+
   const table = useReactTable({
-    data,
+    data: filteredByRecency,
     columns,
     getCoreRowModel: getCoreRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
@@ -91,28 +121,44 @@ export function CustomersClient<TData extends CustomerWithOrderCount, TValue>({
   };
 
   const filters = (
-    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 py-4">
-      <div className="flex-1 max-w-sm">
-        <Input
-          placeholder={language === 'ar' ? 'فلترة بالاسم أو الهاتف...' : 'Filter by name or phone...'}
-          value={globalFilter ?? ""}
-          onChange={(event) =>
-            setGlobalFilter(event.target.value)
-          }
-        />
+    <div className="flex flex-col gap-4 py-4">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="flex flex-1 flex-col sm:flex-row gap-2 max-w-2xl">
+          <div className="flex-1">
+            <Input
+              placeholder={language === 'ar' ? 'بحث بالاسم أو الهاتف...' : 'Search by name or phone...'}
+              value={globalFilter ?? ""}
+              onChange={(event) => setGlobalFilter(event.target.value)}
+            />
+          </div>
+          <div className="w-full sm:w-64">
+            <Select value={recencyFilter} onValueChange={setRecencyFilter}>
+              <SelectTrigger>
+                <SelectValue placeholder={language === 'ar' ? 'تصفية حسب النشاط' : 'Filter by activity'} />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">{language === 'ar' ? 'الكل' : 'All'}</SelectItem>
+                <SelectItem value="week">{language === 'ar' ? 'اشتروا خلال آخر أسبوع' : 'Bought last week'}</SelectItem>
+                <SelectItem value="month">{language === 'ar' ? 'اشتروا خلال آخر شهر' : 'Bought last month'}</SelectItem>
+                <SelectItem value="inactive">{language === 'ar' ? 'لم يشتروا منذ أكثر من شهر' : 'Inactive > 1 month'}</SelectItem>
+                <SelectItem value="never">{language === 'ar' ? 'عملاء بدون طلبات' : 'Customers with no orders'}</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+        {hasSelection && (
+          <Button 
+            variant="default" 
+            className="bg-green-600 hover:bg-green-700 shrink-0"
+            onClick={() => setIsBroadcastOpen(true)}
+          >
+            <WhatsappIcon className="me-2 h-4 w-4" />
+            {language === 'ar' 
+              ? `إرسال رسالة جماعية (${selectedRows.length})` 
+              : `WhatsApp Broadcast (${selectedRows.length})`}
+          </Button>
+        )}
       </div>
-      {hasSelection && (
-        <Button 
-          variant="default" 
-          className="bg-green-600 hover:bg-green-700"
-          onClick={() => setIsBroadcastOpen(true)}
-        >
-          <WhatsappIcon className="me-2 h-4 w-4" />
-          {language === 'ar' 
-            ? `إرسال رسالة جماعية (${selectedRows.length})` 
-            : `WhatsApp Broadcast (${selectedRows.length})`}
-        </Button>
-      )}
     </div>
   );
 
@@ -175,7 +221,7 @@ export function CustomersClient<TData extends CustomerWithOrderCount, TValue>({
                         <div className="flex flex-col items-end gap-1">
                             <div className="text-right">
                                 <div className="font-medium">{customer.orderCount} {language === 'ar' ? 'طلبات' : 'orders'}</div>
-                                <div className="text-[10px] text-muted-foreground">{language === 'ar' ? 'آخر طلب:' : 'Last:'} {customer.lastOrderDate ? new Date(customer.lastOrderDate).toLocaleDateString(language === 'ar' ? 'ar-EG' : 'en-US') : '-'}</div>
+                                <div className="text-[10px] text-muted-foreground">{language === 'ar' ? 'آخر:' : 'Last:'} {customer.lastOrderDate ? new Date(customer.lastOrderDate).toLocaleDateString(language === 'ar' ? 'ar-EG' : 'en-US') : '-'}</div>
                             </div>
                             <div onClick={e => e.stopPropagation()}>
                                 <RowActions customer={customer} />
