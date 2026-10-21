@@ -10,12 +10,22 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { CustomersClient } from "./components/client";
 import { getCustomerColumns } from "./components/columns";
 import { Button } from "@/components/ui/button";
-import { Upload, Download } from "lucide-react";
+import { Upload, Download, FileSpreadsheet } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import * as XLSX from "xlsx";
 import { saveAs } from "file-saver";
 import { useDatabase } from "@/firebase";
 import { ref, update } from "firebase/database";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+  DialogDescription,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
 export type CustomerWithOrderCount = Customer & {
   id: string;
@@ -30,6 +40,9 @@ export default function CustomersPage() {
   const { data: allOrders, isLoading: isLoadingOrders } = useRealtimeCachedCollection<Order>('orders');
   const { data: allCustomers, isLoading: isLoadingCustomers } = useRealtimeCachedCollection<Customer & {id: string}>('customers');
   
+  const [isExportDialogOpen, setIsExportDialogOpen] = React.useState(false);
+  const [exportPassword, setExportPassword] = React.useState("");
+
   const isLoading = isLoadingOrders || isLoadingCustomers;
 
   const customersWithOrderData = React.useMemo((): CustomerWithOrderCount[] => {
@@ -174,12 +187,12 @@ export default function CustomersPage() {
             }
         }
       };
+      reader.onloadend = () => {};
       reader.readAsBinaryString(file);
     }
   };
 
   const handleTemplateDownload = () => {
-    // We only export the headers to serve as a template for import
     const sheetData = [{
         'customerName': '',
         'facebookName': '',
@@ -190,17 +203,58 @@ export default function CustomersPage() {
     }];
 
     const worksheet = XLSX.utils.json_to_sheet(sheetData);
-    const workbook = { Sheets: { 'template': worksheet }, SheetNames: ['template'] };
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Template");
     const excelBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
     const data = new Blob([excelBuffer], {type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;charset=UTF-8"});
     saveAs(data, "customers_import_template.xlsx");
   }
 
+  const handleExport = () => {
+    if (exportPassword !== "HamzaEzz") {
+      toast({
+        variant: "destructive",
+        title: language === 'ar' ? "كلمة مرور خاطئة" : "Incorrect Password",
+      });
+      return;
+    }
+
+    try {
+        const exportData = allCustomers?.map(c => ({
+            [language === 'ar' ? 'اسم العميل' : 'Customer Name']: c.customerName,
+            [language === 'ar' ? 'رقم الهاتف' : 'Phone Number']: c.customerPhone1,
+        })) || [];
+
+        const worksheet = XLSX.utils.json_to_sheet(exportData);
+        const workbook = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(workbook, worksheet, "Customers");
+        const excelBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
+        const data = new Blob([excelBuffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;charset=UTF-8" });
+        saveAs(data, `customers_export_${new Date().toISOString().split('T')[0]}.xlsx`);
+
+        setIsExportDialogOpen(false);
+        setExportPassword("");
+        toast({
+            title: language === 'ar' ? "تم الاستخراج بنجاح" : "Export Successful",
+        });
+    } catch (error) {
+        console.error("Export error:", error);
+        toast({
+            variant: "destructive",
+            title: language === 'ar' ? "خطأ في الاستخراج" : "Export Error",
+        });
+    }
+  };
+
 
   return (
     <div>
       <PageHeader title={language === 'ar' ? 'العملاء' : 'Customers'}>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
+            <Button variant="outline" onClick={() => setIsExportDialogOpen(true)}>
+                <FileSpreadsheet className="me-2 h-4 w-4" />
+                {language === 'ar' ? 'استخراج (Excel)' : 'Export (Excel)'}
+            </Button>
             <Button variant="outline" onClick={() => document.getElementById('import-customers')?.click()}>
                 <Upload className="me-2 h-4 w-4" />
                 {language === 'ar' ? 'استيراد عملاء' : 'Import Customers'}
@@ -218,6 +272,33 @@ export default function CustomersPage() {
           onChange={handleCustomerUpload}
         />
       </PageHeader>
+
+      <Dialog open={isExportDialogOpen} onOpenChange={setIsExportDialogOpen}>
+          <DialogContent>
+              <DialogHeader>
+                  <DialogTitle>{language === 'ar' ? 'تأكيد استخراج البيانات' : 'Confirm Data Export'}</DialogTitle>
+                  <DialogDescription>
+                      {language === 'ar' ? 'يرجى إدخال كلمة المرور للمتابعة.' : 'Please enter the password to proceed.'}
+                  </DialogDescription>
+              </DialogHeader>
+              <div className="space-y-4 py-4">
+                  <div className="space-y-2">
+                      <Label>{language === 'ar' ? 'كلمة المرور' : 'Password'}</Label>
+                      <Input 
+                        type="password" 
+                        value={exportPassword} 
+                        onChange={(e) => setExportPassword(e.target.value)}
+                        onKeyDown={(e) => e.key === 'Enter' && handleExport()}
+                      />
+                  </div>
+              </div>
+              <DialogFooter>
+                  <Button variant="outline" onClick={() => setIsExportDialogOpen(false)}>{language === 'ar' ? 'إلغاء' : 'Cancel'}</Button>
+                  <Button onClick={handleExport}>{language === 'ar' ? 'تأكيد واستخراج' : 'Confirm & Export'}</Button>
+              </DialogFooter>
+          </DialogContent>
+      </Dialog>
+
       {isLoading ? (
         <div className="space-y-4">
             <div className="flex items-center py-4">
