@@ -13,10 +13,9 @@ import * as React from "react";
 import { useToast } from "@/hooks/use-toast";
 import { useDatabase, useUser } from "@/firebase";
 import { useRealtimeCachedCollection } from "@/hooks/use-realtime-cached-collection";
-import { ref, set, query, orderByChild, get, update, endBefore } from "firebase/database";
-import type { ReceiptSettings, User, AppSettings } from "@/lib/types";
+import { ref, set, get, update } from "firebase/database";
+import type { ReceiptSettings, User, AppSettings, WhatsAppSettings } from "@/lib/types";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Users } from "lucide-react";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDescription } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -37,6 +36,8 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { OrderStatusSettings } from "./components/order-status-settings";
+import { testWhatsAppConnection } from "@/app/actions/whatsapp";
+import { CheckCircle2, XCircle, Loader2, MessageSquare } from "lucide-react";
 
 
 const receiptSettingsSchema = z.object({
@@ -76,13 +77,22 @@ const appSettingsSchema = z.object({
 
 type AppSettingsFormValues = z.infer<typeof appSettingsSchema>;
 
+const whatsappSettingsSchema = z.object({
+  provider: z.string().min(1, "اسم المزود مطلوب"),
+  endpoint: z.string().url("رابط API غير صالح"),
+  token: z.string().min(1, "التوكن مطلوب"),
+  instanceId: z.string().optional(),
+  isEnabled: z.boolean().default(false),
+});
+
+type WhatsAppFormValues = z.infer<typeof whatsappSettingsSchema>;
+
 
 export default function SettingsPage() {
   const { language } = useLanguage();
   const { toast } = useToast();
   const database = useDatabase();
   const { user } = useUser();
-  const isAdmin = user?.role === 'Admin';
   const isEmergencyAdmin = user?.email === 'emergency.admin@elezz.com';
   const canManageStatuses = user?.role === 'Admin' || isEmergencyAdmin;
 
@@ -91,6 +101,8 @@ export default function SettingsPage() {
   const { data: usersData, isLoading: isLoadingUsers } = useRealtimeCachedCollection<User>('users');
 
   const [isProcessing, setIsProcessing] = React.useState(false);
+  const [isTestingApi, setIsTestingApi] = React.useState(false);
+  const [apiTestResult, setApiTestResult] = React.useState<{ success: boolean; error?: string } | null>(null);
   
   const [deleteMonth, setDeleteMonth] = React.useState<number | undefined>();
   const [deleteYear, setDeleteYear] = React.useState<number | undefined>();
@@ -114,41 +126,21 @@ export default function SettingsPage() {
 
   const receiptForm = useForm<ReceiptSettingsFormValues>({
     resolver: zodResolver(receiptSettingsSchema),
-    defaultValues: {
-      showLogo: true,
-      logoSize: 100,
-      headerText: 'العز ماركت',
-      showOrderId: true,
-      showDate: true,
-      showCustomerName: true,
-      showFacebookName: true,
-      showCustomerPhone: true,
-      showCustomerPhone2: true,
-      showCustomerAddress: true,
-      showPaymentMethod: true,
-      showOrderNotes: true,
-      showItemsSubtotal: true,
-      showShippingCost: true,
-      showGrandTotal: true,
-      footerText: language === 'ar' ? 'شكراً لتعاملكم معنا!' : 'Thank you!',
-      mandatoryFooterText: '',
-      showItemWeight: false,
-      showItemPrice: true,
-      showItemSubtotal: true,
-      showCourierName: false,
-      showModeratorName: false,
-      showModeratorUsername: false,
-      showTotalItems: true,
-      showTotalWeight: true,
-    },
   });
 
   const appSettingsForm = useForm<AppSettingsFormValues>({
     resolver: zodResolver(appSettingsSchema),
+  });
+
+  const whatsappForm = useForm<WhatsAppFormValues>({
+    resolver: zodResolver(whatsappSettingsSchema),
     defaultValues: {
-      maxUsers: 25,
-      autoGenerateOrderId: false,
-    },
+      provider: "",
+      endpoint: "",
+      token: "",
+      instanceId: "",
+      isEnabled: false,
+    }
   });
 
   const watchedReceiptSettings = receiptForm.watch();
@@ -162,8 +154,7 @@ export default function SettingsPage() {
 
   React.useEffect(() => {
     if (currentReceiptSettings) {
-        const valuesToSet = { ...receiptForm.getValues(), ...currentReceiptSettings };
-        receiptForm.reset(valuesToSet);
+        receiptForm.reset({ ...receiptForm.getValues(), ...currentReceiptSettings });
     }
   }, [currentReceiptSettings, receiptForm]);
 
@@ -173,67 +164,80 @@ export default function SettingsPage() {
           maxUsers: currentAppSettings.maxUsers,
           autoGenerateOrderId: currentAppSettings.autoGenerateOrderId || false,
         });
+      if (currentAppSettings.whatsapp) {
+          whatsappForm.reset(currentAppSettings.whatsapp);
+      }
     }
-  }, [currentAppSettings, appSettingsForm]);
+  }, [currentAppSettings, appSettingsForm, whatsappForm]);
 
   async function onReceiptSubmit(data: ReceiptSettingsFormValues) {
     if (!database) return;
     try {
       await update(ref(database, 'receipt-settings/main'), data);
-      toast({ title: language === 'ar' ? 'تم حفظ الإعدادات' : 'Settings Saved', description: language === 'ar' ? 'تم تحديث إعدادات الإيصال بنجاح.' : 'Receipt settings have been updated successfully.' });
-    } catch (error) {
-      toast({ variant: 'destructive', title: language === 'ar' ? 'خطأ' : 'Error', description: (error as Error).message });
+      toast({ title: language === 'ar' ? 'تم حفظ الإعدادات' : 'Settings Saved' });
+    } catch (error: any) {
+      toast({ variant: 'destructive', title: 'Error', description: error.message });
     }
   }
 
   async function onAppSettingsSubmit(data: AppSettingsFormValues) {
     if (!database) return;
     try {
-      await set(ref(database, 'app-settings/main'), data);
-      toast({ title: language === 'ar' ? 'تم حفظ الإعدادات' : 'Settings Saved', description: language === 'ar' ? 'تم تحديث إعدادات الخطة بنجاح.' : 'Plan settings have been updated successfully.' });
-    } catch (error) {
-      toast({ variant: 'destructive', title: language === 'ar' ? 'خطأ' : 'Error', description: (error as Error).message });
+      await update(ref(database, 'app-settings/main'), data);
+      toast({ title: language === 'ar' ? 'تم حفظ الإعدادات' : 'Settings Saved' });
+    } catch (error: any) {
+      toast({ variant: 'destructive', title: 'Error', description: error.message });
     }
   }
 
-  const handleAdvancedDelete = async () => {
-    if (!isEmergencyAdmin) {
-      toast({ variant: 'destructive', title: language === 'ar' ? 'غير مصرح به' : 'Unauthorized' });
-      return;
+  async function onWhatsAppSubmit(data: WhatsAppFormValues) {
+      if (!database) return;
+      try {
+          await update(ref(database, 'app-settings/main/whatsapp'), data);
+          toast({ title: language === 'ar' ? 'تم حفظ إعدادات واتساب' : 'WhatsApp Settings Saved' });
+      } catch (error: any) {
+          toast({ variant: 'destructive', title: 'Error', description: error.message });
+      }
+  }
+
+  const handleTestWhatsApp = async () => {
+    const data = whatsappForm.getValues();
+    if (!data.endpoint || !data.token) {
+        toast({ variant: 'destructive', title: language === 'ar' ? 'بيانات ناقصة' : 'Missing Data' });
+        return;
     }
 
-    if (deletePassword !== 'omarmeto') {
-      toast({
-        variant: "destructive",
-        title: language === 'ar' ? 'كلمة مرور غير صحيحة' : 'Incorrect Password',
-      });
-      return;
+    setIsTestingApi(true);
+    setApiTestResult(null);
+    try {
+        const result = await testWhatsAppConnection({
+            endpoint: data.endpoint,
+            token: data.token,
+            instanceId: data.instanceId,
+        });
+        setApiTestResult(result);
+        if (result.success) {
+            toast({ title: language === 'ar' ? 'تم الاتصال بنجاح' : 'Connection Successful' });
+        }
+    } catch (error: any) {
+        setApiTestResult({ success: false, error: error.message });
+    } finally {
+        setIsTestingApi(false);
     }
-    if (!deleteYear || !deleteMonth) {
-      toast({
-        variant: "destructive",
-        title: language === 'ar' ? 'الشهر والسنة مطلوبان' : 'Month and Year Required',
-      });
-      return;
-    }
-    if (!database) {
-      toast({ variant: "destructive", title: "Database error" });
+  };
+
+  const handleAdvancedDelete = async () => {
+    if (!isEmergencyAdmin || deletePassword !== 'omarmeto' || !deleteYear || !deleteMonth || !database) {
+      toast({ variant: "destructive", title: "Error" });
       return;
     }
 
     setIsProcessing(true);
-    toast({ title: language === 'ar' ? "جاري الحذف..." : "Deletion in progress..." });
-
     try {
       const deleteBeforeDate = new Date(deleteYear, deleteMonth - 1, 1);
-      
-      const ordersRootRef = ref(database, 'orders');
-      const snapshot = await get(ordersRootRef);
-      
+      const snapshot = await get(ref(database, 'orders'));
       if (!snapshot.exists()) {
-        toast({ title: language === 'ar' ? "لا توجد طلبات للحذف" : "No Orders to Delete" });
-        setIsProcessing(false);
-        setIsAdvancedDeleteOpen(false);
+        toast({ title: "No Orders" });
         return;
       }
 
@@ -241,23 +245,15 @@ export default function SettingsPage() {
       let count = 0;
       const allOrdersData = snapshot.val();
 
-      // Iterate through years
       for (const year in allOrdersData) {
-        // Iterate through months
         for (const month in allOrdersData[year]) {
-          // Iterate through days
           for (const day in allOrdersData[year][month]) {
-            // Iterate through orders
             for (const orderId in allOrdersData[year][month][day]) {
               const orderData = allOrdersData[year][month][day][orderId];
               if (orderData && orderData.createdAt) {
-                const orderDate = new Date(orderData.createdAt);
-                if (orderDate < deleteBeforeDate) {
-                  const path = `orders/${year}/${month}/${day}/${orderId}`;
-                  updates[path] = null;
-                  if (orderData.customerPhone1) {
-                    updates[`customer-orders/${orderData.customerPhone1}/${orderId}`] = null;
-                  }
+                if (new Date(orderData.createdAt) < deleteBeforeDate) {
+                  updates[`orders/${year}/${month}/${day}/${orderId}`] = null;
+                  if (orderData.customerPhone1) updates[`customer-orders/${orderData.customerPhone1}/${orderId}`] = null;
                   count++;
                 }
               }
@@ -268,47 +264,29 @@ export default function SettingsPage() {
 
       if (count > 0) {
         await update(ref(database), updates);
-        toast({ title: language === 'ar' ? "اكتمل الحذف" : "Deletion Complete", description: `${language === 'ar' ? 'تم حذف' : 'Deleted'} ${count} ${language === 'ar' ? 'طلب بنجاح من قاعدة البيانات الرئيسية.' : 'orders successfully from the main database.'}` });
-      } else {
-        toast({ title: language === 'ar' ? "لا توجد طلبات للحذف" : "No Orders to Delete" });
+        toast({ title: "Done", description: `Deleted ${count} orders` });
       }
-    } catch (error) {
-      console.error("Advanced delete failed:", error);
-      toast({ variant: "destructive", title: language === 'ar' ? "فشل الحذف" : "Delete Failed", description: (error as Error).message });
+    } catch (error: any) {
+      toast({ variant: "destructive", title: "Error", description: error.message });
     } finally {
       setIsProcessing(false);
       setIsAdvancedDeleteOpen(false);
-      setDeletePassword('');
     }
   };
 
-
-  const maxUsers = currentAppSettings?.maxUsers || 25;
-  const isLoading = isLoadingReceiptSettings || isLoadingUsers || isLoadingAppSettings;
-
-  if (isLoading) {
-    return (
-        <div className="space-y-8">
-            <PageHeader title={language === 'ar' ? 'الإعدادات' : 'Settings'} />
-            <Skeleton className="h-10 w-full" />
-            <Skeleton className="h-96 w-full" />
-        </div>
-    )
-  }
+  if (isLoading) return <div className="space-y-8"><PageHeader title="Settings" /><Skeleton className="h-96 w-full" /></div>;
 
   return (
     <div className="space-y-8">
       <PageHeader title={language === 'ar' ? 'الإعدادات' : 'Settings'} />
       <Tabs defaultValue="general" className="w-full">
-        <TabsList className={cn("grid w-full",
-          isEmergencyAdmin ? "grid-cols-3" :
-          canManageStatuses ? "grid-cols-2" :
-          "grid-cols-1"
-        )}>
-          <TabsTrigger value="general">{language === 'ar' ? 'الإعدادات العامة' : 'General Settings'}</TabsTrigger>
-          {canManageStatuses && <TabsTrigger value="statuses">{language === 'ar' ? 'حالات الطلب' : 'Order Statuses'}</TabsTrigger>}
-          {isEmergencyAdmin && <TabsTrigger value="database">{language === 'ar' ? 'قاعدة البيانات' : 'Database'}</TabsTrigger>}
+        <TabsList className={cn("grid w-full", isEmergencyAdmin ? "grid-cols-4" : canManageStatuses ? "grid-cols-3" : "grid-cols-2")}>
+          <TabsTrigger value="general">{language === 'ar' ? 'العامة' : 'General'}</TabsTrigger>
+          <TabsTrigger value="whatsapp">{language === 'ar' ? 'واتساب' : 'WhatsApp'}</TabsTrigger>
+          {canManageStatuses && <TabsTrigger value="statuses">{language === 'ar' ? 'الحالات' : 'Statuses'}</TabsTrigger>}
+          {isEmergencyAdmin && <TabsTrigger value="database">{language === 'ar' ? 'القاعدة' : 'Database'}</TabsTrigger>}
         </TabsList>
+
         <TabsContent value="general" className="space-y-8 mt-6">
           {isEmergencyAdmin && (
             <Card>
@@ -316,158 +294,116 @@ export default function SettingsPage() {
                   <form onSubmit={appSettingsForm.handleSubmit(onAppSettingsSubmit)}>
                     <CardHeader>
                       <CardTitle>{language === 'ar' ? 'إدارة الخطة' : 'Plan Management'}</CardTitle>
-                      <CardDescription>{language === 'ar' ? 'قم بتعيين الحد الأقصى للمستخدمين (غير المناديب) للنظام.' : 'Set the maximum number of users (non-couriers) for the system.'}</CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-4">
-                      <div className="flex flex-col sm:flex-row gap-4 sm:gap-8 items-start sm:items-center rounded-lg border p-4">
-                          <div className="space-y-1">
-                              <p className="text-sm font-medium text-muted-foreground">{language === 'ar' ? 'خطة المستخدمين' : 'User Plan'}</p>
-                              <div className="flex items-baseline gap-2">
-                                <span className="text-2xl font-bold">{nonCourierUsersCount}</span>
-                                <span className="text-xl font-medium text-muted-foreground">/ {maxUsers}</span>
-                              </div>
-                          </div>
-                          <div className="w-full sm:w-auto">
-                            <FormField
-                              control={appSettingsForm.control}
-                              name="maxUsers"
-                              render={({ field }) => (
-                                <FormItem>
-                                  <FormLabel>{language === 'ar' ? 'تعيين الحد الأقصى للمستخدمين' : 'Set Max Users'}</FormLabel>
-                                  <FormControl>
-                                    <Input type="number" className="max-w-xs" {...field} />
-                                  </FormControl>
-                                  <FormMessage />
-                                </FormItem>
-                              )}
-                            />
-                          </div>
-                      </div>
-                       <FormField
-                          control={appSettingsForm.control}
-                          name="autoGenerateOrderId"
-                          render={({ field }) => (
-                            <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4 mt-4">
-                              <div className="space-y-0.5">
-                                <FormLabel className="text-base">{language === 'ar' ? 'إنشاء رقم الطلب تلقائياً' : 'Auto-generate Order ID'}</FormLabel>
-                                <FormDescription>{language === 'ar' ? 'عند التفعيل، سيتم إنشاء رقم الطلب تلقائياً.' : 'If enabled, the order ID will be generated automatically.'}</FormDescription>
-                              </div>
-                              <FormControl>
-                                <Switch
-                                  checked={field.value}
-                                  onCheckedChange={field.onChange}
-                                />
-                              </FormControl>
+                      <div className="grid md:grid-cols-2 gap-4">
+                        <FormField control={appSettingsForm.control} name="maxUsers" render={({ field }) => (
+                            <FormItem><FormLabel>Max Users</FormLabel><FormControl><Input type="number" {...field} /></FormControl></FormItem>
+                        )}/>
+                         <FormField control={appSettingsForm.control} name="autoGenerateOrderId" render={({ field }) => (
+                            <FormItem className="flex items-center justify-between rounded-lg border p-4">
+                              <FormLabel>Auto-generate Order ID</FormLabel>
+                              <FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl>
                             </FormItem>
-                          )}
-                        />
+                          )}/>
+                      </div>
                     </CardContent>
-                    <CardFooter className="border-t px-6 py-4">
-                      <Button type="submit" disabled={appSettingsForm.formState.isSubmitting}>{language === 'ar' ? 'حفظ إعدادات الخطة' : 'Save Plan Settings'}</Button>
-                    </CardFooter>
+                    <CardFooter className="border-t px-6 py-4"><Button type="submit">Save Plan</Button></CardFooter>
                   </form>
                 </Form>
             </Card>
           )}
 
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             <Card className="lg:col-span-2">
-                <CardHeader>
-                <CardTitle>{language === 'ar' ? 'إعدادات إيصال البيع' : 'Receipt Settings'}</CardTitle>
-                <CardDescription>
-                    {language === 'ar' ? 'تحكم في العناصر التي تظهر في فاتورة الإيصال الحراري.' : 'Control which elements appear on the thermal receipt invoice.'}
-                </CardDescription>
-                </CardHeader>
-                <CardContent>
-                    <ReceiptSettingsForm form={receiptForm} onSubmit={onReceiptSubmit} isAdmin={isEmergencyAdmin} />
-                </CardContent>
+                <CardHeader><CardTitle>Receipt Settings</CardTitle></CardHeader>
+                <CardContent><ReceiptSettingsForm form={receiptForm} onSubmit={onReceiptSubmit} isAdmin={isEmergencyAdmin} /></CardContent>
             </Card>
-
-            <div className="lg:sticky lg:top-20">
-                <Card>
-                    <CardHeader>
-                        <CardTitle>{language === 'ar' ? 'معاينة الإيصال' : 'Receipt Preview'}</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <ReceiptPreview settings={watchedReceiptSettings} />
-                    </CardContent>
-                </Card>
-            </div>
+            <div className="lg:sticky lg:top-20"><Card><CardHeader><CardTitle>Preview</CardTitle></CardHeader><CardContent><ReceiptPreview settings={watchedReceiptSettings} /></CardContent></Card></div>
           </div>
         </TabsContent>
-        {canManageStatuses && (
-         <TabsContent value="statuses" className="space-y-8 mt-6">
-            <OrderStatusSettings />
-        </TabsContent>
-        )}
-        {isEmergencyAdmin && (
-          <TabsContent value="database" className="space-y-8 mt-6">
-            <Card className="border-orange-500 dark:border-orange-400">
+
+        <TabsContent value="whatsapp" className="space-y-6 mt-6">
+            <Card>
                 <CardHeader>
-                    <CardTitle className="text-orange-600 dark:text-orange-400">{language === 'ar' ? 'حذف متقدم للبيانات (قاعدة البيانات الرئيسية)' : 'Advanced Data Deletion (Main Database)'}</CardTitle>
-                    <CardDescription className="text-orange-600 dark:text-orange-500">
-                        {language === 'ar' ? 'تحذير: هذا الإجراء سيقوم بحذف بيانات الطلبات بشكل دائم من قاعدة البيانات الرئيسية. استخدمه بحذر شديد.' : 'Warning: This action will permanently delete order data from the main database. Use with extreme caution.'}
+                    <CardTitle className="flex items-center gap-2">
+                        <MessageSquare className="h-5 w-5 text-green-600" />
+                        {language === 'ar' ? 'إعدادات ربط واتساب API' : 'WhatsApp API Integration'}
+                    </CardTitle>
+                    <CardDescription>
+                        {language === 'ar' ? 'قم بتهيئة بيانات المزود لتفعيل الإرسال الجماعي التلقائي.' : 'Configure API provider details to enable automated bulk messaging.'}
                     </CardDescription>
                 </CardHeader>
+                <CardContent>
+                    <Form {...whatsappForm}>
+                        <form onSubmit={whatsappForm.handleSubmit(onWhatsAppSubmit)} className="space-y-6">
+                            <div className="grid md:grid-cols-2 gap-6">
+                                <FormField control={whatsappForm.control} name="provider" render={({ field }) => (
+                                    <FormItem><FormLabel>Provider Name</FormLabel><FormControl><Input placeholder="UltraMsg, Twilio, etc." {...field} /></FormControl></FormItem>
+                                )}/>
+                                <FormField control={whatsappForm.control} name="isEnabled" render={({ field }) => (
+                                    <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 mt-8">
+                                        <FormLabel>Enable Automation</FormLabel>
+                                        <FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl>
+                                    </FormItem>
+                                )}/>
+                                <FormField control={whatsappForm.control} name="endpoint" render={({ field }) => (
+                                    <FormItem className="md:col-span-2"><FormLabel>API Endpoint URL</FormLabel><FormControl><Input placeholder="https://api.ultramsg.com/instanceXXX/messages/chat" {...field} /></FormControl></FormItem>
+                                )}/>
+                                <FormField control={whatsappForm.control} name="token" render={({ field }) => (
+                                    <FormItem><FormLabel>Auth Token / API Key</FormLabel><FormControl><Input type="password" placeholder="••••••••" {...field} /></FormControl></FormItem>
+                                )}/>
+                                <FormField control={whatsappForm.control} name="instanceId" render={({ field }) => (
+                                    <FormItem><FormLabel>Instance ID / Sender Number</FormLabel><FormControl><Input placeholder="instance12345" {...field} /></FormControl></FormItem>
+                                )}/>
+                            </div>
+
+                            {apiTestResult && (
+                                <div className={cn("p-4 rounded-lg flex items-start gap-3 border", apiTestResult.success ? "bg-green-50 border-green-200 text-green-800" : "bg-red-50 border-red-200 text-red-800")}>
+                                    {apiTestResult.success ? <CheckCircle2 className="h-5 w-5 shrink-0" /> : <XCircle className="h-5 w-5 shrink-0" />}
+                                    <div className="text-sm">
+                                        <p className="font-bold">{apiTestResult.success ? (language === 'ar' ? 'متصل بنجاح' : 'Connected Successfully') : (language === 'ar' ? 'فشل الاتصال' : 'Connection Failed')}</p>
+                                        {apiTestResult.error && <p className="mt-1 opacity-90">{apiTestResult.error}</p>}
+                                    </div>
+                                </div>
+                            )}
+
+                            <div className="flex gap-3 justify-end">
+                                <Button type="button" variant="outline" onClick={handleTestWhatsApp} disabled={isTestingApi}>
+                                    {isTestingApi && <Loader2 className="me-2 h-4 w-4 animate-spin" />}
+                                    {language === 'ar' ? 'فحص الاتصال' : 'Test API'}
+                                </Button>
+                                <Button type="submit">{language === 'ar' ? 'حفظ' : 'Save Settings'}</Button>
+                            </div>
+                        </form>
+                    </Form>
+                </CardContent>
+            </Card>
+        </TabsContent>
+
+        <TabsContent value="statuses" className="mt-6"><OrderStatusSettings /></TabsContent>
+
+        <TabsContent value="database" className="mt-6">
+            <Card className="border-orange-500">
+                <CardHeader><CardTitle className="text-orange-600">Advanced Data Deletion</CardTitle></CardHeader>
                 <CardContent className="space-y-4">
-                    <p>{language === 'ar' ? 'حذف جميع الطلبات بشكل دائم قبل الشهر المحدد.' : 'Permanently delete all orders before the selected month.'}</p>
-                    <div className="flex flex-col sm:flex-row gap-4">
-                        <Select onValueChange={(val) => setDeleteMonth(Number(val))}>
-                            <SelectTrigger className="w-full sm:w-[180px]">
-                                <SelectValue placeholder={language === 'ar' ? 'اختر الشهر' : 'Select Month'} />
-                            </SelectTrigger>
-                            <SelectContent>
-                                {months.map(month => (
-                                    <SelectItem key={month.value} value={String(month.value)}>{month.label}</SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
-                        <Select onValueChange={(val) => setDeleteYear(Number(val))}>
-                            <SelectTrigger className="w-full sm:w-[180px]">
-                                <SelectValue placeholder={language === 'ar' ? 'اختر السنة' : 'Select Year'} />
-                            </SelectTrigger>
-                            <SelectContent>
-                                {years.map(year => (
-                                    <SelectItem key={year} value={String(year)}>{year}</SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
+                    <div className="flex gap-4">
+                        <Select onValueChange={(val) => setDeleteMonth(Number(val))}><SelectTrigger><SelectValue placeholder="Month" /></SelectTrigger><SelectContent>{months.map(m => <SelectItem key={m.value} value={String(m.value)}>{m.label}</SelectItem>)}</SelectContent></Select>
+                        <Select onValueChange={(val) => setDeleteYear(Number(val))}><SelectTrigger><SelectValue placeholder="Year" /></SelectTrigger><SelectContent>{years.map(y => <SelectItem key={y} value={String(y)}>{y}</SelectItem>)}</SelectContent></Select>
                     </div>
                 </CardContent>
                 <CardFooter>
                     <AlertDialog open={isAdvancedDeleteOpen} onOpenChange={setIsAdvancedDeleteOpen}>
-                        <AlertDialogTrigger asChild>
-                             <Button variant="destructive" disabled={isProcessing || !deleteMonth || !deleteYear}>
-                                {language === 'ar' ? 'بدء عملية الحذف' : 'Initiate Deletion'}
-                            </Button>
-                        </AlertDialogTrigger>
+                        <AlertDialogTrigger asChild><Button variant="destructive" disabled={isProcessing || !deleteMonth || !deleteYear}>Start Cleanup</Button></AlertDialogTrigger>
                         <AlertDialogContent>
-                            <AlertDialogHeader>
-                                <AlertDialogTitle>{language === 'ar' ? 'هل أنت متأكد تماماً؟' : 'Are you absolutely sure?'}</AlertDialogTitle>
-                                <AlertDialogDescription>
-                                    {language === 'ar' ? `سيتم حذف جميع الطلبات بشكل دائم من قاعدة البيانات الرئيسية قبل شهر ${months.find(m => m.value === deleteMonth)?.label || ''} ${deleteYear || ''}. لا يمكن التراجع عن هذا الإجراء.` : `This will permanently delete all orders from the main database before ${months.find(m => m.value === deleteMonth)?.label || ''} ${deleteYear || ''}. This action cannot be undone.`}
-                                </AlertDialogDescription>
-                            </AlertDialogHeader>
-                             <div className="space-y-2">
-                                <Label htmlFor="delete-password-confirm">{language === 'ar' ? 'كلمة مرور التأكيد' : 'Confirmation Password'}</Label>
-                                <Input
-                                    id="delete-password-confirm"
-                                    type="password"
-                                    value={deletePassword}
-                                    onChange={(e) => setDeletePassword(e.target.value)}
-                                    placeholder={language === 'ar' ? 'أدخل كلمة المرور للتأكيد' : 'Enter password to confirm'}
-                                />
-                            </div>
-                            <AlertDialogFooter>
-                                <AlertDialogCancel onClick={() => setDeletePassword('')}>{language === 'ar' ? 'إلغاء' : 'Cancel'}</AlertDialogCancel>
-                                <AlertDialogAction onClick={handleAdvancedDelete} className="bg-destructive hover:bg-destructive/90">{language === 'ar' ? 'نعم، قم بالحذف النهائي' : 'Yes, permanently delete'}</AlertDialogAction>
-                            </AlertDialogFooter>
+                            <AlertDialogHeader><AlertDialogTitle>Delete Permanently?</AlertDialogTitle></AlertDialogHeader>
+                             <div className="space-y-2"><Label>Password</Label><Input type="password" value={deletePassword} onChange={(e) => setDeletePassword(e.target.value)} /></div>
+                            <AlertDialogFooter><AlertDialogCancel>Cancel</AlertDialogCancel><AlertDialogAction onClick={handleAdvancedDelete}>Delete All</AlertDialogAction></AlertDialogFooter>
                         </AlertDialogContent>
                     </AlertDialog>
                 </CardFooter>
             </Card>
-          </TabsContent>
-        )}
+        </TabsContent>
       </Tabs>
     </div>
   );

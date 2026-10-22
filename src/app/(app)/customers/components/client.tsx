@@ -37,7 +37,15 @@ import { WhatsappIcon } from "@/components/icons/whatsapp-icon";
 import { formatPhoneNumberForWhatsApp } from "@/lib/utils";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { subDays, isAfter, isBefore } from "date-fns";
+import { subDays, isAfter, isBefore, format } from "date-fns";
+import { useDatabase } from "@/firebase";
+import { ref, update } from "firebase/database";
+import { useRealtimeCachedCollection } from "@/hooks/use-realtime-cached-collection";
+import { sendWhatsAppMessage } from "@/app/actions/whatsapp";
+import { Progress } from "@/components/ui/progress";
+import { CheckCircle2, XCircle, Clock, Loader2, Zap } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { useToast } from "@/hooks/use-toast";
 
 interface DataTableProps<TData extends CustomerWithOrderCount, TValue> {
   columns: ColumnDef<TData, TValue>[];
@@ -49,6 +57,8 @@ export function CustomersClient<TData extends CustomerWithOrderCount, TValue>({
   data,
 }: DataTableProps<TData, TValue>) {
   const router = useRouter();
+  const database = useDatabase();
+  const { toast } = useToast();
   const [sorting, setSorting] = React.useState<SortingState>([ { id: 'lastOrderDate', desc: true } ]);
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([]);
   const [globalFilter, setGlobalFilter] = React.useState("");
@@ -59,6 +69,11 @@ export function CustomersClient<TData extends CustomerWithOrderCount, TValue>({
 
   const { language } = useLanguage();
   const isMobile = useIsMobile();
+
+  // Optimized logs fetching using existing pattern
+  const { data: whatsappLogs } = useRealtimeCachedCollection<any>('whatsapp-logs');
+  const { data: appSettings } = useRealtimeCachedCollection<any>('app-settings');
+  const whatsappConfig = appSettings?.find(s => s.id === 'main')?.whatsapp;
 
   const filteredByRecency = React.useMemo(() => {
     const now = new Date();
@@ -152,10 +167,10 @@ export function CustomersClient<TData extends CustomerWithOrderCount, TValue>({
             className="bg-green-600 hover:bg-green-700 shrink-0"
             onClick={() => setIsBroadcastOpen(true)}
           >
-            <WhatsappIcon className="me-2 h-4 w-4" />
+            <Zap className="me-2 h-4 w-4" />
             {language === 'ar' 
-              ? `إرسال رسالة جماعية (${selectedRows.length})` 
-              : `WhatsApp Broadcast (${selectedRows.length})`}
+              ? `إرسال جماعي (${selectedRows.length})` 
+              : `Bulk Send (${selectedRows.length})`}
           </Button>
         )}
       </div>
@@ -200,6 +215,7 @@ export function CustomersClient<TData extends CustomerWithOrderCount, TValue>({
           {table.getRowModel().rows?.length ? (
             table.getRowModel().rows.map((row) => {
               const customer = row.original;
+              const lastLog = whatsappLogs?.find((l: any) => l.id === customer.customerPhone1);
               return (
                 <Card 
                   key={row.id} 
@@ -214,14 +230,19 @@ export function CustomersClient<TData extends CustomerWithOrderCount, TValue>({
                           />
                         </div>
                         <div className="flex-1 min-w-0" onClick={() => handleRowClick(customer)}>
-                            <div className="font-bold truncate">{customer.customerName}</div>
+                            <div className="flex items-center gap-2">
+                                <div className="font-bold truncate">{customer.customerName}</div>
+                                {lastLog && (
+                                    <div title={lastLog.sentAt}>
+                                        {lastLog.status === 'sent' ? <CheckCircle2 className="h-3 w-3 text-green-500" /> : <XCircle className="h-3 w-3 text-red-500" />}
+                                    </div>
+                                )}
+                            </div>
                             <div className="text-sm text-muted-foreground">{customer.customerPhone1}</div>
-                            {customer.customerPhone2 && <div className="text-sm text-muted-foreground">{customer.customerPhone2}</div>}
                         </div>
                         <div className="flex flex-col items-end gap-1">
                             <div className="text-right">
                                 <div className="font-medium">{customer.orderCount} {language === 'ar' ? 'طلبات' : 'orders'}</div>
-                                <div className="text-[10px] text-muted-foreground">{language === 'ar' ? 'آخر:' : 'Last:'} {customer.lastOrderDate ? new Date(customer.lastOrderDate).toLocaleDateString(language === 'ar' ? 'ar-EG' : 'en-US') : '-'}</div>
                             </div>
                             <div onClick={e => e.stopPropagation()}>
                                 <RowActions customer={customer} />
@@ -247,6 +268,8 @@ export function CustomersClient<TData extends CustomerWithOrderCount, TValue>({
           onMessageChange={setBroadcastMessage}
           onSend={handleIndividualWhatsApp}
           language={language}
+          whatsappConfig={whatsappConfig}
+          logs={whatsappLogs}
         />
       </div>
     );
@@ -317,64 +340,164 @@ export function CustomersClient<TData extends CustomerWithOrderCount, TValue>({
         onMessageChange={setBroadcastMessage}
         onSend={handleIndividualWhatsApp}
         language={language}
+        whatsappConfig={whatsappConfig}
+        logs={whatsappLogs}
       />
     </div>
   );
 }
 
-function BroadcastDialog({ open, onOpenChange, selectedCustomers, message, onMessageChange, onSend, language }: any) {
+function BroadcastDialog({ open, onOpenChange, selectedCustomers, message, onMessageChange, onSend, language, whatsappConfig, logs }: any) {
+  const [isAutomatedSending, setIsAutomatedSending] = React.useState(false);
+  const [sendingProgress, setSendingProgress] = React.useState(0);
+  const [sendResults, setSendResults] = React.useState<Record<string, { status: string; error?: string }>>({});
+  const database = useDatabase();
+  const { toast } = useToast();
+
+  const canUseAutomation = whatsappConfig?.isEnabled && whatsappConfig?.endpoint && whatsappConfig?.token;
+
+  const handleAutomatedSend = async () => {
+      if (!database || !canUseAutomation) return;
+      
+      setIsAutomatedSending(true);
+      setSendingProgress(0);
+      const results: Record<string, { status: string; error?: string }> = {};
+
+      for (let i = 0; i < selectedCustomers.length; i++) {
+          const customer = selectedCustomers[i];
+          const phone = customer.customerPhone1;
+
+          try {
+              const res = await sendWhatsAppMessage({
+                  endpoint: whatsappConfig.endpoint,
+                  token: whatsappConfig.token,
+                  instanceId: whatsappConfig.instanceId,
+                  phone: phone,
+                  message: message
+              });
+
+              if (res.success) {
+                  results[phone] = { status: 'sent' };
+                  // Log to database
+                  const logRef = ref(database, `whatsapp-logs/${phone}`);
+                  update(logRef, {
+                      status: 'sent',
+                      message: message,
+                      sentAt: new Date().toISOString()
+                  });
+              } else {
+                  results[phone] = { status: 'failed', error: res.error };
+                  const logRef = ref(database, `whatsapp-logs/${phone}`);
+                  update(logRef, {
+                      status: 'failed',
+                      error: res.error,
+                      sentAt: new Date().toISOString()
+                  });
+              }
+          } catch (error: any) {
+              results[phone] = { status: 'failed', error: error.message };
+          }
+
+          setSendResults({...results});
+          setSendingProgress(((i + 1) / selectedCustomers.length) * 100);
+          // Small delay to prevent API flooding
+          await new Promise(resolve => setTimeout(resolve, 800));
+      }
+
+      setIsAutomatedSending(false);
+      toast({ title: language === 'ar' ? 'اكتمل الإرسال الجماعي' : 'Bulk Sending Complete' });
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-lg max-h-[90vh] flex flex-col p-0 overflow-hidden">
+      <DialogContent className="sm:max-w-xl max-h-[95vh] flex flex-col p-0 overflow-hidden">
         <DialogHeader className="p-6 pb-2">
-          <DialogTitle>{language === 'ar' ? 'رسالة واتساب جماعية' : 'WhatsApp Broadcast'}</DialogTitle>
+          <DialogTitle className="flex items-center gap-2">
+              <Zap className="h-5 w-5 text-yellow-500" />
+              {language === 'ar' ? 'إرسال رسالة واتساب جماعية' : 'WhatsApp Broadcast'}
+          </DialogTitle>
           <DialogDescription>
             {language === 'ar' 
-              ? 'اكتب الرسالة ثم افتح المحادثات مع العملاء المختارين لإرسالها.' 
-              : 'Write message then open chats with selected customers to send.'}
+              ? 'يمكنك الإرسال تلقائياً عبر API أو فتح المحادثات يدوياً.' 
+              : 'Send automatically via API or open chats manually.'}
           </DialogDescription>
         </DialogHeader>
         
         <div className="p-6 space-y-4 flex-1 flex flex-col overflow-hidden">
           <div className="space-y-2">
-             <label className="text-sm font-medium">{language === 'ar' ? 'نص الرسالة الموحدة' : 'Unified Message'}</label>
+             <label className="text-sm font-medium flex justify-between">
+                <span>{language === 'ar' ? 'نص الرسالة الموحدة' : 'Unified Message'}</span>
+                {isAutomatedSending && <span className="text-xs text-primary animate-pulse">{language === 'ar' ? 'جاري الإرسال...' : 'Sending...'}</span>}
+             </label>
              <Textarea 
                value={message}
                onChange={(e) => onMessageChange(e.target.value)}
                placeholder={language === 'ar' ? 'اكتب رسالتك هنا...' : 'Type your message here...'}
-               className="min-h-[120px] resize-none"
+               className="min-h-[100px] resize-none"
+               disabled={isAutomatedSending}
              />
           </div>
 
-          <div className="flex-1 flex flex-col overflow-hidden">
+          {isAutomatedSending && (
+              <div className="space-y-2">
+                  <div className="flex justify-between text-xs font-medium">
+                      <span>{Math.round(sendingProgress)}%</span>
+                      <span>{Object.values(sendResults).filter(r => r.status === 'sent').length} / {selectedCustomers.length}</span>
+                  </div>
+                  <Progress value={sendingProgress} className="h-2" />
+              </div>
+          )}
+
+          <div className="flex-1 flex flex-col overflow-hidden mt-2">
              <label className="text-sm font-medium mb-2">{language === 'ar' ? `قائمة المستلمين (${selectedCustomers.length})` : `Recipients (${selectedCustomers.length})`}</label>
              <ScrollArea className="flex-1 border rounded-md p-2 bg-muted/20">
                 <div className="space-y-2">
-                   {selectedCustomers.map((customer: any) => (
-                     <div key={customer.id} className="flex items-center justify-between p-2 bg-background border rounded-lg shadow-sm">
-                        <div className="min-w-0 flex-1 me-4">
-                           <p className="text-sm font-bold truncate">{customer.customerName}</p>
-                           <p className="text-xs text-muted-foreground">{customer.customerPhone1}</p>
-                        </div>
-                        <Button 
-                          size="sm" 
-                          variant="outline" 
-                          className="text-green-600 border-green-600/30 hover:bg-green-50 shrink-0"
-                          onClick={() => onSend(customer.customerPhone1, customer.customerName)}
-                        >
-                          <WhatsappIcon className="me-2 h-3.5 w-3.5" />
-                          {language === 'ar' ? 'إرسال' : 'Send'}
-                        </Button>
-                     </div>
-                   ))}
+                   {selectedCustomers.map((customer: any) => {
+                     const result = sendResults[customer.customerPhone1];
+                     const lastLog = logs?.find((l: any) => l.id === customer.customerPhone1);
+                     
+                     return (
+                         <div key={customer.id} className="flex items-center justify-between p-2 bg-background border rounded-lg shadow-sm">
+                            <div className="min-w-0 flex-1 me-4">
+                               <div className="flex items-center gap-2">
+                                    <p className="text-sm font-bold truncate">{customer.customerName}</p>
+                                    {(result || lastLog) && (
+                                        <div title={result?.error || lastLog?.sentAt}>
+                                            {(result?.status === 'sent' || lastLog?.status === 'sent') ? <CheckCircle2 className="h-3 w-3 text-green-500" /> : <XCircle className="h-3 w-3 text-red-500" />}
+                                        </div>
+                                    )}
+                               </div>
+                               <p className="text-xs text-muted-foreground">{customer.customerPhone1}</p>
+                            </div>
+                            <Button 
+                              size="sm" 
+                              variant="outline" 
+                              className="text-green-600 border-green-600/30 hover:bg-green-50 shrink-0 h-8"
+                              onClick={() => onSend(customer.customerPhone1, customer.customerName)}
+                              disabled={isAutomatedSending}
+                            >
+                              <WhatsappIcon className="me-2 h-3.5 w-3.5" />
+                              {language === 'ar' ? 'يدوي' : 'Manual'}
+                            </Button>
+                         </div>
+                     );
+                   })}
                 </div>
              </ScrollArea>
           </div>
         </div>
 
-        <DialogFooter className="p-6 border-t bg-background">
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
+        <DialogFooter className="p-4 border-t bg-background flex flex-col sm:flex-row gap-2">
+          <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={isAutomatedSending}>
             {language === 'ar' ? 'إغلاق' : 'Close'}
+          </Button>
+          <Button 
+            className="flex-1 bg-green-600 hover:bg-green-700" 
+            onClick={handleAutomatedSend}
+            disabled={isAutomatedSending || !canUseAutomation || !message}
+          >
+            {isAutomatedSending ? <Loader2 className="me-2 h-4 w-4 animate-spin" /> : <Zap className="me-2 h-4 w-4" />}
+            {language === 'ar' ? 'بدء الإرسال التلقائي' : 'Start Automated Sending'}
           </Button>
         </DialogFooter>
       </DialogContent>

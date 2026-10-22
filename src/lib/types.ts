@@ -205,7 +205,26 @@ export type ReceiptSettings = {
   showTotalWeight?: boolean;
 };
 
+export type WhatsAppSettings = {
+  id: string;
+  provider: string;
+  endpoint: string;
+  token: string;
+  instanceId?: string;
+  isEnabled: boolean;
+};
+
+export type WhatsAppLog = {
+  id: string;
+  phone: string;
+  status: 'sent' | 'failed';
+  message: string;
+  sentAt: string;
+  error?: string;
+};
+
 export type AppSettings = {
   maxUsers: number;
   autoGenerateOrderId?: boolean;
+  whatsapp?: WhatsAppSettings;
 };
