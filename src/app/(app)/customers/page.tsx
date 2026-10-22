@@ -39,6 +39,7 @@ export default function CustomersPage() {
   const database = useDatabase();
   const { data: allOrders, isLoading: isLoadingOrders } = useRealtimeCachedCollection<Order>('orders');
   const { data: allCustomers, isLoading: isLoadingCustomers } = useRealtimeCachedCollection<Customer & {id: string}>('customers');
+  const { data: whatsappLogs } = useRealtimeCachedCollection<any>('whatsapp-logs');
   
   const [isExportDialogOpen, setIsExportDialogOpen] = React.useState(false);
   const [exportPassword, setExportPassword] = React.useState("");
@@ -71,7 +72,7 @@ export default function CustomersPage() {
     });
   }, [allCustomers, allOrders]);
 
-  const columns = getCustomerColumns(language);
+  const columns = React.useMemo(() => getCustomerColumns(language, whatsappLogs), [language, whatsappLogs]);
 
   const handleCustomerUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     if (!database) {

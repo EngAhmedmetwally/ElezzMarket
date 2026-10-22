@@ -1,6 +1,8 @@
 
 'use server';
 
+import { formatPhoneNumberForWhatsApp } from "@/lib/utils";
+
 /**
  * Server Action to proxy WhatsApp API requests.
  * This keeps API tokens secure and avoids CORS issues.
@@ -19,29 +21,25 @@ export async function sendWhatsAppMessage(config: {
   }
 
   try {
-    // Basic implementation for a generic HTTP POST API (like UltraMsg, Twilio, etc.)
-    // We try to infer the format from common providers or use a standard JSON post
-    const cleanPhone = phone.replace(/\D/g, '');
+    // Standardize phone number format for common WhatsApp APIs (e.g. 2010...)
+    const cleanPhone = formatPhoneNumberForWhatsApp(phone);
     
-    // Construct the URL. Some APIs use query params, some use body.
-    // For this prototype, we'll use a standard body-based POST request.
     const response = await fetch(endpoint, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`, // Common pattern
       },
       body: JSON.stringify({
-        token,
-        to: cleanPhone,
+        token, // Some APIs use token in body
+        to: cleanPhone, // Standard
         body: message,
         instanceId, // UltraMsg pattern
         message: message, // Twilio pattern
-        receiver: cleanPhone,
+        receiver: cleanPhone, // Generic pattern
       }),
     });
 
-    const data = await response.json();
+    const data = await response.json().catch(() => ({}));
 
     if (response.ok) {
       return { success: true, data };
@@ -65,18 +63,18 @@ export async function testWhatsAppConnection(config: {
   token: string;
   instanceId?: string;
 }) {
-  // A test just tries to ping the endpoint or send a metadata request if supported.
-  // Since we don't know the exact provider, we'll try a minimal request.
   try {
+    // Minimal check: Send a standard HEAD/GET request or a generic ping if supported.
+    // Since providers vary, we just check if the endpoint is reachable.
     const response = await fetch(config.endpoint, {
-      method: 'GET', // Many APIs have a status check on GET
+      method: 'GET',
       headers: {
         'Authorization': `Bearer ${config.token}`,
       },
     });
 
-    if (response.status === 404 || response.status === 200) {
-      // 404 might just mean the GET isn't supported but the host exists
+    // 200, 401 (unauthorized), or 405 (method not allowed) all imply the server is alive and reachable.
+    if (response.status < 500) {
       return { success: true };
     }
     

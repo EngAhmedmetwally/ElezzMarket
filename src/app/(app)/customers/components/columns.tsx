@@ -7,11 +7,10 @@ import { Button } from "@/components/ui/button";
 import type { CustomerWithOrderCount } from "../page";
 import { RowActions } from "./row-actions";
 import { Checkbox } from "@/components/ui/checkbox";
-import { useRealtimeCachedCollection } from "@/hooks/use-realtime-cached-collection";
 import { formatDistanceToNow } from "date-fns";
 import { ar } from "date-fns/locale";
 
-export const getCustomerColumns = (language: 'ar' | 'en'): ColumnDef<CustomerWithOrderCount>[] => [
+export const getCustomerColumns = (language: 'ar' | 'en', whatsappLogs: any[]): ColumnDef<CustomerWithOrderCount>[] => [
   {
     id: "select",
     header: ({ table }) => (
@@ -64,11 +63,10 @@ export const getCustomerColumns = (language: 'ar' | 'en'): ColumnDef<CustomerWit
     header: language === 'ar' ? 'رقم الموبايل' : 'Phone',
     cell: ({ row }) => {
         const phone = row.original.customerPhone1;
-        // In a real app we'd use a shared state for logs, but useCollection is cached.
-        // We'll add the status indicator here.
+        const log = whatsappLogs?.find((l: any) => l.id === phone);
         return (
             <div className="flex items-center gap-2">
-                <WhatsAppStatusIndicator phone={phone} language={language} />
+                <WhatsAppStatusIndicator log={log} language={language} />
                 <span>{phone}</span>
             </div>
         )
@@ -120,10 +118,7 @@ export const getCustomerColumns = (language: 'ar' | 'en'): ColumnDef<CustomerWit
   },
 ];
 
-function WhatsAppStatusIndicator({ phone, language }: { phone: string; language: string }) {
-    const { data: logs } = useRealtimeCachedCollection<any>('whatsapp-logs');
-    const log = logs?.find((l: any) => l.id === phone);
-
+function WhatsAppStatusIndicator({ log, language }: { log: any; language: string }) {
     if (!log) return null;
 
     const timeAgo = formatDistanceToNow(new Date(log.sentAt), { 
