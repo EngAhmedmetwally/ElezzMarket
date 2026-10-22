@@ -274,6 +274,8 @@ export default function SettingsPage() {
     }
   };
 
+  const isLoading = isLoadingReceiptSettings || isLoadingAppSettings || isLoadingUsers;
+
   if (isLoading) return <div className="space-y-8"><PageHeader title="Settings" /><Skeleton className="h-96 w-full" /></div>;
 
   return (
@@ -293,7 +295,9 @@ export default function SettingsPage() {
                 <Form {...appSettingsForm}>
                   <form onSubmit={appSettingsForm.handleSubmit(onAppSettingsSubmit)}>
                     <CardHeader>
-                      <CardTitle>{language === 'ar' ? 'إدارة الخطة' : 'Plan Management'}</CardTitle>
+                      <CardHeader>
+                        <CardTitle>{language === 'ar' ? 'إدارة الخطة' : 'Plan Management'}</CardTitle>
+                      </CardHeader>
                     </CardHeader>
                     <CardContent className="space-y-4">
                       <div className="grid md:grid-cols-2 gap-4">
