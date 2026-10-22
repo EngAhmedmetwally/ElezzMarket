@@ -2,8 +2,8 @@
 'use client';
 
 const DB_NAME = 'ElEzzMarketDB';
-const DB_VERSION = 85; 
-const STORES = ['orders', 'users', 'products', 'shipping-zones', 'commission-rules', 'customers', 'app-settings', 'receipt-settings', 'sync-timestamps', 'commissions', 'order-statuses', 'adjustments'];
+const DB_VERSION = 86; 
+const STORES = ['orders', 'users', 'products', 'shipping-zones', 'commission-rules', 'customers', 'app-settings', 'receipt-settings', 'sync-timestamps', 'commissions', 'order-statuses', 'adjustments', 'whatsapp-logs'];
 
 let db: IDBDatabase | null = null;
 
@@ -42,7 +42,7 @@ const openDB = (): Promise<IDBDatabase> => {
       const dbInstance = (event.target as IDBOpenDBRequest).result;
       STORES.forEach(storeName => {
         if (!dbInstance.objectStoreNames.contains(storeName)) {
-            if (['orders', 'users', 'products', 'shipping-zones', 'commission-rules', 'customers', 'commissions', 'order-statuses', 'adjustments'].includes(storeName)) {
+            if (['orders', 'users', 'products', 'shipping-zones', 'commission-rules', 'customers', 'commissions', 'order-statuses', 'adjustments', 'whatsapp-logs'].includes(storeName)) {
                  dbInstance.createObjectStore(storeName, { keyPath: 'id' });
             } else if (storeName === 'sync-timestamps') {
                 dbInstance.createObjectStore(storeName, { keyPath: 'collection' });
