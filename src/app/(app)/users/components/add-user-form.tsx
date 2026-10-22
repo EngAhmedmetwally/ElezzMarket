@@ -303,7 +303,7 @@ export function AddUserForm({ onSuccess, userToEdit }: AddUserFormProps) {
           render={({ field }) => (
             <FormItem>
               <FormLabel>{language === 'ar' ? 'الاسم الكامل' : 'Full Name'}</FormLabel>
-              <FormControl><Input {...field} /></FormControl>
+              <FormControl><Input {...field} value={field.value ?? ''} /></FormControl>
               <FormMessage />
             </FormItem>
           )}
@@ -316,7 +316,7 @@ export function AddUserForm({ onSuccess, userToEdit }: AddUserFormProps) {
                 render={({ field }) => (
                     <FormItem>
                     <FormLabel>{language === 'ar' ? 'اسم المستخدم' : 'Username'}</FormLabel>
-                    <FormControl><Input {...field} value={field.value || ''} /></FormControl>
+                    <FormControl><Input {...field} value={field.value ?? ''} /></FormControl>
                     <FormMessage />
                     </FormItem>
                 )}
@@ -327,7 +327,7 @@ export function AddUserForm({ onSuccess, userToEdit }: AddUserFormProps) {
                 render={({ field }) => (
                     <FormItem>
                     <FormLabel>{language === 'ar' ? 'كلمة المرور' : 'Password'}</FormLabel>
-                    <FormControl><Input type="password" placeholder={isEditMode ? "********" : ""} {...field} value={field.value || ''} /></FormControl>
+                    <FormControl><Input type="password" placeholder={isEditMode ? "********" : ""} {...field} value={field.value ?? ''} /></FormControl>
                     <FormMessage />
                     </FormItem>
                 )}
@@ -363,7 +363,7 @@ export function AddUserForm({ onSuccess, userToEdit }: AddUserFormProps) {
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>{language === 'ar' ? 'الهاتف 1' : 'Phone 1'}</FormLabel>
-                  <FormControl><Input {...field} value={field.value || ''}/></FormControl>
+                  <FormControl><Input {...field} value={field.value ?? ''}/></FormItem>
                 </FormItem>
               )}
             />
@@ -449,3 +449,4 @@ export function AddUserForm({ onSuccess, userToEdit }: AddUserFormProps) {
     </Form>
   );
 }
+

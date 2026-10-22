@@ -61,7 +61,13 @@ export default function WhatsAppPage() {
 
   React.useEffect(() => {
     if (currentAppSettings?.whatsapp) {
-      form.reset(currentAppSettings.whatsapp);
+      form.reset({
+          provider: currentAppSettings.whatsapp.provider || "",
+          endpoint: currentAppSettings.whatsapp.endpoint || "",
+          token: currentAppSettings.whatsapp.token || "",
+          instanceId: currentAppSettings.whatsapp.instanceId || "",
+          isEnabled: currentAppSettings.whatsapp.isEnabled || false,
+      });
     }
   }, [currentAppSettings, form]);
 
@@ -129,7 +135,7 @@ export default function WhatsAppPage() {
                 <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
                     <div className="grid md:grid-cols-2 gap-6">
                         <FormField control={form.control} name="provider" render={({ field }) => (
-                            <FormItem><FormLabel>Provider Name</FormLabel><FormControl><Input placeholder="UltraMsg, Twilio, etc." {...field} /></FormControl></FormItem>
+                            <FormItem><FormLabel>Provider Name</FormLabel><FormControl><Input placeholder="UltraMsg, Twilio, etc." {...field} value={field.value ?? ''} /></FormControl></FormItem>
                         )}/>
                         <FormField control={form.control} name="isEnabled" render={({ field }) => (
                             <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 mt-8">
@@ -138,13 +144,13 @@ export default function WhatsAppPage() {
                             </FormItem>
                         )}/>
                         <FormField control={form.control} name="endpoint" render={({ field }) => (
-                            <FormItem className="md:col-span-2"><FormLabel>API Endpoint URL</FormLabel><FormControl><Input placeholder="https://api.ultramsg.com/instanceXXX/messages/chat" {...field} /></FormControl></FormItem>
+                            <FormItem className="md:col-span-2"><FormLabel>API Endpoint URL</FormLabel><FormControl><Input placeholder="https://api.ultramsg.com/instanceXXX/messages/chat" {...field} value={field.value ?? ''} /></FormControl></FormItem>
                         )}/>
                         <FormField control={form.control} name="token" render={({ field }) => (
-                            <FormItem><FormLabel>Auth Token / API Key</FormLabel><FormControl><Input type="password" placeholder="••••••••" {...field} /></FormControl></FormItem>
+                            <FormItem><FormLabel>Auth Token / API Key</FormLabel><FormControl><Input type="password" placeholder="••••••••" {...field} value={field.value ?? ''} /></FormControl></FormItem>
                         )}/>
                         <FormField control={form.control} name="instanceId" render={({ field }) => (
-                            <FormItem><FormLabel>Instance ID / Sender Number</FormLabel><FormControl><Input placeholder="instance12345" {...field} /></FormControl></FormItem>
+                            <FormItem><FormLabel>Instance ID / Sender Number</FormLabel><FormControl><Input placeholder="instance12345" {...field} value={field.value ?? ''} /></FormControl></FormItem>
                         )}/>
                     </div>
 
@@ -172,3 +178,4 @@ export default function WhatsAppPage() {
     </div>
   );
 }
+

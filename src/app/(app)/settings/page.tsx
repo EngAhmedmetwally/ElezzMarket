@@ -107,10 +107,38 @@ export default function SettingsPage() {
 
   const receiptForm = useForm<ReceiptSettingsFormValues>({
     resolver: zodResolver(receiptSettingsSchema),
+    defaultValues: {
+        showLogo: true,
+        logoSize: 100,
+        showOrderId: true,
+        showDate: true,
+        showCustomerName: true,
+        showFacebookName: true,
+        showCustomerPhone: true,
+        showCustomerPhone2: true,
+        showCustomerAddress: true,
+        showPaymentMethod: true,
+        showOrderNotes: true,
+        showItemsSubtotal: true,
+        showShippingCost: true,
+        showGrandTotal: true,
+        showItemWeight: false,
+        showItemPrice: true,
+        showItemSubtotal: true,
+        showCourierName: false,
+        showModeratorName: false,
+        showModeratorUsername: false,
+        showTotalItems: true,
+        showTotalWeight: true,
+    }
   });
 
   const appSettingsForm = useForm<AppSettingsFormValues>({
     resolver: zodResolver(appSettingsSchema),
+    defaultValues: {
+        maxUsers: 10,
+        autoGenerateOrderId: false,
+    }
   });
 
   const watchedReceiptSettings = receiptForm.watch();
@@ -131,7 +159,7 @@ export default function SettingsPage() {
   React.useEffect(() => {
     if (currentAppSettings) {
       appSettingsForm.reset({ 
-          maxUsers: currentAppSettings.maxUsers,
+          maxUsers: currentAppSettings.maxUsers || 10,
           autoGenerateOrderId: currentAppSettings.autoGenerateOrderId || false,
         });
     }
@@ -230,7 +258,7 @@ export default function SettingsPage() {
                     <CardContent className="space-y-4">
                       <div className="grid md:grid-cols-2 gap-4">
                         <FormField control={appSettingsForm.control} name="maxUsers" render={({ field }) => (
-                            <FormItem><FormLabel>Max Users</FormLabel><FormControl><Input type="number" {...field} /></FormControl></FormItem>
+                            <FormItem><FormLabel>Max Users</FormLabel><FormControl><Input type="number" {...field} value={field.value ?? ''} /></FormControl></FormItem>
                         )}/>
                          <FormField control={appSettingsForm.control} name="autoGenerateOrderId" render={({ field }) => (
                             <FormItem className="flex items-center justify-between rounded-lg border p-4">
@@ -282,3 +310,4 @@ export default function SettingsPage() {
     </div>
   );
 }
+
