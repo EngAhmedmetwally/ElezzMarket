@@ -29,6 +29,7 @@ import {
   Settings,
   Clock,
   CircleDollarSign,
+  MessageSquare,
 } from "lucide-react";
 import { Logo } from "@/components/icons/logo";
 import Link from "next/link";
@@ -50,6 +51,7 @@ const navItems = [
   { href: "/on-hold-orders", icon: Clock, label: "On Hold Orders", arLabel: "الطلبات المعلقة", id: "onHoldOrders" },
   { href: "/commissions", icon: BadgePercent, label: "Commissions", arLabel: "العمولات", id: "commissions" },
   { href: "/adjustments", icon: CircleDollarSign, label: "Adjustments", arLabel: "الخصومات والمكافآت", id: "adjustments" },
+  { href: "/whatsapp", icon: MessageSquare, label: "WhatsApp", arLabel: "واتساب", id: "whatsapp" },
   { href: "/settings", icon: Settings, label: "Settings", arLabel: "الإعدادات", id: "settings" },
   {
     label: "Reports",

@@ -76,6 +76,7 @@ const getUserFormSchema = (isEditMode: boolean) => z.object({
     onHoldOrders: permissionsSchema.pick({ view: true }),
     commissions: permissionsSchema.pick({ view: true, edit: true }),
     adjustments: permissionsSchema,
+    whatsapp: permissionsSchema.pick({ view: true, edit: true }),
     settings: permissionsSchema.pick({ view: true, edit: true }),
     reports: reportPermissionsSchema,
   }).optional(),
@@ -111,6 +112,7 @@ const screensConfig = [
   { id: 'onHoldOrders', name: 'On Hold Orders', arName: 'الطلبات المعلقة', perms: ['view'] },
   { id: 'commissions', name: 'Commissions', arName: 'العمولات', perms: ['view', 'edit'] },
   { id: 'adjustments', name: 'Adjustments', arName: 'الخصومات والمكافآت', perms: ['view', 'add', 'edit', 'delete'] },
+  { id: 'whatsapp', name: 'WhatsApp', arName: 'واتساب', perms: ['view', 'edit'] },
   { id: 'settings', name: 'Settings', arName: 'الإعدادات', perms: ['view', 'edit'] },
 ] as const;
 
@@ -153,6 +155,7 @@ const defaultPermissions: Permissions = {
     onHoldOrders: { view: true },
     commissions: { view: true, edit: true },
     adjustments: { view: true, add: true, edit: true, delete: false },
+    whatsapp: { view: false, edit: false },
     settings: { view: false, edit: false },
     reports: {
         commissions: { view: true },

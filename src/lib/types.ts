@@ -12,6 +12,7 @@ export type Permissions = {
   commissions: { view: boolean; edit: boolean; };
   adjustments: { view: boolean; add: boolean; edit: boolean; delete: boolean; };
   settings: { view: boolean; edit: boolean; };
+  whatsapp: { view: boolean; edit: boolean; };
   reports: {
     commissions: { view: boolean };
     products: { view: boolean };
