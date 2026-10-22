@@ -162,12 +162,15 @@ export type Product = {
 };
 
 export type Customer = {
+  id?: string;
   customerName: string;
   facebookName?: string;
   customerPhone1: string;
   customerPhone2?: string;
   customerAddress: string;
   zoning: string;
+  orderCount?: number;
+  lastOrderDate?: string;
 };
 
 export type ShippingZone = {

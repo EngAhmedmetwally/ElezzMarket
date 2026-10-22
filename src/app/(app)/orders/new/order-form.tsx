@@ -199,14 +199,12 @@ export function OrderForm({ onSuccess, orderToEdit }: OrderFormProps) {
             }
 
             if (!orderPath) {
-                // Last resort fallback
                 orderPath = `orders/${orderToEdit.id}`;
             }
 
             const now = new Date().toISOString();
             const newTotal = data.items.reduce((acc, item) => acc + (item.quantity || 0) * (item.price || 0), 0) + (data.shippingCost || 0);
             
-            // Prepare clean update data (removing undefined values for Firebase)
             const { id: _, ...formData } = data;
             const updates: any = JSON.parse(JSON.stringify({
                 ...formData,
@@ -217,7 +215,6 @@ export function OrderForm({ onSuccess, orderToEdit }: OrderFormProps) {
             const orderRef = ref(database, orderPath);
             await update(orderRef, updates);
 
-            // Add to edit history
             const editHistoryItem: OrderEditHistoryItem = {
                 userId: user.id,
                 userName: user.name || user.email || 'System',
@@ -232,7 +229,6 @@ export function OrderForm({ onSuccess, orderToEdit }: OrderFormProps) {
                 await update(orderRef, historyUpdate);
             }
 
-            // Sync cache
             const snapshot = await get(orderRef);
             if (snapshot.exists()) {
                 await idbPut('orders', { ...snapshot.val(), id: orderToEdit.id, path: orderPath });
@@ -257,6 +253,7 @@ export function OrderForm({ onSuccess, orderToEdit }: OrderFormProps) {
             }
             
             const now = new Date();
+            const nowIso = now.toISOString();
             const orderPath = `orders/${now.getFullYear()}/${String(now.getMonth() + 1).padStart(2, '0')}/${String(now.getDate()).padStart(2, '0')}/${orderId}`;
             
             const commissionRulesSnap = await get(ref(database, 'commission-rules'));
@@ -278,13 +275,13 @@ export function OrderForm({ onSuccess, orderToEdit }: OrderFormProps) {
                 notes: data.notes || "",
                 moderatorId: user.id,
                 moderatorName: user.name || user.email || 'System',
-                createdAt: now.toISOString(),
-                updatedAt: now.toISOString(),
+                createdAt: nowIso,
+                updatedAt: nowIso,
                 statusHistory: {
                     [push(ref(database)).key!]: {
                         status: 'تم التسجيل',
                         notes: data.notes || "",
-                        createdAt: now.toISOString(),
+                        createdAt: nowIso,
                         userName: user.name || user.email || 'System',
                         userId: user.id
                     }
@@ -297,18 +294,29 @@ export function OrderForm({ onSuccess, orderToEdit }: OrderFormProps) {
             syncEvents.emit('synced', 'orders');
 
             const dbUpdates: { [key: string]: any } = {};
-            dbUpdates[`order-lookup/${orderId}`] = true;
+            // Store the full path in lookup to avoid collection scans later
+            dbUpdates[`order-lookup/${orderId}`] = orderPath;
             dbUpdates[`customer-orders/${data.customerPhone1}/${orderId}`] = true;
             
+            // Update customer metadata directly to avoid downloading all orders for metrics
             const custSnap = await get(ref(database, `customers/${data.customerPhone1}`));
-            if (!custSnap.exists()) {
+            if (custSnap.exists()) {
+                const custData = custSnap.val();
+                dbUpdates[`customers/${data.customerPhone1}`] = { 
+                    ...custData,
+                    orderCount: (custData.orderCount || 0) + 1,
+                    lastOrderDate: nowIso
+                };
+            } else {
                 dbUpdates[`customers/${data.customerPhone1}`] = { 
                     customerName: data.customerName, 
                     facebookName: data.facebookName, 
                     customerPhone1: data.customerPhone1, 
                     customerPhone2: data.customerPhone2, 
                     customerAddress: data.customerAddress, 
-                    zoning: data.zoning 
+                    zoning: data.zoning,
+                    orderCount: 1,
+                    lastOrderDate: nowIso
                 };
             }
 
@@ -319,7 +327,7 @@ export function OrderForm({ onSuccess, orderToEdit }: OrderFormProps) {
                     userId: user.id, 
                     orderStatus: "تم التسجيل", 
                     amount: commissionAmount, 
-                    calculationDate: now.toISOString(), 
+                    calculationDate: nowIso, 
                     paymentStatus: 'Calculated' 
                 };
             }
@@ -616,7 +624,7 @@ export function OrderForm({ onSuccess, orderToEdit }: OrderFormProps) {
                     </div>
                     <Separator className="my-2" />
                     <div className="flex justify-between font-bold text-lg">
-                        <p>{language === 'ar' ? 'الإجمالي الكلي' : 'Grand Total'}</p>
+                        <p>{language === 'ar' ? 'إجمالي الكلي' : 'Grand Total'}</p>
                         <p>{formatCurrency(total, language)}</p>
                     </div>
                 </div>

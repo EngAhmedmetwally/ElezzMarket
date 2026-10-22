@@ -2,7 +2,7 @@
 'use client';
 import { useState, useEffect, useCallback } from 'react';
 import { useDatabase } from '@/firebase';
-import { ref, onValue, off } from 'firebase/database';
+import { ref, onValue, off, Query as RTDBQuery, DatabaseReference } from 'firebase/database';
 import { idbGetAll, idbBulkPut, idbGetAllKeys, idbDelete } from '@/lib/db';
 import type { Order } from '@/lib/types';
 
@@ -50,7 +50,15 @@ const objectToArray = (data: object | null | undefined): any[] => {
     }).filter(Boolean);
 };
 
-export function useRealtimeCachedCollection<T>(collectionName: string) {
+/**
+ * Enhanced hook to sync and cache RTDB collections with support for queries.
+ * @param collectionName The IDB store name.
+ * @param memoizedQuery Optional Firebase Query. If provided, incremental sync is used (local missing keys aren't deleted).
+ */
+export function useRealtimeCachedCollection<T>(
+    collectionName: string,
+    memoizedQuery?: (RTDBQuery | DatabaseReference) & {__memo?: boolean}
+) {
     const [data, setData] = useState<T[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const database = useDatabase();
@@ -76,20 +84,24 @@ export function useRealtimeCachedCollection<T>(collectionName: string) {
         }
 
         let isMounted = true;
-        const collectionRef = ref(database, collectionName);
+        // Use the query if provided, otherwise listen to the full collection
+        const targetRef = memoizedQuery || ref(database, collectionName);
 
-        const listener = onValue(collectionRef, async (snapshot) => {
+        const listener = onValue(targetRef, async (snapshot) => {
             if (!isMounted) return;
 
             let remoteDataArray: any[] = [];
             const remoteData = snapshot.val();
             
             if (snapshot.exists() && remoteData) {
-                if (collectionName === 'orders') {
+                if (collectionName === 'orders' && !memoizedQuery) {
                     remoteDataArray = processOrdersSnapshot(remoteData);
                 } else if (['app-settings', 'receipt-settings'].includes(collectionName)) {
                      if (remoteData.main) {
                         remoteDataArray.push({id: 'main', ...remoteData.main});
+                     } else if (typeof remoteData === 'object' && !remoteData.id) {
+                         // Fallback for specific settings structure
+                         remoteDataArray = objectToArray(remoteData);
                      }
                 } else {
                     remoteDataArray = objectToArray(remoteData);
@@ -97,13 +109,17 @@ export function useRealtimeCachedCollection<T>(collectionName: string) {
             }
             
             try {
-                const localKeys = await idbGetAllKeys(collectionName);
-                const remoteKeys = new Set(remoteDataArray.map(item => item.id));
+                // Determine if we are doing a full collection sync or a subset/incremental sync
+                const isFullSync = !memoizedQuery;
 
-                const keysToDelete = localKeys.filter(key => typeof key === 'string' && !remoteKeys.has(key));
+                if (isFullSync) {
+                    const localKeys = await idbGetAllKeys(collectionName);
+                    const remoteKeys = new Set(remoteDataArray.map(item => item.id));
+                    const keysToDelete = localKeys.filter(key => typeof key === 'string' && !remoteKeys.has(key));
 
-                if (keysToDelete.length > 0) {
-                    await Promise.all(keysToDelete.map(key => idbDelete(collectionName, key)));
+                    if (keysToDelete.length > 0) {
+                        await Promise.all(keysToDelete.map(key => idbDelete(collectionName, key)));
+                    }
                 }
                 
                 if (remoteDataArray.length > 0) {
@@ -122,9 +138,9 @@ export function useRealtimeCachedCollection<T>(collectionName: string) {
 
         return () => {
             isMounted = false;
-            off(collectionRef, 'value', listener);
+            off(targetRef, 'value', listener);
         };
-    }, [database, collectionName, updateCacheAndState]);
+    }, [database, collectionName, memoizedQuery, updateCacheAndState]);
 
     return { data, isLoading };
 }

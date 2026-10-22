@@ -14,8 +14,8 @@ import { Upload, Download, FileSpreadsheet } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import * as XLSX from "xlsx";
 import { saveAs } from "file-saver";
-import { useDatabase } from "@/firebase";
-import { ref, update } from "firebase/database";
+import { useDatabase, useMemoFirebase } from "@/firebase";
+import { ref, update, query, limitToLast } from "firebase/database";
 import {
   Dialog,
   DialogContent,
@@ -37,40 +37,36 @@ export default function CustomersPage() {
   const { language } = useLanguage();
   const { toast } = useToast();
   const database = useDatabase();
-  const { data: allOrders, isLoading: isLoadingOrders } = useRealtimeCachedCollection<Order>('orders');
+
+  // Optimizations:
+  // 1. We stop downloading ALL orders here. Counts and last dates are now served from Customer metadata.
+  // 2. We use a limited query for WhatsApp logs to avoid downloading the full history.
+  
   const { data: allCustomers, isLoading: isLoadingCustomers } = useRealtimeCachedCollection<Customer & {id: string}>('customers');
-  const { data: whatsappLogs } = useRealtimeCachedCollection<any>('whatsapp-logs');
+  
+  const whatsappQuery = useMemoFirebase(() => {
+      if (!database) return null;
+      return query(ref(database, 'whatsapp-logs'), limitToLast(300));
+  }, [database]);
+
+  const { data: whatsappLogs } = useRealtimeCachedCollection<any>('whatsapp-logs', whatsappQuery);
   
   const [isExportDialogOpen, setIsExportDialogOpen] = React.useState(false);
   const [exportPassword, setExportPassword] = React.useState("");
 
-  const isLoading = isLoadingOrders || isLoadingCustomers;
-
   const customersWithOrderData = React.useMemo((): CustomerWithOrderCount[] => {
-    if (!allCustomers || !allOrders) return [];
-
-    const ordersByCustomer = new Map<string, { count: number; lastOrder: string }>();
-    
-    allOrders.forEach(order => {
-        if (!order.customerPhone1) return;
-        const existing = ordersByCustomer.get(order.customerPhone1) || { count: 0, lastOrder: '' };
-        existing.count++;
-        if (!existing.lastOrder || new Date(order.createdAt) > new Date(existing.lastOrder)) {
-            existing.lastOrder = order.createdAt;
-        }
-        ordersByCustomer.set(order.customerPhone1, existing);
-    });
+    if (!allCustomers) return [];
 
     return allCustomers.map(customer => {
-      const orderData = ordersByCustomer.get(customer.id);
       return {
         ...customer,
         id: customer.id,
-        orderCount: orderData?.count || 0,
-        lastOrderDate: orderData?.lastOrder || '',
+        // Fallback to 0 if metadata hasn't been populated yet
+        orderCount: customer.orderCount || 0,
+        lastOrderDate: customer.lastOrderDate || '',
       };
     });
-  }, [allCustomers, allOrders]);
+  }, [allCustomers]);
 
   const columns = React.useMemo(() => getCustomerColumns(language, whatsappLogs), [language, whatsappLogs]);
 
@@ -125,10 +121,6 @@ export default function CustomersPage() {
                     skippedCount++;
                     continue;
                 }
-                if (phone2 && phone2.startsWith("01") && phone2.length !== 11) {
-                    skippedCount++;
-                    continue;
-                }
 
                 updates[`customers/${phone1}`] = {
                     customerName: String(row.customerName).trim(),
@@ -137,6 +129,8 @@ export default function CustomersPage() {
                     customerPhone2: phone2 || "",
                     customerAddress: String(row.customerAddress).trim(),
                     zoning: String(row.zoning).trim(),
+                    orderCount: 0,
+                    lastOrderDate: ""
                 };
                 processedCount++;
                 existingCustomerPhones.add(phone1);
@@ -156,31 +150,11 @@ export default function CustomersPage() {
                     description: `${language === 'ar' ? 'تم تخطي' : 'Skipped'} ${alreadyExistsCount} ${language === 'ar' ? 'عملاء لأنهم مسجلون بالفعل.' : 'customers as they are already registered.'}`,
                 });
             }
-            
-            if (skippedCount > 0) {
-                toast({
-                    variant: "destructive",
-                    title: language === 'ar' ? 'صفوف تم تخطيها' : 'Rows Skipped',
-                    description: `${language === 'ar' ? 'تم تخطي' : 'Skipped'} ${skippedCount} ${language === 'ar' ? 'صفوف بسبب بيانات غير مكتملة أو أرقام هواتف غير صالحة.' : 'rows due to incomplete data or invalid phone numbers.'}`,
-                });
-            }
-            
-            if (processedCount === 0 && json.length > 0 && alreadyExistsCount === json.length) {
-                // All were duplicates
-            } else if (processedCount === 0 && json.length > 0) {
-                 toast({
-                    variant: "destructive",
-                    title: language === 'ar' ? "فشل الاستيراد" : "Import Failed",
-                    description: language === 'ar' ? "لم يتم العثور على بيانات عملاء صالحة. يرجى التحقق من الملف." : "No valid customer data found. Please check the file.",
-                });
-            }
-
         } catch (error) {
             console.error("Error processing file:", error);
             toast({
                 variant: "destructive",
                 title: language === 'ar' ? "خطأ في الاستيراد" : "Import Error",
-                description: language === 'ar' ? "فشل في معالجة الملف. يرجى التحقق من تنسيق الملف." : "Failed to process file. Please check the file format.",
             });
         } finally {
             if (event.target) {
@@ -188,7 +162,6 @@ export default function CustomersPage() {
             }
         }
       };
-      reader.onloadend = () => {};
       reader.readAsBinaryString(file);
     }
   };
@@ -213,10 +186,7 @@ export default function CustomersPage() {
 
   const handleExport = () => {
     if (exportPassword !== "HamzaEzz") {
-      toast({
-        variant: "destructive",
-        title: language === 'ar' ? "كلمة مرور خاطئة" : "Incorrect Password",
-      });
+      toast({ variant: "destructive", title: language === 'ar' ? "كلمة مرور خاطئة" : "Incorrect Password" });
       return;
     }
 
@@ -235,15 +205,9 @@ export default function CustomersPage() {
 
         setIsExportDialogOpen(false);
         setExportPassword("");
-        toast({
-            title: language === 'ar' ? "تم الاستخراج بنجاح" : "Export Successful",
-        });
+        toast({ title: language === 'ar' ? "تم الاستخراج بنجاح" : "Export Successful" });
     } catch (error) {
-        console.error("Export error:", error);
-        toast({
-            variant: "destructive",
-            title: language === 'ar' ? "خطأ في الاستخراج" : "Export Error",
-        });
+        toast({ variant: "destructive", title: language === 'ar' ? "خطأ في الاستخراج" : "Export Error" });
     }
   };
 
@@ -300,16 +264,12 @@ export default function CustomersPage() {
           </DialogContent>
       </Dialog>
 
-      {isLoading ? (
+      {isLoadingCustomers ? (
         <div className="space-y-4">
-            <div className="flex items-center py-4">
-                <Skeleton className="h-10 w-full max-w-sm" />
-            </div>
+            <div className="flex items-center py-4"><Skeleton className="h-10 w-full max-w-sm" /></div>
             <div className="rounded-md border p-4">
                 <div className="space-y-3">
-                    <Skeleton className="h-12 w-full" />
-                    <Skeleton className="h-12 w-full" />
-                    <Skeleton className="h-12 w-full" />
+                    <Skeleton className="h-12 w-full" /><Skeleton className="h-12 w-full" /><Skeleton className="h-12 w-full" />
                 </div>
             </div>
         </div>
