@@ -193,7 +193,15 @@ export default function OrdersPage() {
 
   return (
     <div>
-      <PageHeader title={language === 'ar' ? 'الطلبات' : 'Orders'}>
+      <PageHeader 
+        title={
+          language === 'ar' ? (
+            <span className="text-orange-600">الطلبات</span>
+          ) : (
+            <span className="text-orange-600">Orders</span>
+          )
+        }
+      >
         <Dialog open={isNewOrderOpen} onOpenChange={setIsNewOrderOpen}>
           <DialogTrigger asChild>
             <Button>

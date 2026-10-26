@@ -6,7 +6,7 @@ import { ArrowLeft, ArrowRight } from "lucide-react";
 import { useLanguage } from "./language-provider";
 
 type PageHeaderProps = {
-  title: string;
+  title: ReactNode;
   children?: ReactNode;
   showBackButton?: boolean;
 };
