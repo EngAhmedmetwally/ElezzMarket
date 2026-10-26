@@ -15,11 +15,12 @@ import { FirebaseOptions } from 'firebase/app';
 // This is a public configuration and is safe to be exposed to the client.
 // All security is enforced by Firebase Security Rules and Firebase App Check.
 export const firebaseConfig: FirebaseOptions = {
-  apiKey: "AIzaSyCXZudXhxAzIJ-Q-A884Z3Yu-qp-lIascg",
-  authDomain: "studio-6623168497-8369f.firebaseapp.com",
-  databaseURL: "https://studio-6623168497-8369f-default-rtdb.firebaseio.com",
-  projectId: "studio-6623168497-8369f",
-  storageBucket: "studio-6623168497-8369f.firebasestorage.app",
-  messagingSenderId: "529757501340",
-  appId: "1:529757501340:web:2f01a44b55b0c62a6f3a59"
+  apiKey: "AIzaSyBgAOGUth0NtrQMzizID8-fxJJPyMkeK_o",
+  authDomain: "elezz-market.firebaseapp.com",
+  databaseURL: "https://elezz-market-default-rtdb.firebaseio.com",
+  projectId: "elezz-market",
+  storageBucket: "elezz-market.firebasestorage.app",
+  messagingSenderId: "944382398885",
+  appId: "1:944382398885:web:0823faff813ee816c9184c",
+  measurementId: "G-SXFHQTQZ1Q"
 };
