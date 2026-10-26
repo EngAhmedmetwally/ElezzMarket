@@ -80,13 +80,13 @@ export function OrderForm({ onSuccess, orderToEdit }: OrderFormProps) {
   const { data: customers } = useRealtimeCachedCollection<Customer & {id: string}>('customers');
   const { data: allProducts } = useRealtimeCachedCollection<Product>('products');
   const { data: shippingZones, isLoading: isLoadingZones } = useRealtimeCachedCollection<ShippingZone>('shipping-zones');
-  const { data: appSettingsCollection } = useRealtimeCachedCollection<AppSettings>('app-settings');
+  const { data: appSettingsCollection, isLoading: isLoadingSettings } = useRealtimeCachedCollection<AppSettings>('app-settings');
 
   const products = React.useMemo(() => allProducts?.filter(p => p.isActive), [allProducts]);
 
   const appSettings = React.useMemo(() => {
     if (!appSettingsCollection || appSettingsCollection.length === 0) return null;
-    return appSettingsCollection[0];
+    return appSettingsCollection.find(s => s.id === 'main') || appSettingsCollection[0];
   }, [appSettingsCollection]);
 
   const isAutoIdEnabled = appSettings?.autoGenerateOrderId === true;
@@ -191,15 +191,16 @@ export function OrderForm({ onSuccess, orderToEdit }: OrderFormProps) {
 
     setIsSubmitting(true);
     try {
+        // Refetch settings to ensure we are using the latest auto-generate preference
+        const settingsSnap = await get(ref(database, 'app-settings/main'));
+        const activeAutoId = settingsSnap.exists() ? settingsSnap.val().autoGenerateOrderId : isAutoIdEnabled;
+
         if (isEditMode && orderToEdit) {
             let orderPath = orderToEdit.path;
-            if (!orderPath && orderToEdit.createdAt) {
-                const d = new Date(orderToEdit.createdAt);
-                orderPath = `orders/${d.getFullYear()}/${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')}/${orderToEdit.id}`;
-            }
-
+            // Support finding order path if not explicitly provided
             if (!orderPath) {
-                orderPath = `orders/${orderToEdit.id}`;
+                const lookupSnap = await get(ref(database, `order-lookup/${orderToEdit.id}`));
+                orderPath = lookupSnap.exists() ? lookupSnap.val() : `orders/${orderToEdit.id}`;
             }
 
             const now = new Date().toISOString();
@@ -229,23 +230,17 @@ export function OrderForm({ onSuccess, orderToEdit }: OrderFormProps) {
                 await update(orderRef, historyUpdate);
             }
 
-            const snapshot = await get(orderRef);
-            if (snapshot.exists()) {
-                await idbPut('orders', { ...snapshot.val(), id: orderToEdit.id, path: orderPath });
-                syncEvents.emit('synced', 'orders');
-            }
-
             toast({ title: language === 'ar' ? 'تم التحديث بنجاح' : 'Updated successfully' });
             onSuccess?.();
         } else {
             let orderId: string;
-            if (isAutoIdEnabled) {
+            if (activeAutoId) {
                 const transactionResult = await runTransaction(ref(database, 'counters/orders'), (current) => (current === null) ? 20001 : current + 1);
                 if (!transactionResult.committed) throw new Error('Failed to generate ID');
                 orderId = String(transactionResult.snapshot.val());
             } else {
                 if (!data.id) {
-                    form.setError("id", { message: "ID Required" });
+                    form.setError("id", { message: language === 'ar' ? "رقم الطلب مطلوب" : "ID Required" });
                     setIsSubmitting(false);
                     return;
                 }
@@ -254,7 +249,8 @@ export function OrderForm({ onSuccess, orderToEdit }: OrderFormProps) {
             
             const now = new Date();
             const nowIso = now.toISOString();
-            const orderPath = `orders/${now.getFullYear()}/${String(now.getMonth() + 1).padStart(2, '0')}/${String(now.getDate()).padStart(2, '0')}/${orderId}`;
+            // OPTIMIZATION: Flat path at root 'orders/ID' saves massive bandwidth vs folders YYYY/MM/DD
+            const orderPath = `orders/${orderId}`;
             
             const commissionRulesSnap = await get(ref(database, 'commission-rules'));
             const commissionAmount = commissionRulesSnap.val()?.["تم التسجيل"]?.amount || 0;
@@ -294,11 +290,10 @@ export function OrderForm({ onSuccess, orderToEdit }: OrderFormProps) {
             syncEvents.emit('synced', 'orders');
 
             const dbUpdates: { [key: string]: any } = {};
-            // Store the full path in lookup to avoid collection scans later
             dbUpdates[`order-lookup/${orderId}`] = orderPath;
             dbUpdates[`customer-orders/${data.customerPhone1}/${orderId}`] = true;
             
-            // Update customer metadata directly to avoid downloading all orders for metrics
+            // Direct customer metadata updates
             const custSnap = await get(ref(database, `customers/${data.customerPhone1}`));
             if (custSnap.exists()) {
                 const custData = custSnap.val();
@@ -352,7 +347,14 @@ export function OrderForm({ onSuccess, orderToEdit }: OrderFormProps) {
                 <FormField control={form.control} name="id" render={({ field }) => (
                     <FormItem>
                     <FormLabel>{language === 'ar' ? 'رقم الطلب' : 'Order ID'}</FormLabel>
-                    <FormControl><Input placeholder={isAutoIdEnabled ? 'تلقائي' : 'أدخل الرقم'} {...field} disabled={isAutoIdEnabled} onFocus={(e) => e.target.select()} /></FormControl>
+                    <FormControl>
+                        <Input 
+                            placeholder={isLoadingSettings ? 'جاري التحميل...' : (isAutoIdEnabled ? 'سيتم التوليد تلقائياً' : 'أدخل الرقم')} 
+                            {...field} 
+                            disabled={isLoadingSettings || isAutoIdEnabled} 
+                            onFocus={(e) => e.target.select()} 
+                        />
+                    </FormControl>
                     <FormMessage />
                     </FormItem>
                 )}/>

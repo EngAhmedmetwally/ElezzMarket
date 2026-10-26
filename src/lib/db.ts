@@ -2,16 +2,15 @@
 'use client';
 
 const DB_NAME = 'ElEzzMarketDB';
-const DB_VERSION = 86; 
+const DB_VERSION = 95; // Bumping version significantly to ensure clean state
 const STORES = ['orders', 'users', 'products', 'shipping-zones', 'commission-rules', 'customers', 'app-settings', 'receipt-settings', 'sync-timestamps', 'commissions', 'order-statuses', 'adjustments', 'whatsapp-logs'];
 
-let db: IDBDatabase | null = null;
+let dbPromise: Promise<IDBDatabase> | null = null;
 
 const openDB = (): Promise<IDBDatabase> => {
-  return new Promise((resolve, reject) => {
-    if (db) {
-      return resolve(db);
-    }
+  if (dbPromise) return dbPromise;
+
+  dbPromise = new Promise((resolve, reject) => {
     if (typeof window === 'undefined') {
         reject('IndexedDB can only be used in the browser.');
         return;
@@ -21,18 +20,15 @@ const openDB = (): Promise<IDBDatabase> => {
 
     request.onerror = (event) => {
       console.error('IndexedDB error:', request.error);
-      reject('Error opening IndexedDB.');
-    };
-
-    request.onblocked = () => {
-        console.warn('IndexedDB is blocked. Please close other tabs of this app.');
+      dbPromise = null; // Allow retry on error
+      reject(request.error || 'Error opening IndexedDB.');
     };
 
     request.onsuccess = () => {
-      db = request.result;
+      const db = request.result;
       db.onversionchange = () => {
-          db?.close();
-          db = null;
+          db.close();
+          dbPromise = null;
           if (typeof window !== 'undefined') window.location.reload();
       };
       resolve(db);
@@ -56,6 +52,8 @@ const openDB = (): Promise<IDBDatabase> => {
       });
     };
   });
+
+  return dbPromise;
 };
 
 export const idbGet = async <T>(storeName: string, key: IDBValidKey): Promise<T | undefined> => {
@@ -107,48 +105,65 @@ export const idbGetAllKeys = async (storeName: string): Promise<IDBValidKey[]> =
 };
 
 export const idbPut = async (storeName: string, value: any): Promise<IDBValidKey> => {
-    const db = await openDB();
-    return new Promise((resolve, reject) => {
-        const transaction = db.transaction(storeName, 'readwrite');
-        const store = transaction.objectStore(storeName);
-        const request = store.put(value);
-        request.onsuccess = () => resolve(request.result);
-        request.onerror = () => reject(request.error);
-    });
+    try {
+        const db = await openDB();
+        return new Promise((resolve, reject) => {
+            const transaction = db.transaction(storeName, 'readwrite');
+            const store = transaction.objectStore(storeName);
+            const request = store.put(value);
+            request.onsuccess = () => resolve(request.result);
+            request.onerror = () => reject(request.error);
+        });
+    } catch (e) {
+        console.error(`IDB Put Error (${storeName}):`, e);
+        throw e;
+    }
 };
 
 export const idbBulkPut = async (storeName: string, values: any[]): Promise<void> => {
     if (!values || values.length === 0) return;
-    const db = await openDB();
-    return new Promise((resolve, reject) => {
-        const transaction = db.transaction(storeName, 'readwrite');
-        transaction.oncomplete = () => resolve();
-        transaction.onerror = () => reject(transaction.error);
-        const store = transaction.objectStore(storeName);
-        values.forEach(value => {
-            if (value) store.put(value);
+    try {
+        const db = await openDB();
+        return new Promise((resolve, reject) => {
+            const transaction = db.transaction(storeName, 'readwrite');
+            transaction.oncomplete = () => resolve();
+            transaction.onerror = () => reject(transaction.error);
+            const store = transaction.objectStore(storeName);
+            values.forEach(value => {
+                if (value) store.put(value);
+            });
         });
-    });
+    } catch (e) {
+        console.error(`IDB BulkPut Error (${storeName}):`, e);
+    }
 };
 
 export const idbDelete = async (storeName: string, key: IDBValidKey): Promise<void> => {
-    const db = await openDB();
-    return new Promise((resolve, reject) => {
-        const transaction = db.transaction(storeName, 'readwrite');
-        const store = transaction.objectStore(storeName);
-        const request = store.delete(key);
-        request.onsuccess = () => resolve();
-        request.onerror = () => reject(request.error);
-    });
+    try {
+        const db = await openDB();
+        return new Promise((resolve, reject) => {
+            const transaction = db.transaction(storeName, 'readwrite');
+            const store = transaction.objectStore(storeName);
+            const request = store.delete(key);
+            request.onsuccess = () => resolve();
+            request.onerror = () => reject(request.error);
+        });
+    } catch (e) {
+        console.error(`IDB Delete Error (${storeName}):`, e);
+    }
 };
 
 export const idbClear = async (storeName: string): Promise<void> => {
-    const db = await openDB();
-    return new Promise((resolve, reject) => {
-        const transaction = db.transaction(storeName, 'readwrite');
-        const store = transaction.objectStore(storeName);
-        const request = store.clear();
-        request.onsuccess = () => resolve();
-        request.onerror = () => reject(request.error);
-    });
+    try {
+        const db = await openDB();
+        return new Promise((resolve, reject) => {
+            const transaction = db.transaction(storeName, 'readwrite');
+            const store = transaction.objectStore(storeName);
+            const request = store.clear();
+            request.onsuccess = () => resolve();
+            request.onerror = () => reject(request.error);
+        });
+    } catch (e) {
+        console.error(`IDB Clear Error (${storeName}):`, e);
+    }
 };

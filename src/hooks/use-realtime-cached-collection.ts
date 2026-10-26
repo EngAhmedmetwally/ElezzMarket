@@ -6,33 +6,43 @@ import { ref, onValue, off, Query as RTDBQuery, DatabaseReference } from 'fireba
 import { idbGetAll, idbBulkPut, idbGetAllKeys, idbDelete } from '@/lib/db';
 import type { Order } from '@/lib/types';
 
-// Helper to handle the nested order structure with safety checks
+/**
+ * Robust processing for orders. Handles both flat structure at root 
+ * and old legacy nested structure (YYYY/MM/DD).
+ */
 const processOrdersSnapshot = (data: any): Order[] => {
     if (!data || typeof data !== 'object') return [];
     const allOrders: Order[] = [];
 
     try {
-        Object.keys(data).forEach(year => {
-            const yearData = data[year];
-            if (!yearData || typeof yearData !== 'object') return;
+        Object.keys(data).forEach(key => {
+            const item = data[key];
+            if (!item || typeof item !== 'object') return;
 
-            Object.keys(yearData).forEach(month => {
-                const monthData = yearData[month];
-                if (!monthData || typeof monthData !== 'object') return;
+            // Detect if it's a flat Order object at the root
+            if (item.createdAt && item.customerName) {
+                const orderPath = `orders/${key}`;
+                allOrders.push({ ...item, id: key, path: orderPath });
+            } else {
+                // Handle legacy nested structure (year folders)
+                Object.keys(item).forEach(month => {
+                    const monthData = item[month];
+                    if (!monthData || typeof monthData !== 'object') return;
 
-                Object.keys(monthData).forEach(day => {
-                    const dayData = monthData[day];
-                    if (!dayData || typeof dayData !== 'object') return;
+                    Object.keys(monthData).forEach(day => {
+                        const dayData = monthData[day];
+                        if (!dayData || typeof dayData !== 'object') return;
 
-                    Object.keys(dayData).forEach(orderId => {
-                        const order = dayData[orderId];
-                        if (order && typeof order === 'object' && order.createdAt) {
-                            const orderPath = `orders/${year}/${month}/${day}/${orderId}`;
-                            allOrders.push({ ...order, id: orderId, path: orderPath });
-                        }
+                        Object.keys(dayData).forEach(orderId => {
+                            const order = dayData[orderId];
+                            if (order && typeof order === 'object' && order.createdAt) {
+                                const orderPath = `orders/${key}/${month}/${day}/${orderId}`;
+                                allOrders.push({ ...order, id: orderId, path: orderPath });
+                            }
+                        });
                     });
                 });
-            });
+            }
         });
     } catch (e) {
         console.error("Error processing orders snapshot:", e);
@@ -51,13 +61,12 @@ const objectToArray = (data: object | null | undefined): any[] => {
 };
 
 /**
- * Enhanced hook to sync and cache RTDB collections with support for queries.
- * @param collectionName The IDB store name.
- * @param memoizedQuery Optional Firebase Query. If provided, incremental sync is used (local missing keys aren't deleted).
+ * Enhanced hook to sync and cache RTDB collections with targeted queries.
+ * Saves bandwidth by only downloading what's needed while keeping a local permanent cache.
  */
 export function useRealtimeCachedCollection<T>(
     collectionName: string,
-    memoizedQuery?: (RTDBQuery | DatabaseReference) & {__memo?: boolean}
+    memoizedQuery?: (RTDBQuery | DatabaseReference) & {__memo?: boolean} | null
 ) {
     const [data, setData] = useState<T[]>([]);
     const [isLoading, setIsLoading] = useState(true);
@@ -66,6 +75,10 @@ export function useRealtimeCachedCollection<T>(
     const updateCacheAndState = useCallback(async () => {
         try {
             const cachedData = await idbGetAll<T>(collectionName);
+            // Sort orders locally if we have them all
+            if (collectionName === 'orders') {
+                cachedData.sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+            }
             setData(cachedData);
         } catch (error) {
             console.error(`Error fetching ${collectionName} from IndexedDB:`, error);
@@ -76,6 +89,9 @@ export function useRealtimeCachedCollection<T>(
     }, [collectionName]);
     
     useEffect(() => {
+        // Don't do anything if the query is explicitly null (waiting for deps)
+        if (memoizedQuery === null) return;
+        
         updateCacheAndState();
 
         if (!database) {
@@ -84,7 +100,6 @@ export function useRealtimeCachedCollection<T>(
         }
 
         let isMounted = true;
-        // Use the query if provided, otherwise listen to the full collection
         const targetRef = memoizedQuery || ref(database, collectionName);
 
         const listener = onValue(targetRef, async (snapshot) => {
@@ -94,13 +109,13 @@ export function useRealtimeCachedCollection<T>(
             const remoteData = snapshot.val();
             
             if (snapshot.exists() && remoteData) {
-                if (collectionName === 'orders' && !memoizedQuery) {
+                if (collectionName === 'orders') {
+                    // processOrdersSnapshot handles both flat root and legacy nested items
                     remoteDataArray = processOrdersSnapshot(remoteData);
                 } else if (['app-settings', 'receipt-settings'].includes(collectionName)) {
                      if (remoteData.main) {
                         remoteDataArray.push({id: 'main', ...remoteData.main});
                      } else if (typeof remoteData === 'object' && !remoteData.id) {
-                         // Fallback for specific settings structure
                          remoteDataArray = objectToArray(remoteData);
                      }
                 } else {
@@ -109,10 +124,10 @@ export function useRealtimeCachedCollection<T>(
             }
             
             try {
-                // Determine if we are doing a full collection sync or a subset/incremental sync
+                // If it's a full collection sync (no query filters), we sync IDB exactly with remote
                 const isFullSync = !memoizedQuery;
 
-                if (isFullSync) {
+                if (isFullSync && remoteData) {
                     const localKeys = await idbGetAllKeys(collectionName);
                     const remoteKeys = new Set(remoteDataArray.map(item => item.id));
                     const keysToDelete = localKeys.filter(key => typeof key === 'string' && !remoteKeys.has(key));
@@ -122,6 +137,7 @@ export function useRealtimeCachedCollection<T>(
                     }
                 }
                 
+                // Merge remote data into IDB (additive sync for queries, full sync for root)
                 if (remoteDataArray.length > 0) {
                     await idbBulkPut(collectionName, remoteDataArray);
                 }
