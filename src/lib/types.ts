@@ -181,6 +181,7 @@ export type ShippingZone = {
 };
 
 export type ReceiptSettings = {
+  id?: string;
   showLogo?: boolean;
   logoSize?: number;
   headerText?: string;
@@ -228,6 +229,7 @@ export type WhatsAppLog = {
 };
 
 export type AppSettings = {
+  id?: string;
   maxUsers: number;
   autoGenerateOrderId?: boolean;
   whatsapp?: WhatsAppSettings;
