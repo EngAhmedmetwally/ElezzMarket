@@ -38,10 +38,6 @@ export default function CustomersPage() {
   const { toast } = useToast();
   const database = useDatabase();
 
-  // Optimizations:
-  // 1. We stop downloading ALL orders here. Counts and last dates are now served from Customer metadata.
-  // 2. We use a limited query for WhatsApp logs to avoid downloading the full history.
-  
   const { data: allCustomers, isLoading: isLoadingCustomers } = useRealtimeCachedCollection<Customer & {id: string}>('customers');
   
   const whatsappQuery = useMemoFirebase(() => {
@@ -61,7 +57,6 @@ export default function CustomersPage() {
       return {
         ...customer,
         id: customer.id,
-        // Fallback to 0 if metadata hasn't been populated yet
         orderCount: customer.orderCount || 0,
         lastOrderDate: customer.lastOrderDate || '',
       };
@@ -98,7 +93,8 @@ export default function CustomersPage() {
             let alreadyExistsCount = 0;
 
             for (const row of json) {
-                const phone1 = row.customerPhone1 ? String(row.customerPhone1).trim() : null;
+                // تنظيف رقم الهاتف ليكون أرقام فقط لضمان دقة المفاتيح في قاعدة البيانات
+                const phone1 = row.customerPhone1 ? String(row.customerPhone1).replace(/\D/g, '') : null;
                 
                 if (!phone1) {
                     skippedCount++;
@@ -110,14 +106,9 @@ export default function CustomersPage() {
                     continue;
                 }
 
-                const phone2 = row.customerPhone2 ? String(row.customerPhone2).trim() : null;
+                const phone2 = row.customerPhone2 ? String(row.customerPhone2).replace(/\D/g, '') : "";
                 
                 if (!row.customerName || !row.customerAddress || !row.zoning) {
-                    skippedCount++;
-                    continue;
-                }
-
-                if (phone1.length !== 11) {
                     skippedCount++;
                     continue;
                 }
@@ -126,7 +117,7 @@ export default function CustomersPage() {
                     customerName: String(row.customerName).trim(),
                     facebookName: row.facebookName ? String(row.facebookName).trim() : "",
                     customerPhone1: phone1,
-                    customerPhone2: phone2 || "",
+                    customerPhone2: phone2,
                     customerAddress: String(row.customerAddress).trim(),
                     zoning: String(row.zoning).trim(),
                     orderCount: 0,

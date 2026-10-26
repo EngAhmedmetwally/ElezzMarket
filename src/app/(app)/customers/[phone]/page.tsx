@@ -5,7 +5,7 @@ import * as React from "react";
 import { useParams, useRouter } from "next/navigation";
 import { PageHeader } from "@/components/page-header";
 import { useLanguage } from "@/components/language-provider";
-import type { Order, OrderItem } from "@/lib/types";
+import type { Order, OrderItem, Customer } from "@/lib/types";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -13,73 +13,35 @@ import { StatusBadge } from "@/components/status-badge";
 import { format } from "date-fns";
 import { Badge } from "@/components/ui/badge";
 import { Star, Truck } from "lucide-react";
-import { useDatabase } from "@/firebase";
-import { ref, get, child } from "firebase/database";
 import { formatCurrency } from "@/lib/utils";
-import { useToast } from "@/hooks/use-toast";
+import { useCachedDoc } from "@/hooks/use-cached-doc";
+import { useRealtimeCachedCollection } from "@/hooks/use-realtime-cached-collection";
 
 export default function CustomerDetailsPage() {
   const params = useParams();
   const router = useRouter();
-  const database = useDatabase();
-  const { toast } = useToast();
   const { language } = useLanguage();
 
-  const [customerDetails, setCustomerDetails] = React.useState<any>(null);
-  const [customerOrders, setCustomerOrders] = React.useState<Order[]>([]);
-  const [isLoading, setIsLoading] = React.useState(true);
-
-  // Sanitize the phone number
-  const phone = React.useMemo(() => {
-    const raw = typeof params.phone === 'string' ? decodeURIComponent(params.phone) : '';
-    return raw.replace(/\D/g, '');
+  // المعرف هو نص رقم الهاتف كما هو مخزن في قاعدة البيانات
+  // لا نقوم بإزالة المسافات هنا لضمان مطابقة المفتاح الفعلي المخزن حالياً
+  const customerId = React.useMemo(() => {
+    return typeof params.phone === 'string' ? decodeURIComponent(params.phone) : '';
   }, [params.phone]);
 
-  const fetchData = React.useCallback(async () => {
-      if (!database || !phone) return;
-      setIsLoading(true);
-      try {
-          // 1. Fetch Customer Profile
-          const custSnap = await get(ref(database, `customers/${phone}`));
-          if (!custSnap.exists()) {
-              setCustomerDetails(null);
-              setIsLoading(false);
-              return;
-          }
-          setCustomerDetails(custSnap.val());
+  // جلب بيانات العميل من التخزين المحلي (IndexedDB) لسرعة التحميل
+  const { data: customerDetails, isLoading: isLoadingCustomer } = useCachedDoc<Customer>('customers', customerId);
+  
+  // جلب الطلبات من المجموعة المزامنة مسبقاً
+  const { data: allOrders, isLoading: isLoadingOrders } = useRealtimeCachedCollection<Order>('orders');
 
-          // 2. Optimized Order Fetching: Use the index to fetch only IDs
-          const indexSnap = await get(ref(database, `customer-orders/${phone}`));
-          if (indexSnap.exists()) {
-              const orderIds = Object.keys(indexSnap.val());
-              
-              // 3. Fetch each order directly using the path lookup (if available) or individual scan
-              const orders: Order[] = [];
-              for (const id of orderIds) {
-                  const lookupSnap = await get(ref(database, `order-lookup/${id}`));
-                  const path = lookupSnap.exists() ? lookupSnap.val() : null;
-                  
-                  if (path && typeof path === 'string') {
-                      const orderSnap = await get(ref(database, path));
-                      if (orderSnap.exists()) orders.push({ ...orderSnap.val(), id, path });
-                  } else {
-                      // Fallback for older orders: we can't easily find nested path without full scan.
-                      // For now we prioritize bandwidth and skip old deep-nested orders if path lookup is missing.
-                      // In a real prod env, we'd have a flat 'orders' collection or always populate 'order-lookup'.
-                  }
-              }
-              setCustomerOrders(orders.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
-          }
-      } catch (e: any) {
-          toast({ variant: 'destructive', title: "Fetch Error", description: e.message });
-      } finally {
-          setIsLoading(false);
-      }
-  }, [database, phone, toast]);
-
-  React.useEffect(() => {
-      fetchData();
-  }, [fetchData]);
+  const customerOrders = React.useMemo(() => {
+    if (!allOrders || !customerId) return [];
+    return allOrders.filter(order => 
+      order.customerPhone1 === customerId || 
+      order.customerPhone2 === customerId ||
+      (order as any).customerId === customerId
+    ).sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  }, [allOrders, customerId]);
 
   const favoriteItems = React.useMemo(() => {
     const itemMap = new Map<string, { name: string; count: number }>();
@@ -106,10 +68,10 @@ export default function CustomerDetailsPage() {
     return Array.from(courierMap.values());
   }, [customerOrders]);
 
-  if (isLoading) {
+  if (isLoadingCustomer || (isLoadingOrders && allOrders.length === 0)) {
       return (
           <div className="space-y-8">
-            <PageHeader title={language === 'ar' ? 'تحميل...' : 'Loading...'} />
+            <PageHeader title={language === 'ar' ? 'جاري التحميل...' : 'Loading...'} />
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
                 <Skeleton className="h-48" /><Skeleton className="h-48" /><Skeleton className="h-48" />
             </div>
@@ -124,7 +86,7 @@ export default function CustomerDetailsPage() {
         <PageHeader title={language === 'ar' ? 'العميل غير موجود' : 'Customer Not Found'} />
         <div className="bg-destructive/10 text-destructive p-6 rounded-lg border border-destructive/20 inline-block max-w-2xl mx-auto">
             <p className="text-lg font-bold mb-2">{language === 'ar' ? 'لم نتمكن من العثور على العميل المطلوب.' : 'The requested customer could not be found.'}</p>
-            <p className="text-sm opacity-80">Phone: <span className="font-mono bg-background px-2 py-1 rounded">{phone}</span></p>
+            <p className="text-sm opacity-80">ID: <span className="font-mono bg-background px-2 py-1 rounded">{customerId}</span></p>
         </div>
       </div>
     );
@@ -164,7 +126,7 @@ export default function CustomerDetailsPage() {
                                 <li key={item.name} className="flex justify-between"><span className="font-medium">{item.name}</span><Badge variant="secondary">{item.count} pcs</Badge></li>
                             ))}
                         </ul>
-                    ) : <p className="text-sm text-muted-foreground">Not enough data.</p>}
+                    ) : <p className="text-sm text-muted-foreground">لا توجد بيانات كافية.</p>}
                 </CardContent>
             </Card>
             <Card>
@@ -172,7 +134,7 @@ export default function CustomerDetailsPage() {
                 <CardContent>
                     {uniqueCouriers.length > 0 ? (
                         <div className="flex flex-wrap gap-2">{uniqueCouriers.map(courier => <Badge key={courier.id} variant="outline">{courier.name}</Badge>)}</div>
-                    ) : <p className="text-sm text-muted-foreground">No couriers recorded.</p>}
+                    ) : <p className="text-sm text-muted-foreground">لا يوجد مناديب مسجلين.</p>}
                 </CardContent>
             </Card>
         </div>
